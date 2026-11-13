@@ -1,0 +1,20 @@
+{
+  "name": "khn-of-duty",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "KHN OF DUTY — FPS militaire original (navigateur, Three.js)",
+  "scripts": {
+    "build": "node build.mjs",
+    "start": "node build.mjs && node server/server.mjs",
+    "test": "node build.mjs && node tests/smoke.mjs",
+    "test:net": "node build.mjs && node tests/net.mjs"
+  },
+  "dependencies": {
+    "three": "0.170.0",
+    "ws": "8.18.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.24.0"
+  }
+}
