@@ -95,11 +95,11 @@ export function buildWorld(mapId, quality) {
     sun.castShadow = true; sc.left = -e; sc.right = e; sc.top = e; sc.bottom = -e; sc.near = 1; sc.far = 200;
     sun.shadow.mapSize.set(quality === 'high' ? 2048 : 1024, quality === 'high' ? 2048 : 1024); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.03;
   }
-  // lampes (cartes de nuit) : volume émissif partout, lumière ponctuelle hors qualité basse
+  // lampes (cartes de nuit) : volume émissif partout ; lumières ponctuelles réservées à la qualité haute (coût par pixel)
   for (const [x, y, z, c] of ex.lamps) {
     const lm = new THREE.Mesh(keep(new THREE.BoxGeometry(0.35, 0.18, 0.35)), keep(new THREE.MeshBasicMaterial({ color: c })));
     lm.position.set(x, y, z); group.add(lm);
-    if (quality !== 'low') { const pl = new THREE.PointLight(c, 60, 22, 2); pl.position.set(x, y + 0.4, z); group.add(pl); }
+    if (quality === 'high') { const pl = new THREE.PointLight(c, 60, 22, 2); pl.position.set(x, y + 0.4, z); group.add(pl); }
   }
 
   return {

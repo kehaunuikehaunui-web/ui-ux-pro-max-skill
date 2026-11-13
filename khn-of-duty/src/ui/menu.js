@@ -259,8 +259,8 @@ export class Menu {
             ${rw.unlocks.length ? `<ul class="unl">${rw.unlocks.map((u) => `<li><b>Débloqué</b><span>${u.name}</span><small>${u.kind}</small></li>`).join('')}</ul>` : ''}
             <p class="rating ${rw.dr > 0 ? 'ok' : rw.dr < 0 ? 'bad' : ''}">Classement ${rw.dr > 0 ? '+' : ''}${rw.dr} → ${p.rating} · ${tierOf(p.rating)}</p></div>
         </div>
-        <div class="res-col">${boardHtml(s.board, s.teams)}</div>
+        <div class="res-col">${boardHtml(s.board, s.teams, s.team || 0)}</div>
       </div></div>
-      <footer class="scr-foot">${s.online ? '' : `<button class="btn primary" data-a="replay">${ic('play')}Rejouer</button>`}<button class="btn" data-a="home">Menu principal</button></footer></section>`;
+      <footer class="scr-foot">${s.online ? '<button class="btn primary" data-a="go:online">Retour au salon</button>' : `<button class="btn primary" data-a="replay">${ic('play')}Rejouer</button>`}<button class="btn" data-a="home">Menu principal</button></footer></section>`;
   }
 }

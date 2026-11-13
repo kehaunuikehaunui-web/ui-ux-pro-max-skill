@@ -59,7 +59,8 @@ export class Hud {
   begin(m, world) {
     this.cache = {}; this.k.feed.innerHTML = ''; this.noticeQ = []; this.k.notice.innerHTML = ''; this.k.banner.hidden = true; this.k.respawn.hidden = true; this.k.board.hidden = true;
     const teams = m.mode.teams;
-    this.set('n0', teams ? TEAM_NAMES[0] : 'VOUS'); this.set('n1', teams ? TEAM_NAMES[1] : 'MENEUR');
+    const mt = m.player.team; // le camp du joueur est toujours affiché à gauche
+    this.set('n0', teams ? TEAM_NAMES[mt] : 'VOUS'); this.set('n1', teams ? TEAM_NAMES[1 - mt] : 'MENEUR');
     this.set('mode', m.mode.short); this.set('limit', `Objectif ${m.limit}`);
     this.k.zones.hidden = !m.zones.length;
     this.k.zones.innerHTML = m.zones.map((z) => `<span data-z="${z.id}"><b>${z.id}</b><i></i></span>`).join('');
@@ -76,7 +77,7 @@ export class Hud {
     const tl = Math.max(0, m.timeLeft), mm = Math.floor(tl / 60), ss = Math.floor(tl % 60);
     this.set('clock', `${mm}:${ss < 10 ? '0' : ''}${ss}`);
     let a, b;
-    if (m.mode.teams) { a = m.scores[0]; b = m.scores[1]; } else { a = p.kills; b = 0; for (const c of m.chars) if (c !== p && c.kills > b) b = c.kills; }
+    if (m.mode.teams) { a = m.scores[p.team]; b = m.scores[1 - p.team]; } else { a = p.kills; b = 0; for (const c of m.chars) if (c !== p && c.kills > b) b = c.kills; }
     this.set('s0', a); this.set('s1', b);
     const ba = Math.min(100, a / m.limit * 100) | 0, bb = Math.min(100, b / m.limit * 100) | 0;
     if (this.cache.ba !== ba) { this.cache.ba = ba; k.b0.style.width = ba + '%'; }
@@ -103,7 +104,7 @@ export class Hud {
       n.lastElementChild.style.width = (z.prog * 100 | 0) + '%';
     }
     if (this.cache.bd !== o.board) { this.cache.bd = o.board; k.board.hidden = !o.board; }
-    if (o.board) { this.boardT = (this.boardT || 0) - dt; if (this.boardT <= 0) { this.boardT = 0.4; k.board.innerHTML = boardHtml(m.board().map((c) => ({ name: c.name, kills: c.kills, deaths: c.deaths, score: c.score, me: c === p, ally: c !== p && !m.isEnemy(p, c) })), m.mode.teams); } }
+    if (o.board) { this.boardT = (this.boardT || 0) - dt; if (this.boardT <= 0) { this.boardT = 0.4; k.board.innerHTML = boardHtml(m.board().map((c) => ({ name: c.name, kills: c.kills, deaths: c.deaths, score: c.score, me: c === p, ally: c !== p && !m.isEnemy(p, c) })), m.mode.teams, p.team); } }
     if (this.cache.fps !== o.fps) { this.cache.fps = o.fps; k.fps.hidden = !o.fps; k.fps.textContent = o.fps + ' IPS'; }
     this.mapT -= dt; if (this.mapT <= 0) { this.mapT = 0.07; this.drawMap(m, p); }
   }
@@ -150,9 +151,9 @@ export class Hud {
 }
 
 /** Tableau des scores (HUD et écran de résultats). */
-export function boardHtml(rows, teams) {
+export function boardHtml(rows, teams, mine = 0) {
   const tr = (r, i) => `<tr class="${r.me ? 'me' : r.ally ? 'ally' : 'foe'}"><td>${i + 1}</td><td>${esc(r.name)}</td><td>${r.kills}</td><td>${r.deaths}</td><td>${r.score}</td></tr>`;
   const table = (list, cap) => `<table class="board"><caption>${cap}</caption><thead><tr><th>#</th><th>Indicatif</th><th>É</th><th>M</th><th>Score</th></tr></thead><tbody>${list.map(tr).join('')}</tbody></table>`;
   if (!teams) return table(rows, 'Classement');
-  return `<div class="boards">${table(rows.filter((r) => r.me || r.ally), TEAM_NAMES[0])}${table(rows.filter((r) => !r.me && !r.ally), TEAM_NAMES[1])}</div>`;
+  return `<div class="boards">${table(rows.filter((r) => r.me || r.ally), TEAM_NAMES[mine])}${table(rows.filter((r) => !r.me && !r.ally), TEAM_NAMES[1 - mine])}</div>`;
 }

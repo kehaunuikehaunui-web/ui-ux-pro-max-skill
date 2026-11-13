@@ -25,6 +25,7 @@ async function open(viewport, opts = {}) {
   await page.goto(url); await page.waitForFunction(() => window.__khn && window.__khn.game.world, null, { timeout: 20000 });
   return { ctx, page, errors };
 }
+const until = (page, fn, arg) => page.waitForFunction(fn, arg, { timeout: 3000 }).then(() => true, () => false);
 const st = (page) => page.evaluate(() => { const { game: g } = window.__khn, m = g.match, p = m && m.player; return { state: g.state, fps: g.fps, n: m ? m.chars.length : 0, scores: m ? [...m.scores] : null, p: p ? { x: p.x, z: p.z, yaw: p.yaw, pitch: p.pitch, hp: p.hp, alive: p.alive, kills: p.kills, shots: p.shots, hits: p.hits, mag: p.weapons[p.wi].mag, wi: p.wi } : null }; });
 
 // ───────── 1. bureau : menus ─────────
@@ -64,8 +65,8 @@ check(Math.hypot(s.p.x - p0.x, s.p.z - p0.z) > 2, `déplacement clavier : ${Math
 await d.page.mouse.move(640, 360); await d.page.mouse.move(760, 330, { steps: 6 }); await d.page.waitForTimeout(150);
 const s2 = await st(d.page);
 check(Math.abs(s2.p.yaw - s.p.yaw) > 0.05, `visée souris : lacet ${s.p.yaw.toFixed(2)} → ${s2.p.yaw.toFixed(2)}`);
-await d.page.keyboard.press('Space'); await d.page.waitForTimeout(200);
-check(await d.page.evaluate(() => window.__khn.game.match.player.y > 0.2), 'saut (Espace)');
+await d.page.keyboard.press('Space');
+check(await until(d.page, () => window.__khn.game.match.player.y > 0.2), 'saut (Espace)');
 await d.page.screenshot({ path: out + '03-jeu.png' });
 // tir réel à la souris, après avoir orienté le joueur vers l'ennemi visible le plus proche
 const aimed = await d.page.evaluate(() => {
@@ -84,13 +85,13 @@ s = await st(d.page);
 const thp = await d.page.evaluate(() => ({ hp: window.__t.hp, alive: window.__t.alive }));
 check(s.p.shots > 0, `tir à la souris : ${s.p.shots} coups, chargeur ${s.p.mag}`);
 check(s.p.hits > 0 && (thp.hp < aimed.hp || !thp.alive), `impact sur ${aimed.name} : ${s.p.hits} touches, PV cible ${Math.round(thp.hp)}${thp.alive ? '' : ' (éliminé)'}`);
-await d.page.keyboard.press('KeyR'); await d.page.waitForTimeout(100);
-check(await d.page.evaluate(() => window.__khn.game.match.player.reloadT > 0), 'rechargement (R)');
-await d.page.keyboard.press('Digit2'); await d.page.waitForTimeout(100);
-check((await st(d.page)).p.wi === 1, 'changement d\'arme (2)');
+await d.page.keyboard.press('KeyR');
+check(await until(d.page, () => window.__khn.game.match.player.reloadT > 0), 'rechargement (R)');
+await d.page.keyboard.press('Digit2');
+check(await until(d.page, () => window.__khn.game.match.player.wi === 1), 'changement d\'arme (2)');
 const nb = await d.page.evaluate(() => window.__khn.game.match.player.equip.count);
-await d.page.keyboard.press('KeyG'); await d.page.waitForTimeout(100);
-check(await d.page.evaluate((n) => { const m = window.__khn.game.match; return m.player.equip.count === n - 1 && m.nades.length === 1; }, nb), 'grenade lancée (G)');
+await d.page.keyboard.press('KeyG');
+check(await until(d.page, (n) => { const m = window.__khn.game.match; return m.player.equip.count === n - 1 && m.nades.length === 1; }, nb), 'grenade lancée (G)');
 await d.page.keyboard.down('Tab'); await d.page.waitForTimeout(500);
 check(await d.page.$eval('.h-board', (b) => !b.hidden && b.querySelectorAll('tbody tr').length === 8), 'tableau des scores (Tab) : 8 lignes');
 await d.page.screenshot({ path: out + '04-scores.png' }); await d.page.keyboard.up('Tab');

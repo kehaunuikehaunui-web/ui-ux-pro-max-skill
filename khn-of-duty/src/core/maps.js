@@ -20,7 +20,7 @@ export const MAPS = {
   },
   sirocco: {
     id: 'sirocco', name: 'Avant-poste Sirocco', sub: 'Hameau fortifié · crépuscule', hx: 36, hz: 24,
-    theme: { skyTop: 0x3d5a80, skyHor: 0xf2b279, fog: 0xd9a877, fogNear: 30, fogFar: 150, ground: 0xb89868, hemi: [0xffd9a8, 0x7a5a3a, 2.0], sun: [0xffb070, 3.2, [-0.75, 0.55, 0.3]], stars: false },
+    theme: { skyTop: 0x3d5a80, skyHor: 0xf2b279, fog: 0xd9a877, fogNear: 34, fogFar: 160, ground: 0x94805f, hemi: [0xffe2c0, 0x6a5540, 2.0], sun: [0xffc890, 2.7, [-0.75, 0.55, 0.3]], stars: false },
     mats: { adobe: ['adobe', 0xc9a878], adobeDark: ['adobe', 0xa8875c], stone: ['concrete', 0x9a8b74], crate: ['crate', 0x7a6444], metal: ['panel', 0x55504a], wall: ['adobe', 0xb89868] },
     boxes: [
       [0, 0, 3, 3, 0.9, 'stone'], [-22, -12, 8, 7, 4, 'adobe'], [-10, 12, 7, 8, 4.5, 'adobe'], [-24, 10, 6, 6, 3.6, 'adobeDark'],

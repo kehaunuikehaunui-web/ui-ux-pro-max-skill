@@ -112,6 +112,7 @@ body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--fb
 .item[aria-pressed="true"] { border-color: var(--amber); background: rgba(52, 40, 14, .92); }
 .item[aria-disabled="true"] { opacity: .6; cursor: not-allowed; }
 .sw { width: 28px; height: 28px; flex: none; border: 1px solid var(--line2); }
+div.item { cursor: default; } div.item:hover { border-color: var(--line); }
 .detail { padding: 16px; background: var(--panel); border: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
 .detail h2 { margin: 0; font: 400 22px/1.1 var(--fd); letter-spacing: .04em; text-transform: uppercase; }
 .detail p { margin: 0; color: var(--mut); font-size: 14px; max-width: 65ch; }
@@ -172,7 +173,8 @@ output { color: var(--amber); font-variant-numeric: tabular-nums; }
 .fatal { position: absolute; inset: 0; z-index: 9; display: grid; place-content: center; gap: 8px; padding: 24px; text-align: center; background: var(--bg); }
 .fatal h1 { margin: 0; font: 400 28px var(--fd); text-transform: uppercase; } .fatal p { margin: 0; color: var(--mut); max-width: 46ch; }
 .note { margin: 0; padding: 10px 12px; border: 1px solid var(--line2); background: var(--panel); color: var(--mut); font-size: 14px; max-width: 65ch; }
-.note b { color: var(--fg); }
+.note b { color: var(--fg); } .note.bad { border-color: var(--foe); color: var(--fg); }
+.detail b { color: var(--fg); }
 
 /* ── HUD ── */
 .hud { position: absolute; inset: 0; z-index: 3; pointer-events: none; touch-action: none; padding-left: var(--gl); padding-right: var(--gr); text-shadow: 0 1px 2px rgba(0, 0, 0, .6); }

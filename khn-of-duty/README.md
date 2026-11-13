@@ -38,6 +38,24 @@ npm start            # build + serveur sur http://localhost:8080
   visée avec temps de réaction et erreur selon 3 niveaux de difficulté.
 - **Progression** : XP, 30 niveaux, grades, déblocages, classement local, statistiques, historique.
 
+## Multijoueur
+
+`npm start` lance le serveur de parties : il sert le jeu sur `http://<machine>:8080` et accepte les
+connexions WebSocket sur `/ws`. Les joueurs ouvrent cette adresse, vont dans **Multijoueur**, se
+connectent, puis créent ou rejoignent un salon (Match à mort par équipe ou Mêlée générale, 2 à 8 joueurs).
+
+- **Client** : chaque joueur simule son personnage et envoie sa position 15 fois par seconde ; les
+  autres joueurs sont interpolés.
+- **Serveur** : fait autorité sur les salons, la santé, les éliminations, les scores, les
+  réapparitions et la fin de partie. Il valide les tirs annoncés (cible vivante et ennemie,
+  protection d'apparition, dégâts et cadence plausibles) et retire les connexions mortes.
+- **Hébergement** : n'importe quelle machine Node 18+ joignable par les joueurs (`PORT` configurable).
+  Derrière HTTPS, placez un proxy qui relaie aussi `/ws` (le client bascule seul en `wss://`).
+
+Limites actuelles : pas de bots en ligne, pas de Domination en ligne, pas de comptes ni de
+classement mondial, déplacements non vérifiés par le serveur, aucune limitation de débit par client.
+Le multijoueur ne fonctionne pas dans l'aperçu publié en Artifact (connexions réseau interdites).
+
 ## Architecture
 
 ```
@@ -76,4 +94,6 @@ npm run test:net       # serveur + plusieurs clients réels
 - Les performances n'ont été mesurées qu'en rendu logiciel (sans carte graphique) ; elles restent à
   valider sur de vrais téléphones.
 - Le classement est local à l'appareil (pas de classement mondial).
+- Le multijoueur a été testé avec trois clients sur une même machine ; il ne l'a pas été sur Internet
+  (latence réelle, pertes de paquets) ni avec huit joueurs.
 - Modèles 3D volontairement simples (volumes), sans animations squelettiques ni ressources externes.

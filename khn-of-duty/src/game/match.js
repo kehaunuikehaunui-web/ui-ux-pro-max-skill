@@ -22,12 +22,16 @@ export class Match {
     this.mode = MODES[o.mode]; this.limit = o.limit || this.mode.limit; this.timeLeft = o.time || this.mode.time;
     this.diff = DIFFICULTY[o.difficulty] || DIFFICULTY.regulier;
     this.net = o.net || null;
-    this.chars = []; this.scores = [0, 0]; this.over = false; this.winner = -1; this.t = 0; this.nades = []; this.domT = 0;
+    this.chars = []; this.nextId = 0; this.scores = [0, 0]; this.over = false; this.winner = -1; this.t = 0; this.nades = []; this.domT = 0;
     this.zones = this.mode.id === 'dom' ? world.zones.map((z, i) => ({ id: 'ABC'[i], x: z[0], z: z[1], owner: -1, prog: 0, cap: -1 })) : [];
     const lo = o.loadout;
     this.player = this.addChar(o.name || 'Opérateur', 0, false, lo.primary, lo.secondary, lo.equip);
     this.player.isPlayer = true;
-    if (!this.net) {
+    if (this.net) { // partie en ligne : effectif fourni par le serveur
+      const me = o.roster.find((r) => r.id === o.you);
+      this.player.team = me.team; this.player.nid = me.id;
+      for (const r of o.roster) if (r.id !== o.you) this.addRemote(r);
+    } else {
       const names = [...BOT_NAMES].sort(() => R() - 0.5), n = o.size || 4;
       const total = n * 2 - 1;
       for (let i = 0; i < total; i++) {
@@ -40,7 +44,7 @@ export class Match {
   addChar(name, team, isBot, primary, secondary, equip) {
     const mk = (id) => { const def = WEAPONS[id] || WEAPONS.mistral; return { def, mag: def.mag, reserve: isBot ? 9999 : def.reserve }; };
     const c = {
-      id: this.chars.length, name, team, isBot, isPlayer: false, remote: false,
+      id: this.nextId++, name, team, isBot, isPlayer: false, remote: false,
       x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, r: 0.35, h: 1.8, onGround: true, yaw: 0, pitch: 0, speed: 0,
       hp: 100, alive: false, respawnT: 0, protT: 0, sinceDmg: 99, spotT: 99,
       weapons: [mk(primary), mk(secondary)], wi: 0, fireCd: 0, reloadT: 0, swapT: 0, ads: 0, bloom: 0, aimErr: 0,
@@ -53,7 +57,15 @@ export class Match {
     return c;
   }
 
-  begin() { for (const c of this.chars) if (!c.remote) this.spawn(c); this.emit('begin', {}); }
+  /** Joueur piloté par un autre client : sa position vient des instantanés du serveur. */
+  addRemote(r) {
+    const c = this.addChar(r.name, r.team, false, 'mistral', 'argos', 'frag');
+    Object.assign(c, { remote: true, nid: r.id, kills: r.kills || 0, deaths: r.deaths || 0, score: r.score || 0, tx: 0, ty: 0, tz: 0, tyaw: 0, tpitch: 0 });
+    return c;
+  }
+
+  // En ligne, c'est le serveur qui place les joueurs (message « spawn »).
+  begin() { if (!this.net) for (const c of this.chars) this.spawn(c); this.emit('begin', {}); }
 
   isEnemy(a, b) { return a !== b && (!this.mode.teams || a.team !== b.team); }
 
@@ -80,7 +92,7 @@ export class Match {
     c.hp = 100; c.alive = true; c.protT = 1.6; c.sinceDmg = 99; c.spotT = 99; c.fireCd = 0.2; c.reloadT = 0; c.swapT = 0; c.ads = 0; c.bloom = 0; c.wi = 0; c.killer = null;
     for (const w of c.weapons) { w.mag = w.def.mag; w.reserve = c.isBot ? 9999 : w.def.reserve; }
     c.equip.count = (EQUIPMENT[c.equip.id] || EQUIPMENT.frag).count;
-    if (c.ai) Object.assign(c.ai, { target: null, visible: false, path: null, lastSeen: null, lastSeenT: 99, attacker: null, stuckT: 0, sx: c.x, sz: c.z });
+    if (c.ai) Object.assign(c.ai, { target: null, visible: false, path: null, lastSeen: null, lastSeenT: 99, attacker: null, stuckT: 0, sx: c.x, sz: c.z, zone: null });
     this.emit('spawn', { c });
   }
 
@@ -319,14 +331,16 @@ export class Match {
 
   pickGoal(c) {
     const ai = c.ai;
-    if (ai.lastSeen && ai.lastSeenT < 5) return ai.lastSeen;
+    if (ai.lastSeen && ai.lastSeenT < (this.zones.length ? 2 : 5)) return ai.lastSeen;
     if (this.zones.length) {
-      // déjà dans une zone à prendre : on tient la position jusqu'à la capture
-      for (const z of this.zones) if (z.owner !== c.team && Math.hypot(z.x - c.x, z.z - c.z) < 3.6) { const a = R() * TAU; return [z.x + Math.cos(a) * 2, z.z + Math.sin(a) * 2]; }
-      let best = this.zones[0], bs = 1e9;
-      for (const z of this.zones) { const cost = Math.hypot(z.x - c.x, z.z - c.z) * (z.owner === c.team ? 2.4 : 1) + R() * 14; if (cost < bs) { bs = cost; best = z; } }
-      const a = R() * TAU, r = R() * 2.6;
-      return [best.x + Math.cos(a) * r, best.z + Math.sin(a) * r];
+      // Objectif persistant : le bot garde sa zone jusqu'à sa capture (sinon il hésiterait à chaque recalcul de chemin).
+      if (!ai.zone || ai.zone.owner === c.team) {
+        let best = this.zones[0], bs = 1e9;
+        for (const z of this.zones) { const cost = Math.hypot(z.x - c.x, z.z - c.z) * (z.owner === c.team ? 2.4 : 1) + R() * 14; if (cost < bs) { bs = cost; best = z; } }
+        ai.zone = best;
+      }
+      const a = R() * TAU, r = R() * 2.4;
+      return [ai.zone.x + Math.cos(a) * r, ai.zone.z + Math.sin(a) * r];
     }
     const en = this.chars.filter((o) => o.alive && this.isEnemy(c, o));
     if (en.length && R() < 0.7) { const e = en[(R() * en.length) | 0]; return [e.x + (R() - 0.5) * 12, e.z + (R() - 0.5) * 12]; }
@@ -346,7 +360,9 @@ export class Match {
       ai.lastSeen = [tgt.x, tgt.z]; ai.lastSeenT = 0; ai.path = null;
       ai.react -= dt; ai.strafeT -= dt;
       if (ai.strafeT <= 0) { ai.strafe = R() < 0.2 ? 0 : R() < 0.5 ? -1 : 1; ai.strafeT = 0.5 + R() * 0.9; }
-      const pref = PREF[def.id] || 15, fwd = dist > pref * 1.3 ? 1 : dist < pref * 0.5 ? -1 : 0;
+      const hold = ai.zone && ai.zone.owner !== c.team && Math.hypot(ai.zone.x - c.x, ai.zone.z - c.z) < 3.4; // tient la zone plutôt que de poursuivre
+      const pref = PREF[def.id] || 15, fwd = hold ? 0 : dist > pref * 1.3 ? 1 : dist < pref * 0.5 ? -1 : 0;
+      if (hold && Math.hypot(ai.zone.x - c.x, ai.zone.z - c.z) > 2.6) ai.strafe = 0;
       const fx = ex / dist, fz = ez / dist;
       c.wx = fx * fwd - fz * ai.strafe; c.wz = fz * fwd + fx * ai.strafe;
       c.wantAds = dist > 14;

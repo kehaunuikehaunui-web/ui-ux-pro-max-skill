@@ -130,6 +130,7 @@ export class Game {
       this.fx.add(ring, sp); this.zoneVis.push({ z, ring, sp });
     }
     this.kick = this.vmKick = this.shake = 0; this.boardOn = false;
+    if (o.net) o.net.bind(m);
     this.hud.begin(m, this.world); m.begin();
     this.state = 'playing'; this.input.setActive(true);
     return m;
@@ -151,7 +152,9 @@ export class Game {
     for (const z of this.zoneVis) { this.fx.remove(z.ring, z.sp); z.ring.material.dispose(); z.sp.material.map.dispose(); z.sp.material.dispose(); } this.zoneVis = [];
     for (const t of this.tracers) t.visible = false;
     this.pPos.fill(-999); this.pLife.fill(0); this.points.geometry.attributes.position.needsUpdate = true;
-    this.muzzle.intensity = this.blast.intensity = 0; this.match = null;
+    this.muzzle.intensity = this.blast.intensity = 0;
+    if (this.match && this.match.net && this.match.net.match === this.match) this.match.net.match = null;
+    this.match = null;
   }
 
   pause() { if (this.state !== 'playing') return false; this.state = 'paused'; this.input.setActive(false); return true; }
@@ -163,7 +166,7 @@ export class Game {
     return {
       mode: m.mode.id, map: this.world.def.id, difficulty: m.o.difficulty, outcome: m.outcome(), kills: p.kills, deaths: p.deaths, heads: p.heads, shots: p.shots, hits: p.hits,
       best: p.best, captures: p.captures, score: p.score, duration: m.t, teams: m.mode.teams, scores: [...m.scores], limit: m.limit, online: !!m.net,
-      line: m.mode.teams ? `${m.scores[0]} – ${m.scores[1]}` : `${board.indexOf(p) + 1}ᵉ sur ${board.length}`,
+      team: p.team, line: m.mode.teams ? `${m.scores[p.team]} – ${m.scores[1 - p.team]}` : `${board.indexOf(p) + 1}ᵉ sur ${board.length}`,
       board: board.map((c) => ({ name: c.name, team: c.team, kills: c.kills, deaths: c.deaths, score: c.score, me: c === p, ally: c !== p && !m.isEnemy(p, c) })),
     };
   }
