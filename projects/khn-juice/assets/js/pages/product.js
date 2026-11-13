@@ -52,6 +52,7 @@
     '<article class="pdp" style="--tint:' + p.colors.liquid + '">' +
       '<div class="pdp-visual"><div class="hero-blob" aria-hidden="true"></div>' +
         KHN.visual(p, { live: true, bubbles: !p.pack, title: (p.pack ? 'Coffret ' : 'Bouteille de ') + p.name }) +
+        KHN.motionToggleHTML() +
       '</div>' +
       '<div class="pdp-info">' +
         '<div class="stack-lg" style="gap:var(--space-sm)">' +
@@ -88,6 +89,8 @@
         '</ul>' +
       '</div>' +
     '</article>';
+
+  if (KHN.observeLoop) KHN.observeLoop(mount.querySelector('.pdp-visual'));
 
   /* ---------- Prix dynamique, quantité ---------- */
   var formEl = document.getElementById('buy-form');

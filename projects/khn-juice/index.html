@@ -6,6 +6,7 @@
   <title>KHN JUICE — Jus pressés à froid, smoothies et shots livrés frais</title>
   <meta name="description" content="KHN JUICE : jus pressés à froid, smoothies, shots et limonades maison. 100 % fruits et légumes, livrés frais chez vous ou à retirer en boutique.">
   <meta name="theme-color" content="#064E3B">
+  <meta name="color-scheme" content="only light">
   <meta property="og:title" content="KHN JUICE — Le plein de fraîcheur, en bouteille">
   <meta property="og:description" content="Jus pressés à froid, smoothies et shots livrés frais.">
   <meta property="og:type" content="website">
@@ -24,6 +25,7 @@
           setTimeout(function () { d.classList.remove('pt-enter'); }, 1500); /* filet de sécurité */
         }
         sessionStorage.removeItem('khn-pt');
+        if (localStorage.getItem('khn-juice-motion-paused') === '1') d.classList.add('motion-paused');
       } catch (e) {}
     })();
   </script>
@@ -96,6 +98,9 @@
           <div class="hero-ring" aria-hidden="true"></div>
           <div class="hero-deco" data-hero-deco aria-hidden="true"></div>
           <div class="hero-bottle"><div data-hero-bottle></div></div>
+          <button class="motion-toggle" type="button" data-motion-toggle aria-pressed="false" aria-label="Mettre en pause les animations">
+            <svg class="icon icon-pause" aria-hidden="true" focusable="false"><use href="#i-pause"></use></svg><svg class="icon icon-play" aria-hidden="true" focusable="false"><use href="#i-play"></use></svg>
+          </button>
           <a class="hero-product-link" data-hero-link href="produit.html?id=sunrise-orange">Sunrise Orange</a>
         </div>
       </div>
@@ -117,8 +122,8 @@
         <span>Livré bien frais</span><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-sparkle"></use></svg>
         <span>Verre recyclable</span><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-sparkle"></use></svg>
       </div>
-      <button class="marquee-toggle" type="button" data-marquee-toggle aria-label="Mettre en pause le défilement du bandeau">
-        <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-pause"></use></svg><span>Pause</span>
+      <button class="marquee-toggle" type="button" data-motion-toggle aria-pressed="false" aria-label="Mettre en pause les animations">
+        <svg class="icon icon-pause" aria-hidden="true" focusable="false"><use href="#i-pause"></use></svg><svg class="icon icon-play" aria-hidden="true" focusable="false"><use href="#i-play"></use></svg><span>Animations</span>
       </button>
     </div>
 

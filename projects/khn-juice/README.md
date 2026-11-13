@@ -21,6 +21,8 @@ On peut aussi ouvrir `index.html` directement dans le navigateur (testé en `fil
 
 Le panier est un tiroir latéral (`<dialog>` natif) disponible sur toutes les pages. Il est enregistré dans `localStorage`.
 
+Animations en boucle (bandeau défilant, vague et bulles des bouteilles) : un bouton **pause** global est présent sur l'accueil (bandeau et visuel du hero) et sur la fiche produit. Le choix est mémorisé d'une page à l'autre. Ces boucles s'arrêtent aussi hors écran ou si le système demande moins d'animations.
+
 ## Avant une mise en production
 
 Le contenu actuel est un **contenu d'exemple**. À remplacer :
@@ -65,10 +67,14 @@ python3 .claude/skills/ui-ux-pro-max/scripts/search.py "juice bar beverage e-com
 - **Fond des cartes** : le token `--color-card` (#FFF) de la palette, plutôt que #ECFDF5 (identique au fond de page).
 - **Pas de scroll-snap** : la règle tactile *gesture-conflicts* (priorité 2) passe avant l'effet de style.
 - **Contraste 7:1 du style** : le texte courant le respecte (9,2:1 et 7,2:1). Les boutons sont entre 5,6 et 5,9:1, ce qui satisfait le seuil WCAG AA de 4,5:1.
+- **« Animated patterns » limités** : la règle *excessive-motion* (1 à 2 éléments animés par vue) passe avant l'effet de style. Les boucles décoratives (halo tournant, forme qui se déforme, fruits flottants) ont été retirées. Seuls la bouteille du hero et le bandeau bougent en continu, avec un bouton pause (*auto-rotation-controls*, WCAG 2.2.2).
+- **Thème clair uniquement** : `color-scheme: only light`. Le style supporte un mode sombre, mais il n'a pas été demandé. Le site bloque l'assombrissement automatique des navigateurs pour que les couleurs vérifiées restent celles affichées.
 
 ## Vérifications effectuées
 
-- Playwright (Chromium) à 375, 768, 1024, 1280 et 1440 px : aucun débordement horizontal, aucune erreur console.
+- Playwright (Chromium) à 320, 375, 768, 1024, 1280 et 1440 px, ainsi qu'en paysage sur téléphone et avec le texte agrandi à 200 % : aucun débordement horizontal, aucune erreur console.
+- Hiérarchie des titres : un seul `h1` par page, aucun niveau sauté.
+- Pause des animations : synchronisée entre les boutons, conservée entre les pages, boucles suspendues hors écran (5 tests).
 - 37 tests d'interaction : ajout au panier, quantités, suppression et « Annuler », Échap et retour du focus, filtres et URL, état vide, validation du formulaire, chargement puis confirmation, mode mouvement réduit.
 - axe-core 4.10 (WCAG 2.2 AA + bonnes pratiques) sur 14 vues : **0 violation**. Un audit automatique ne couvre qu'une partie de WCAG ; un test manuel au lecteur d'écran reste recommandé.
 

@@ -546,16 +546,41 @@
     });
   }
 
-  /* ---------- Bandeau défilant : pause / reprise (WCAG 2.2.2) ---------- */
-  function initMarquee() {
-    document.querySelectorAll('[data-marquee-toggle]').forEach(function (btn) {
-      var marquee = btn.closest('.marquee');
-      btn.addEventListener('click', function () {
-        var paused = marquee.classList.toggle('is-paused');
-        btn.innerHTML = KHN.icon(paused ? 'play' : 'pause') + '<span>' + (paused ? 'Reprendre' : 'Pause') + '</span>';
-        btn.setAttribute('aria-label', paused ? 'Reprendre le défilement du bandeau' : 'Mettre en pause le défilement du bandeau');
-      });
+  /* ---------- Pause globale des animations en boucle (WCAG 2.2.2, auto-rotation-controls) ----------
+     Un seul état pour tout le site (bandeau, vague et bulles des bouteilles), mémorisé
+     par visiteur. Tous les boutons [data-motion-toggle] restent synchronisés. */
+  var MOTION_KEY = 'khn-juice-motion-paused';
+  KHN.motionPaused = function () { return document.documentElement.classList.contains('motion-paused'); };
+  KHN.motionToggleHTML = function () {
+    return '<button type="button" class="motion-toggle" data-motion-toggle aria-label="Mettre en pause les animations" aria-pressed="' + KHN.motionPaused() + '">' +
+      KHN.icon('pause', 'icon-pause') + KHN.icon('play', 'icon-play') + '</button>';
+  };
+  function syncMotionToggles() {
+    var paused = KHN.motionPaused();
+    document.querySelectorAll('[data-motion-toggle]').forEach(function (btn) {
+      btn.setAttribute('aria-pressed', String(paused));
     });
+  }
+  function initMotionToggle() {
+    syncMotionToggles();
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-motion-toggle]');
+      if (!btn) return;
+      var paused = document.documentElement.classList.toggle('motion-paused');
+      try { window.localStorage.setItem(MOTION_KEY, paused ? '1' : '0'); } catch (err) { /* préférence non mémorisée */ }
+      syncMotionToggles();
+      KHN.announce(paused ? 'Animations en pause.' : 'Animations relancées.');
+    });
+    // Économie : les boucles des visuels hors écran sont suspendues (main-thread-budget)
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) { en.target.classList.toggle('is-offscreen', !en.isIntersecting); });
+      });
+      KHN.observeLoop = function (el) { if (el) io.observe(el); };
+      document.querySelectorAll('.hero-visual, .pdp-visual').forEach(KHN.observeLoop);
+    } else {
+      KHN.observeLoop = function () {};
+    }
   }
 
   function initMisc() {
@@ -572,7 +597,7 @@
     initCart();
     initAddToCart();
     initNewsletter();
-    initMarquee();
+    initMotionToggle();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();

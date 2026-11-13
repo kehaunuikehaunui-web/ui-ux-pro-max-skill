@@ -6,6 +6,7 @@
   <title>Boutique — Jus pressés, smoothies, shots | KHN JUICE</title>
   <meta name="description" content="Toute la gamme KHN JUICE : jus pressés à froid, smoothies, shots, limonades maison, cures et packs. Recherche, filtres et tri.">
   <meta name="theme-color" content="#064E3B">
+  <meta name="color-scheme" content="only light">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23064E3B'/%3E%3Ccircle cx='32' cy='35' r='19' fill='%23EA580C'/%3E%3Ccircle cx='32' cy='35' r='14.5' fill='%23FDBA74'/%3E%3Cpath d='M33 17c2-7 8-10 15-9-1 7-6 11-15 9z' fill='%2310B981'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,6 +22,7 @@
           setTimeout(function () { d.classList.remove('pt-enter'); }, 1500); /* filet de sécurité */
         }
         sessionStorage.removeItem('khn-pt');
+        if (localStorage.getItem('khn-juice-motion-paused') === '1') d.classList.add('motion-paused');
       } catch (e) {}
     })();
   </script>
