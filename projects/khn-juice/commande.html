@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Commande | KHN JUICE</title>
+  <meta name="description" content="Finalisez votre commande KHN JUICE : livraison réfrigérée à domicile ou retrait en boutique.">
+  <meta name="theme-color" content="#064E3B">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23064E3B'/%3E%3Ccircle cx='32' cy='35' r='19' fill='%23EA580C'/%3E%3Ccircle cx='32' cy='35' r='14.5' fill='%23FDBA74'/%3E%3Cpath d='M33 17c2-7 8-10 15-9-1 7-6 11-15 9z' fill='%2310B981'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&family=Rubik:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <script>
+    /* Voile de transition : affiché dès le premier rendu si on arrive via un lien interne */
+    (function () {
+      try {
+        var d = document.documentElement;
+        if (sessionStorage.getItem('khn-pt') === '1' && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          d.classList.add('pt-enter');
+          setTimeout(function () { d.classList.remove('pt-enter'); }, 1500); /* filet de sécurité */
+        }
+        sessionStorage.removeItem('khn-pt');
+      } catch (e) {}
+    })();
+  </script>
+  <script defer src="assets/js/data.js"></script>
+  <script defer src="assets/js/store.js"></script>
+  <script defer src="assets/js/icons.js"></script>
+  <script defer src="assets/js/ui.js"></script>
+  <script defer src="assets/vendor/gsap.min.js"></script>
+  <script defer src="assets/vendor/ScrollTrigger.min.js"></script>
+  <script defer src="assets/js/motion.js"></script>
+  <script defer src="assets/js/pages/checkout.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#contenu">Aller au contenu</a>
+  <div class="page-transition" aria-hidden="true">
+    <svg class="logo-mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><rect width="64" height="64" rx="18" fill="#0B6B52"/><circle cx="32" cy="35" r="19" fill="#EA580C"/><circle cx="32" cy="35" r="14.5" fill="#FDBA74"/><g stroke="#EA580C" stroke-width="2.4" stroke-linecap="round"><path d="M32 35V21.5M32 35l9.5-9.5M32 35h13.5M32 35l9.5 9.5M32 35v13.5M32 35l-9.5 9.5M32 35H18.5M32 35l-9.5-9.5"/></g><path d="M33 17c2-7 8-10 15-9-1 7-6 11-15 9z" fill="#10B981"/></svg>
+  </div>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="logo" href="index.html" aria-label="KHN JUICE, accueil">
+        <svg class="logo-mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><rect width="64" height="64" rx="18" fill="#064E3B"/><circle cx="32" cy="35" r="19" fill="#EA580C"/><circle cx="32" cy="35" r="14.5" fill="#FDBA74"/><g stroke="#EA580C" stroke-width="2.4" stroke-linecap="round"><path d="M32 35V21.5M32 35l9.5-9.5M32 35h13.5M32 35l9.5 9.5M32 35v13.5M32 35l-9.5 9.5M32 35H18.5M32 35l-9.5-9.5"/></g><path d="M33 17c2-7 8-10 15-9-1 7-6 11-15 9z" fill="#10B981"/></svg>
+        <span>KHN<span class="logo-text-juice"> JUICE</span></span>
+      </a>
+      <nav class="main-nav" id="main-nav" aria-label="Navigation principale">
+        <ul class="nav-list">
+          <li><a class="nav-link" href="index.html">Accueil</a></li>
+          <li><a class="nav-link" href="boutique.html">Boutique</a></li>
+          <li><a class="nav-link" href="boutique.html?cat=cures">Cures &amp; packs</a></li>
+          <li><a class="nav-link" href="index.html#engagements">Nos engagements</a></li>
+        </ul>
+      </nav>
+      <div class="header-actions">
+        <button class="cart-btn" type="button" data-cart-open aria-label="Ouvrir le panier, 0 article">
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-shopping-bag"></use></svg>
+          <span class="cart-btn-label">Panier</span>
+          <span class="cart-count" data-cart-count aria-hidden="true">0</span>
+        </button>
+        <button class="icon-btn menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav" aria-label="Ouvrir le menu">
+          <svg class="icon icon--lg" aria-hidden="true" focusable="false"><use href="#i-list"></use></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="contenu" tabindex="-1">
+    <div class="container section" style="padding-top:var(--space-xl)">
+      <nav class="breadcrumb" aria-label="Fil d'Ariane">
+        <ol>
+          <li><a href="index.html">Accueil</a></li>
+          <li><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-caret-right"></use></svg><a href="boutique.html">Boutique</a></li>
+          <li><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-caret-right"></use></svg><span aria-current="page">Commande</span></li>
+        </ol>
+      </nav>
+      <div class="stack-lg" style="gap:var(--space-md);margin-bottom:var(--space-lg)">
+        <h1 id="checkout-title" class="page-title" data-checkout-title>Finaliser ma commande</h1>
+      </div>
+      <ol class="stepper" aria-label="Étapes de la commande" data-stepper></ol>
+      <div data-checkout>
+        <noscript><p class="no-js-note">Activez JavaScript pour passer commande.</p></noscript>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer on-dark">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-about">
+          <a class="logo" href="index.html" aria-label="KHN JUICE, accueil">
+            <svg class="logo-mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><rect width="64" height="64" rx="18" fill="#0B6B52"/><circle cx="32" cy="35" r="19" fill="#EA580C"/><circle cx="32" cy="35" r="14.5" fill="#FDBA74"/><g stroke="#EA580C" stroke-width="2.4" stroke-linecap="round"><path d="M32 35V21.5M32 35l9.5-9.5M32 35h13.5M32 35l9.5 9.5M32 35v13.5M32 35l-9.5 9.5M32 35H18.5M32 35l-9.5-9.5"/></g><path d="M33 17c2-7 8-10 15-9-1 7-6 11-15 9z" fill="#10B981"/></svg>
+            <span>KHN<span class="logo-text-juice"> JUICE</span></span>
+          </a>
+          <p>Jus pressés à froid, smoothies, shots et limonades maison, préparés chaque matin avec des fruits et légumes frais.</p>
+        </div>
+        <nav aria-labelledby="f-shop">
+          <h2 id="f-shop">Boutique</h2>
+          <ul class="footer-links" role="list">
+            <li><a href="boutique.html?cat=presses">Jus pressés à froid</a></li>
+            <li><a href="boutique.html?cat=smoothies">Smoothies</a></li>
+            <li><a href="boutique.html?cat=shots">Shots</a></li>
+            <li><a href="boutique.html?cat=limonades">Limonades &amp; infusions</a></li>
+            <li><a href="boutique.html?cat=cures">Cures &amp; packs</a></li>
+          </ul>
+        </nav>
+        <div>
+          <h2>Infos pratiques</h2>
+          <ul class="footer-links" role="list">
+            <li><span><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-truck"></use></svg>Livraison réfrigérée, offerte dès 35 €</span></li>
+            <li><span><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-storefront"></use></svg>Retrait gratuit en boutique</span></li>
+            <li><span><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-recycle"></use></svg>Bouteilles en verre recyclable</span></li>
+          </ul>
+        </div>
+        <div>
+          <h2>Contact</h2>
+          <ul class="footer-links" role="list">
+            <li><span><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-map-pin"></use></svg>Adresse de la boutique (à compléter)</span></li>
+            <li><span><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-clock"></use></svg>Horaires (à compléter)</span></li>
+            <li><span><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-envelope-simple"></use></svg>E-mail de contact (à compléter)</span></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>© <span data-year>2026</span> KHN JUICE. Tous droits réservés.</p>
+        <p data-demo-only>Site de démonstration : commandes simulées, aucun paiement encaissé.</p>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

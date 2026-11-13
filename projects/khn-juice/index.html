@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KHN JUICE — Jus pressés à froid, smoothies et shots livrés frais</title>
+  <meta name="description" content="KHN JUICE : jus pressés à froid, smoothies, shots et limonades maison. 100 % fruits et légumes, livrés frais chez vous ou à retirer en boutique.">
+  <meta name="theme-color" content="#064E3B">
+  <meta property="og:title" content="KHN JUICE — Le plein de fraîcheur, en bouteille">
+  <meta property="og:description" content="Jus pressés à froid, smoothies et shots livrés frais.">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%23064E3B'/%3E%3Ccircle cx='32' cy='35' r='19' fill='%23EA580C'/%3E%3Ccircle cx='32' cy='35' r='14.5' fill='%23FDBA74'/%3E%3Cpath d='M33 17c2-7 8-10 15-9-1 7-6 11-15 9z' fill='%2310B981'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&family=Rubik:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <script>
+    /* Voile de transition : affiché dès le premier rendu si on arrive via un lien interne */
+    (function () {
+      try {
+        var d = document.documentElement;
+        if (sessionStorage.getItem('khn-pt') === '1' && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          d.classList.add('pt-enter');
+          setTimeout(function () { d.classList.remove('pt-enter'); }, 1500); /* filet de sécurité */
+        }
+        sessionStorage.removeItem('khn-pt');
+      } catch (e) {}
+    })();
+  </script>
+  <script defer src="assets/js/data.js"></script>
+  <script defer src="assets/js/store.js"></script>
+  <script defer src="assets/js/icons.js"></script>
+  <script defer src="assets/js/ui.js"></script>
+  <script defer src="assets/vendor/gsap.min.js"></script>
+  <script defer src="assets/vendor/ScrollTrigger.min.js"></script>
+  <script defer src="assets/js/motion.js"></script>
+  <script defer src="assets/js/pages/home.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#contenu">Aller au contenu</a>
+  <div class="page-transition" aria-hidden="true">
+    <svg class="logo-mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><rect width="64" height="64" rx="18" fill="#0B6B52"/><circle cx="32" cy="35" r="19" fill="#EA580C"/><circle cx="32" cy="35" r="14.5" fill="#FDBA74"/><g stroke="#EA580C" stroke-width="2.4" stroke-linecap="round"><path d="M32 35V21.5M32 35l9.5-9.5M32 35h13.5M32 35l9.5 9.5M32 35v13.5M32 35l-9.5 9.5M32 35H18.5M32 35l-9.5-9.5"/></g><path d="M33 17c2-7 8-10 15-9-1 7-6 11-15 9z" fill="#10B981"/></svg>
+  </div>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="logo" href="index.html" aria-label="KHN JUICE, accueil">
+        <svg class="logo-mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><rect width="64" height="64" rx="18" fill="#064E3B"/><circle cx="32" cy="35" r="19" fill="#EA580C"/><circle cx="32" cy="35" r="14.5" fill="#FDBA74"/><g stroke="#EA580C" stroke-width="2.4" stroke-linecap="round"><path d="M32 35V21.5M32 35l9.5-9.5M32 35h13.5M32 35l9.5 9.5M32 35v13.5M32 35l-9.5 9.5M32 35H18.5M32 35l-9.5-9.5"/></g><path d="M33 17c2-7 8-10 15-9-1 7-6 11-15 9z" fill="#10B981"/></svg>
+        <span>KHN<span class="logo-text-juice"> JUICE</span></span>
+      </a>
+      <nav class="main-nav" id="main-nav" aria-label="Navigation principale">
+        <ul class="nav-list">
+          <li><a class="nav-link" href="index.html" aria-current="page">Accueil</a></li>
+          <li><a class="nav-link" href="boutique.html">Boutique</a></li>
+          <li><a class="nav-link" href="boutique.html?cat=cures">Cures &amp; packs</a></li>
+          <li><a class="nav-link" href="index.html#engagements">Nos engagements</a></li>
+        </ul>
+      </nav>
+      <div class="header-actions">
+        <button class="cart-btn" type="button" data-cart-open aria-label="Ouvrir le panier, 0 article">
+          <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-shopping-bag"></use></svg>
+          <span class="cart-btn-label">Panier</span>
+          <span class="cart-count" data-cart-count aria-hidden="true">0</span>
+        </button>
+        <button class="icon-btn menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav" aria-label="Ouvrir le menu">
+          <svg class="icon icon--lg" aria-hidden="true" focusable="false"><use href="#i-list"></use></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="contenu" tabindex="-1">
+    <!-- 1. HERO (proposition de valeur) -->
+    <section class="hero" data-hero data-parallax-group aria-labelledby="hero-title">
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow" data-hero-line>Pressés à froid chaque matin</p>
+          <h1 class="hero-title" id="hero-title" data-hero-line>Le plein de <span class="hl">fraîcheur</span>, en bouteille.</h1>
+          <p class="hero-lead" data-hero-line>Jus, smoothies et shots préparés avec des fruits et légumes frais. Livrés réfrigérés chez vous ou à retirer en boutique.</p>
+          <div class="hero-ctas" data-hero-line>
+            <a class="btn btn-primary" href="boutique.html">Découvrir la boutique <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a>
+            <a class="btn btn-secondary" href="boutique.html?cat=cures">Voir les cures</a>
+          </div>
+          <div class="flavor-picker" data-hero-line>
+            <p class="flavor-picker-label" id="flavor-label">Choisissez une saveur :</p>
+            <ul class="flavor-list" role="list" aria-labelledby="flavor-label" data-flavor-list></ul>
+          </div>
+          <ul class="hero-trust" data-hero-line>
+            <li><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-snowflake"></use></svg>Livraison réfrigérée</li>
+            <li><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-leaf"></use></svg>100 % végétal</li>
+            <li><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-recycle"></use></svg>Bouteilles en verre</li>
+          </ul>
+        </div>
+        <div class="hero-visual">
+          <div class="hero-blob" aria-hidden="true"></div>
+          <div class="hero-ring" aria-hidden="true"></div>
+          <div class="hero-deco" data-hero-deco aria-hidden="true"></div>
+          <div class="hero-bottle"><div data-hero-bottle></div></div>
+          <a class="hero-product-link" data-hero-link href="produit.html?id=sunrise-orange">Sunrise Orange</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bandeau défilant (motif animé, avec pause) -->
+    <div class="marquee" role="region" aria-label="Nos promesses">
+      <div class="marquee-track">
+        <span>Pressé à froid</span><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-sparkle"></use></svg>
+        <span>Jus sans sucre ajouté</span><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-sparkle"></use></svg>
+        <span>Fruits de saison</span><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-sparkle"></use></svg>
+        <span>Livré bien frais</span><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-sparkle"></use></svg>
+        <span>Verre recyclable</span><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-sparkle"></use></svg>
+      </div>
+      <div class="marquee-track" aria-hidden="true">
+        <span>Pressé à froid</span><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-sparkle"></use></svg>
+        <span>Jus sans sucre ajouté</span><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-sparkle"></use></svg>
+        <span>Fruits de saison</span><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-sparkle"></use></svg>
+        <span>Livré bien frais</span><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-sparkle"></use></svg>
+        <span>Verre recyclable</span><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-sparkle"></use></svg>
+      </div>
+      <button class="marquee-toggle" type="button" data-marquee-toggle aria-label="Mettre en pause le défilement du bandeau">
+        <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-pause"></use></svg><span>Pause</span>
+      </button>
+    </div>
+
+    <!-- 2. GRILLE D'ENGAGEMENTS (6 cartes, un message par carte) -->
+    <section class="section block-dark on-dark" id="engagements" aria-labelledby="eng-title">
+      <div class="block-shapes" aria-hidden="true">
+        <span style="width:420px;height:420px;right:-140px;top:-160px"></span>
+        <span style="width:260px;height:260px;left:-90px;bottom:-80px"></span>
+      </div>
+      <div class="container">
+        <div class="section-head" data-reveal>
+          <p class="eyebrow">Nos engagements</p>
+          <h2 id="eng-title">Des fruits, des légumes, et c'est tout.</h2>
+          <p>Chaque bouteille est préparée le matin même, en petites séries, puis gardée au froid jusqu'à vous.</p>
+        </div>
+        <ul class="feature-grid" role="list" data-reveal>
+          <li class="feature-card">
+            <span class="feature-icon"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-snowflake"></use></svg></span>
+            <h3>Pressé à froid</h3>
+            <p>Une presse lente extrait le jus sans chauffer les fruits, pour préserver le goût et la couleur.</p>
+          </li>
+          <li class="feature-card">
+            <span class="feature-icon"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-plant"></use></svg></span>
+            <h3>100 % végétal</h3>
+            <p>Uniquement des fruits, des légumes, des épices et des plantes. Aucun colorant, aucun arôme ajouté.</p>
+          </li>
+          <li class="feature-card">
+            <span class="feature-icon"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-drop"></use></svg></span>
+            <h3>Jus sans sucre ajouté</h3>
+            <p>La douceur vient des fruits. Seules nos limonades sont légèrement sucrées à l'agave.</p>
+          </li>
+          <li class="feature-card">
+            <span class="feature-icon"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-truck"></use></svg></span>
+            <h3>Livré bien frais</h3>
+            <p>Livraison réfrigérée à domicile, offerte dès 35 €, ou retrait gratuit en boutique.</p>
+          </li>
+          <li class="feature-card">
+            <span class="feature-icon"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-recycle"></use></svg></span>
+            <h3>Verre recyclable</h3>
+            <p>Des bouteilles en verre, plus agréables à boire et recyclables à l'infini.</p>
+          </li>
+          <li class="feature-card">
+            <span class="feature-icon"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-sparkle"></use></svg></span>
+            <h3>Recettes maison</h3>
+            <p>Des associations travaillées pour l'équilibre des saveurs, qui changent avec les saisons.</p>
+          </li>
+        </ul>
+        <div class="feature-cta">
+          <a class="btn btn-primary" href="boutique.html">Composer mon panier <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. BEST-SELLERS -->
+    <section class="section" aria-labelledby="best-title">
+      <div class="container">
+        <div class="row-between">
+          <div class="section-head" style="margin-bottom:0" data-reveal>
+            <p class="eyebrow">Les préférés</p>
+            <h2 id="best-title">Nos best-sellers</h2>
+          </div>
+          <a class="btn btn-secondary" href="boutique.html">Toute la boutique <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a>
+        </div>
+        <ul class="product-grid mt-xl" role="list" data-bestsellers data-stagger></ul>
+        <noscript><p class="no-js-note">Activez JavaScript pour afficher les produits et utiliser le panier.</p></noscript>
+      </div>
+    </section>
+
+    <!-- 4. COMMENT ÇA MARCHE (bénéfices) -->
+    <section class="section" style="padding-top:0" aria-labelledby="how-title">
+      <div class="container">
+        <div class="section-head" data-reveal>
+          <p class="eyebrow">Simple et rapide</p>
+          <h2 id="how-title">Comment ça marche ?</h2>
+        </div>
+        <ol class="steps" role="list" data-reveal>
+          <li class="step" style="--step-color:#EA580C">
+            <span class="step-num" aria-hidden="true">1</span>
+            <h3>Composez votre panier</h3>
+            <p>Jus, smoothies, shots ou cure complète : choisissez vos saveurs et vos formats.</p>
+          </li>
+          <li class="step" style="--step-color:#10B981">
+            <span class="step-num" aria-hidden="true">2</span>
+            <h3>Nous pressons le matin</h3>
+            <p>Vos bouteilles sont préparées le jour de l'envoi avec des fruits et légumes frais.</p>
+          </li>
+          <li class="step" style="--step-color:#064E3B">
+            <span class="step-num" aria-hidden="true">3</span>
+            <h3>Dégustez bien frais</h3>
+            <p>Livraison réfrigérée à domicile ou retrait en boutique, au créneau de votre choix.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- 5. CURE (mise en avant + CTA répété) -->
+    <section class="section" style="padding-top:0" aria-labelledby="cure-title">
+      <div class="container">
+        <div class="cure-block">
+          <div class="cure-copy" data-reveal>
+            <p class="eyebrow">Cures &amp; packs</p>
+            <h2 id="cure-title">La Cure 3 jours, prête à déguster</h2>
+            <p>18 bouteilles organisées du matin au soir, livrées réfrigérées avec un guide de dégustation.</p>
+            <ul class="cure-list" role="list">
+              <li><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-check-circle"></use></svg>6 jus par jour, 6 recettes</li>
+              <li><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-check-circle"></use></svg>Livraison offerte</li>
+              <li><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-check-circle"></use></svg>Guide de dégustation inclus</li>
+            </ul>
+            <div class="hero-ctas">
+              <button type="button" class="btn btn-dark add-btn" data-add data-id="cure-3-jours" data-size="cure3" data-cure-add>
+                <span class="add-btn-content"><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-shopping-bag"></use></svg><span>Ajouter · <span data-cure-price>79,00 €</span></span></span>
+              </button>
+              <a class="btn btn-ghost cure-link" href="produit.html?id=cure-3-jours">Voir le détail</a>
+            </div>
+          </div>
+          <div class="cure-visual" data-cure-visual></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. PREUVE SOCIALE (contenu d'exemple à remplacer) -->
+    <section class="section" style="padding-top:0" aria-labelledby="avis-title">
+      <div class="container">
+        <div class="section-head" data-reveal>
+          <p class="eyebrow">Ils en parlent</p>
+          <h2 id="avis-title">Ce que disent nos clients</h2>
+        </div>
+        <ul class="testimonials" role="list" data-testimonials data-reveal></ul>
+      </div>
+    </section>
+
+    <!-- 7. CTA FINAL + NEWSLETTER -->
+    <section class="section" style="padding-top:0" aria-labelledby="nl-title">
+      <div class="container">
+        <div class="cta-final on-dark">
+          <div class="stack-lg" data-reveal>
+            <p class="eyebrow">Restez au frais</p>
+            <h2 id="nl-title">Les nouvelles recettes, avant tout le monde.</h2>
+            <p>Une lettre par mois avec les saveurs de saison. Désinscription en un clic.</p>
+            <div><a class="btn btn-primary" href="boutique.html">Commander maintenant <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-arrow-right"></use></svg></a></div>
+          </div>
+          <form class="inline-form" data-newsletter novalidate>
+            <label class="label" for="nl-email">Adresse e-mail <span class="req" aria-hidden="true">*</span></label>
+            <p class="field-hint" id="nl-hint">Obligatoire. Nous ne partageons jamais votre adresse.</p>
+            <div class="field-row">
+              <input class="input" id="nl-email" name="email" type="email" autocomplete="email" required aria-describedby="nl-hint nl-error" placeholder="prenom@exemple.fr">
+              <button class="btn btn-secondary" type="submit">S'inscrire</button>
+            </div>
+            <p class="field-error" id="nl-error"></p>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer on-dark">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-about">
+          <a class="logo" href="index.html" aria-label="KHN JUICE, accueil">
+            <svg class="logo-mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><rect width="64" height="64" rx="18" fill="#0B6B52"/><circle cx="32" cy="35" r="19" fill="#EA580C"/><circle cx="32" cy="35" r="14.5" fill="#FDBA74"/><g stroke="#EA580C" stroke-width="2.4" stroke-linecap="round"><path d="M32 35V21.5M32 35l9.5-9.5M32 35h13.5M32 35l9.5 9.5M32 35v13.5M32 35l-9.5 9.5M32 35H18.5M32 35l-9.5-9.5"/></g><path d="M33 17c2-7 8-10 15-9-1 7-6 11-15 9z" fill="#10B981"/></svg>
+            <span>KHN<span class="logo-text-juice"> JUICE</span></span>
+          </a>
+          <p>Jus pressés à froid, smoothies, shots et limonades maison, préparés chaque matin avec des fruits et légumes frais.</p>
+        </div>
+        <nav aria-labelledby="f-shop">
+          <h2 id="f-shop">Boutique</h2>
+          <ul class="footer-links" role="list">
+            <li><a href="boutique.html?cat=presses">Jus pressés à froid</a></li>
+            <li><a href="boutique.html?cat=smoothies">Smoothies</a></li>
+            <li><a href="boutique.html?cat=shots">Shots</a></li>
+            <li><a href="boutique.html?cat=limonades">Limonades &amp; infusions</a></li>
+            <li><a href="boutique.html?cat=cures">Cures &amp; packs</a></li>
+          </ul>
+        </nav>
+        <div>
+          <h2>Infos pratiques</h2>
+          <ul class="footer-links" role="list">
+            <li><span><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-truck"></use></svg>Livraison réfrigérée, offerte dès 35 €</span></li>
+            <li><span><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-storefront"></use></svg>Retrait gratuit en boutique</span></li>
+            <li><span><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-recycle"></use></svg>Bouteilles en verre recyclable</span></li>
+          </ul>
+        </div>
+        <div>
+          <h2>Contact</h2>
+          <ul class="footer-links" role="list">
+            <li><span><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-map-pin"></use></svg>Adresse de la boutique (à compléter)</span></li>
+            <li><span><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-clock"></use></svg>Horaires (à compléter)</span></li>
+            <li><span><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-envelope-simple"></use></svg>E-mail de contact (à compléter)</span></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>© <span data-year>2026</span> KHN JUICE. Tous droits réservés.</p>
+        <p data-demo-only>Site de démonstration : commandes simulées, aucun paiement encaissé.</p>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
