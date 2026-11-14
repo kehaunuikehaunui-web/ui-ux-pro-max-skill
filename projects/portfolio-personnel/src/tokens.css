@@ -1,0 +1,126 @@
+/* Design Tokens - Auto-generated */
+/* Do not edit directly - modify tokens.json instead */
+
+/* === PRIMITIVES === */
+:root {
+  --primitive-color-zinc-50: #FAFAFA;
+  --primitive-color-zinc-100: #F4F4F5;
+  --primitive-color-zinc-200: #E4E4E7;
+  --primitive-color-zinc-300: #D4D4D8;
+  --primitive-color-zinc-400: #A1A1AA;
+  --primitive-color-zinc-500: #71717A;
+  --primitive-color-zinc-600: #52525B;
+  --primitive-color-zinc-700: #3F3F46;
+  --primitive-color-zinc-800: #27272A;
+  --primitive-color-zinc-900: #18181B;
+  --primitive-color-zinc-950: #09090B;
+  --primitive-color-blue-300: #93C5FD;
+  --primitive-color-blue-400: #60A5FA;
+  --primitive-color-blue-600: #2563EB;
+  --primitive-color-blue-700: #1D4ED8;
+  --primitive-color-white: #FFFFFF;
+  --primitive-font-heading: 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --primitive-font-body: 'Archivo', ui-sans-serif, system-ui, sans-serif;
+  --primitive-font-size-xs: 0.8125rem;
+  --primitive-font-size-sm: 0.9375rem;
+  --primitive-font-size-base: 1rem;
+  --primitive-space-1: 0.25rem;
+  --primitive-space-2: 0.5rem;
+  --primitive-space-3: 0.75rem;
+  --primitive-space-4: 1rem;
+  --primitive-space-6: 1.5rem;
+  --primitive-space-8: 2rem;
+  --primitive-space-10: 2.5rem;
+  --primitive-space-12: 3rem;
+  --primitive-space-16: 4rem;
+  --primitive-space-24: 6rem;
+  --primitive-radius-none: 0;
+  --primitive-radius-full: 9999px;
+  --primitive-duration-fast: 150ms;
+  --primitive-duration-normal: 200ms;
+  --primitive-duration-slow: 350ms;
+  --primitive-easing-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* === SEMANTIC === */
+:root {
+  --color-background: #FAFAFA;
+  --color-foreground: #09090B;
+  --color-card: #FFFFFF;
+  --color-card-foreground: #09090B;
+  --color-muted: #F4F4F5;
+  --color-muted-foreground: #52525B;
+  --color-border: #E4E4E7;
+  --color-border-strong: #09090B;
+  --color-primary: #18181B;
+  --color-primary-foreground: #FFFFFF;
+  --color-primary-muted: #A1A1AA;
+  --color-primary-border: #3F3F46;
+  --color-accent: #2563EB;
+  --color-accent-hover: #1D4ED8;
+  --color-accent-foreground: #FFFFFF;
+  --color-accent-on-primary: #60A5FA;
+  --color-ring: #18181B;
+  --space-gutter: 1.5rem;
+  --space-gutter-lg: 2.5rem;
+  --space-section: 4rem;
+  --space-section-lg: 6rem;
+  --duration-interaction: 200ms;
+  --duration-reveal: 350ms;
+  --easing-standard: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --font-size-label: 0.8125rem;
+  --font-size-ui: 0.9375rem;
+  --font-size-body: 1rem;
+}
+
+/* === COMPONENTS === */
+:root {
+  --page-max-width: 75rem;
+  --nav-height: 4rem;
+  --nav-bg: var(--color-background);
+  --nav-border: var(--color-border);
+  --nav-link-min-height: 2.75rem;
+  --nav-link-underline-offset: 0.5rem;
+  --button-height: 3rem;
+  --button-padding-x: 1.5rem;
+  --button-radius: 0;
+  --button-bg: var(--color-primary);
+  --button-fg: var(--color-primary-foreground);
+  --button-hover-bg: var(--color-accent);
+  --button-hover-fg: var(--color-accent-foreground);
+  --button-outline-border: var(--color-border-strong);
+  --button-outline-fg: var(--color-foreground);
+  --button-outline-hover-bg: var(--color-foreground);
+  --button-outline-hover-fg: var(--color-background);
+  --button-gap: 0.625rem;
+  --card-cover-bg: var(--color-muted);
+  --card-border: var(--color-border);
+  --tag-border: var(--color-border);
+  --tag-fg: var(--color-muted-foreground);
+  --tag-padding-x: 0.625rem;
+  --tag-padding-y: 0.25rem;
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 3px;
+  --focus-ring-color: var(--color-ring);
+}
+
+/* === DARK MODE === */
+.dark {
+  --color-background: #09090B;
+  --color-foreground: #FAFAFA;
+  --color-card: #18181B;
+  --color-card-foreground: #FAFAFA;
+  --color-muted: #18181B;
+  --color-muted-foreground: #A1A1AA;
+  --color-border: #27272A;
+  --color-border-strong: #FAFAFA;
+  --color-primary: #FAFAFA;
+  --color-primary-foreground: #09090B;
+  --color-primary-muted: #52525B;
+  --color-primary-border: #D4D4D8;
+  --color-accent: #60A5FA;
+  --color-accent-hover: #93C5FD;
+  --color-accent-foreground: #09090B;
+  --color-accent-on-primary: #1D4ED8;
+  --color-ring: #FAFAFA;
+}

@@ -1,0 +1,358 @@
+/*
+ * Entrée Tailwind CSS v4.
+ * Les valeurs viennent de tokens.css (généré depuis ../tokens.json) :
+ * ne mettez aucune couleur en dur ici, modifiez tokens.json puis `npm run build`.
+ */
+@import "tailwindcss";
+@import "./tokens.css";
+
+/* Le thème sombre est piloté par la classe .dark sur <html>. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* On vide les palettes par défaut : seules les couleurs des tokens existent. */
+@theme {
+  --color-*: initial;
+  --font-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+
+  --text-display: clamp(2.75rem, 12.5vw, 9rem);
+  --text-display--line-height: 0.92;
+  --text-display--letter-spacing: -0.035em;
+  --text-headline: clamp(2.5rem, 8vw, 6.5rem);
+  --text-headline--line-height: 0.98;
+  --text-headline--letter-spacing: -0.04em;
+  --text-title: clamp(2.25rem, 5.5vw, 4.5rem);
+  --text-title--line-height: 1;
+  --text-title--letter-spacing: -0.035em;
+  --text-lead: clamp(1.25rem, 2.2vw, 1.75rem);
+  --text-lead--line-height: 1.35;
+  --text-lead--letter-spacing: -0.015em;
+}
+
+/* Les utilitaires Tailwind pointent vers les tokens sémantiques. */
+@theme inline reference {
+  --color-background: var(--color-background);
+  --color-foreground: var(--color-foreground);
+  --color-card: var(--color-card);
+  --color-card-foreground: var(--color-card-foreground);
+  --color-muted: var(--color-muted);
+  --color-muted-foreground: var(--color-muted-foreground);
+  --color-border: var(--color-border);
+  --color-border-strong: var(--color-border-strong);
+  --color-primary: var(--color-primary);
+  --color-primary-foreground: var(--color-primary-foreground);
+  --color-primary-muted: var(--color-primary-muted);
+  --color-primary-border: var(--color-primary-border);
+  --color-accent: var(--color-accent);
+  --color-accent-hover: var(--color-accent-hover);
+  --color-accent-foreground: var(--color-accent-foreground);
+  --color-accent-on-primary: var(--color-accent-on-primary);
+  --color-ring: var(--color-ring);
+
+  --font-heading: var(--primitive-font-heading);
+  --font-body: var(--primitive-font-body);
+
+  --ease-standard: var(--easing-standard);
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+    scroll-behavior: smooth;
+    scroll-padding-top: calc(var(--nav-height) + 1.5rem);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--primitive-font-body);
+    font-size: var(--font-size-body);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--primitive-font-heading);
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  :focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-ring-offset);
+  }
+
+  ::selection {
+    background-color: var(--color-accent);
+    color: var(--color-accent-foreground);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* Conteneur de page */
+  .wrap {
+    width: 100%;
+    max-width: var(--page-max-width);
+    margin-inline: auto;
+    padding-inline: var(--space-gutter);
+
+    @variant md {
+      padding-inline: var(--space-gutter-lg);
+    }
+  }
+
+  /* Rythme vertical des sections */
+  .section {
+    padding-block: var(--space-section);
+
+    @variant md {
+      padding-block: var(--space-section-lg);
+    }
+  }
+
+  /* Petit libellé en capitales */
+  .eyebrow {
+    font-family: var(--primitive-font-heading);
+    font-size: var(--font-size-label);
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    line-height: 1.4;
+    text-transform: uppercase;
+  }
+
+  /* Boutons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--button-gap);
+    min-height: var(--button-height);
+    padding-inline: var(--button-padding-x);
+    border: 1px solid transparent;
+    border-radius: var(--button-radius);
+    font-family: var(--primitive-font-heading);
+    font-size: var(--font-size-body);
+    font-weight: 500;
+    line-height: 1.2;
+    cursor: pointer;
+    transition:
+      background-color var(--duration-interaction) var(--easing-standard),
+      border-color var(--duration-interaction) var(--easing-standard),
+      color var(--duration-interaction) var(--easing-standard);
+  }
+
+  .btn-primary {
+    background-color: var(--button-bg);
+    color: var(--button-fg);
+  }
+
+  /* :active donne un retour au toucher ; :hover est réservé aux pointeurs
+     qui survolent vraiment, pour éviter l'état « collé » après un tap. */
+  .btn-primary:active {
+    background-color: var(--button-hover-bg);
+    color: var(--button-hover-fg);
+  }
+
+  .btn-outline {
+    border-color: var(--button-outline-border);
+    color: var(--button-outline-fg);
+  }
+
+  .btn-outline:active {
+    background-color: var(--button-outline-hover-bg);
+    color: var(--button-outline-hover-fg);
+  }
+
+  @media (hover: hover) {
+    .btn-primary:hover {
+      background-color: var(--button-hover-bg);
+      color: var(--button-hover-fg);
+    }
+
+    .btn-outline:hover {
+      background-color: var(--button-outline-hover-bg);
+      color: var(--button-outline-hover-fg);
+    }
+  }
+
+  .btn-icon {
+    width: var(--button-height);
+    padding-inline: 0;
+  }
+
+  /* Étiquette */
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--tag-padding-y) var(--tag-padding-x);
+    border: 1px solid var(--tag-border);
+    color: var(--tag-fg);
+    font-size: var(--font-size-label);
+    line-height: 1.4;
+  }
+
+  /* Lien de navigation : soulignement qui se déploie */
+  .nav-link {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--nav-link-min-height);
+    font-family: var(--primitive-font-heading);
+    font-size: var(--font-size-ui);
+    white-space: nowrap;
+    font-weight: 500;
+    color: var(--color-muted-foreground);
+    transition: color var(--duration-interaction) var(--easing-standard);
+  }
+
+  .nav-link::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    bottom: var(--nav-link-underline-offset);
+    height: 2px;
+    background-color: var(--color-accent);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform var(--duration-interaction) var(--easing-standard);
+  }
+
+  .nav-link:active,
+  .nav-link[aria-current] {
+    color: var(--color-foreground);
+  }
+
+  .nav-link[aria-current]::after {
+    transform: scaleX(1);
+  }
+
+  @media (hover: hover) {
+    .nav-link:hover {
+      color: var(--color-foreground);
+    }
+
+    .nav-link:hover::after {
+      transform: scaleX(1);
+    }
+  }
+
+  /* Menu mobile : replié seulement si JS est actif (sans JS, il reste visible) */
+  .js .mobile-nav[data-open="false"] {
+    display: none;
+  }
+
+  /* Contrôles qui n'ont de sens qu'avec JS */
+  html:not(.js) .js-only {
+    display: none;
+  }
+
+  /* Carte projet : le lien du titre couvre toute la carte */
+  .project {
+    position: relative;
+  }
+
+  .project-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
+
+  .project-cover {
+    overflow: hidden;
+    border: 1px solid var(--card-border);
+    background-color: var(--card-cover-bg);
+    aspect-ratio: 4 / 3;
+  }
+
+  .project-cover > * {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform var(--duration-reveal) var(--easing-standard);
+  }
+
+  .project:focus-within .project-cover > * {
+    transform: scale(1.03);
+  }
+
+  .project-arrow {
+    transition: transform var(--duration-interaction) var(--easing-standard);
+  }
+
+  .project:focus-within .project-arrow {
+    transform: translate(0.1875rem, -0.1875rem);
+  }
+
+  @media (hover: hover) {
+    .project:hover .project-cover > * {
+      transform: scale(1.03);
+    }
+
+    .project:hover .project-arrow {
+      transform: translate(0.1875rem, -0.1875rem);
+    }
+
+    .project:hover .project-link {
+      text-decoration: underline;
+      text-decoration-color: var(--color-accent);
+      text-decoration-thickness: 2px;
+      text-underline-offset: 0.25em;
+    }
+  }
+
+  /* Bloc inversé (contact) : l'anneau de focus doit rester visible */
+  .inverse {
+    --focus-ring-color: var(--color-primary-foreground);
+    --button-outline-border: var(--color-primary-foreground);
+    --button-outline-fg: var(--color-primary-foreground);
+    --button-outline-hover-bg: var(--color-primary-foreground);
+    --button-outline-hover-fg: var(--color-primary);
+    background-color: var(--color-primary);
+    color: var(--color-primary-foreground);
+  }
+
+  /* Apparition au défilement : uniquement si JS actif, jamais en mouvement réduit */
+  @media (prefers-reduced-motion: no-preference) {
+    .js .reveal {
+      opacity: 0;
+      transform: translateY(0.75rem);
+      transition:
+        opacity var(--duration-reveal) var(--easing-standard),
+        transform var(--duration-reveal) var(--easing-standard);
+      transition-delay: var(--reveal-delay, 0ms);
+    }
+
+    .js .reveal.is-visible {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}

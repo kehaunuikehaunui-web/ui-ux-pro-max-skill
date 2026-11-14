@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- À PERSONNALISER : titre, description et aperçu de partage -->
+  <title>Votre Nom — Votre métier</title>
+  <meta name="description" content="Portfolio de Votre Nom, votre métier : projets sélectionnés, méthode de travail, parcours et contact.">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:title" content="Votre Nom — Votre métier">
+  <meta property="og:description" content="Projets sélectionnés, méthode de travail, parcours et contact.">
+
+  <meta name="theme-color" content="#FAFAFA" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#09090B" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+
+  <!-- Applique le thème avant le premier affichage pour éviter tout flash. -->
+  <script>
+    (function () {
+      var root = document.documentElement;
+      var stored = null;
+      root.classList.add('js');
+      try { stored = localStorage.getItem('theme'); } catch (e) {}
+      var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (stored === 'dark' || (!stored && prefersDark)) root.classList.add('dark');
+    })();
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/styles.css">
+  <script src="assets/main.js" defer></script>
+</head>
+<body>
+  <!-- Icônes Phosphor (licence MIT), regroupées dans un sprite. -->
+  <svg xmlns="http://www.w3.org/2000/svg" class="hidden" aria-hidden="true">
+    <symbol id="i-arrow-up-right" viewBox="0 0 256 256"><path d="M200,64V168a8,8,0,0,1-16,0V83.31L69.66,197.66a8,8,0,0,1-11.32-11.32L172.69,72H88a8,8,0,0,1,0-16H192A8,8,0,0,1,200,64Z"/></symbol>
+    <symbol id="i-arrow-down" viewBox="0 0 256 256"><path d="M205.66,149.66l-72,72a8,8,0,0,1-11.32,0l-72-72a8,8,0,0,1,11.32-11.32L120,196.69V40a8,8,0,0,1,16,0V196.69l58.34-58.35a8,8,0,0,1,11.32,11.32Z"/></symbol>
+    <symbol id="i-envelope" viewBox="0 0 256 256"><path d="M224,48H32a8,8,0,0,0-8,8V192a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A8,8,0,0,0,224,48ZM203.43,64,128,133.15,52.57,64ZM216,192H40V74.19l82.59,75.71a8,8,0,0,0,10.82,0L216,74.19V192Z"/></symbol>
+    <symbol id="i-linkedin" viewBox="0 0 256 256"><path d="M216,24H40A16,16,0,0,0,24,40V216a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V40A16,16,0,0,0,216,24Zm0,192H40V40H216V216ZM96,112v64a8,8,0,0,1-16,0V112a8,8,0,0,1,16,0Zm88,28v36a8,8,0,0,1-16,0V140a20,20,0,0,0-40,0v36a8,8,0,0,1-16,0V112a8,8,0,0,1,15.79-1.78A36,36,0,0,1,184,140ZM100,84A12,12,0,1,1,88,72,12,12,0,0,1,100,84Z"/></symbol>
+    <symbol id="i-github" viewBox="0 0 256 256"><path d="M208.31,75.68A59.78,59.78,0,0,0,202.93,28,8,8,0,0,0,196,24a59.75,59.75,0,0,0-48,24H124A59.75,59.75,0,0,0,76,24a8,8,0,0,0-6.93,4,59.78,59.78,0,0,0-5.38,47.68A58.14,58.14,0,0,0,56,104v8a56.06,56.06,0,0,0,48.44,55.47A39.8,39.8,0,0,0,96,192v8H72a24,24,0,0,1-24-24A40,40,0,0,0,8,136a8,8,0,0,0,0,16,24,24,0,0,1,24,24,40,40,0,0,0,40,40H96v16a8,8,0,0,0,16,0V192a24,24,0,0,1,48,0v40a8,8,0,0,0,16,0V192a39.8,39.8,0,0,0-8.44-24.53A56.06,56.06,0,0,0,216,112v-8A58.14,58.14,0,0,0,208.31,75.68ZM200,112a40,40,0,0,1-40,40H112a40,40,0,0,1-40-40v-8a41.74,41.74,0,0,1,6.9-22.48A8,8,0,0,0,80,73.83a43.81,43.81,0,0,1,.79-33.58,43.88,43.88,0,0,1,32.32,20.06A8,8,0,0,0,119.82,64h32.35a8,8,0,0,0,6.74-3.69,43.87,43.87,0,0,1,32.32-20.06A43.81,43.81,0,0,1,192,73.83a8.09,8.09,0,0,0,1,7.65A41.72,41.72,0,0,1,200,104Z"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 256 256"><path d="M120,40V16a8,8,0,0,1,16,0V40a8,8,0,0,1-16,0Zm72,88a64,64,0,1,1-64-64A64.07,64.07,0,0,1,192,128Zm-16,0a48,48,0,1,0-48,48A48.05,48.05,0,0,0,176,128ZM58.34,69.66A8,8,0,0,0,69.66,58.34l-16-16A8,8,0,0,0,42.34,53.66Zm0,116.68-16,16a8,8,0,0,0,11.32,11.32l16-16a8,8,0,0,0-11.32-11.32ZM192,72a8,8,0,0,0,5.66-2.34l16-16a8,8,0,0,0-11.32-11.32l-16,16A8,8,0,0,0,192,72Zm5.66,114.34a8,8,0,0,0-11.32,11.32l16,16a8,8,0,0,0,11.32-11.32ZM48,128a8,8,0,0,0-8-8H16a8,8,0,0,0,0,16H40A8,8,0,0,0,48,128Zm80,80a8,8,0,0,0-8,8v24a8,8,0,0,0,16,0V216A8,8,0,0,0,128,208Zm112-88H216a8,8,0,0,0,0,16h24a8,8,0,0,0,0-16Z"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 256 256"><path d="M233.54,142.23a8,8,0,0,0-8-2,88.08,88.08,0,0,1-109.8-109.8,8,8,0,0,0-10-10,104.84,104.84,0,0,0-52.91,37A104,104,0,0,0,136,224a103.09,103.09,0,0,0,62.52-20.88,104.84,104.84,0,0,0,37-52.91A8,8,0,0,0,233.54,142.23ZM188.9,190.34A88,88,0,0,1,65.66,67.11a89,89,0,0,1,31.4-26A106,106,0,0,0,96,56,104.11,104.11,0,0,0,200,160a106,106,0,0,0,14.92-1.06A89,89,0,0,1,188.9,190.34Z"/></symbol>
+    <symbol id="i-list" viewBox="0 0 256 256"><path d="M224,128a8,8,0,0,1-8,8H40a8,8,0,0,1,0-16H216A8,8,0,0,1,224,128ZM40,72H216a8,8,0,0,0,0-16H40a8,8,0,0,0,0,16ZM216,184H40a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Z"/></symbol>
+    <symbol id="i-x" viewBox="0 0 256 256"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"/></symbol>
+  </svg>
+
+  <a href="#contenu" class="btn btn-primary sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-60">Aller au contenu</a>
+
+  <!-- ============================== EN-TÊTE ============================== -->
+  <header class="sticky top-0 z-50 border-b border-(--nav-border) bg-(--nav-bg)">
+    <div class="wrap flex h-(--nav-height) items-center justify-between gap-6">
+      <!-- À PERSONNALISER : initiales et nom -->
+      <a href="#accueil" class="flex min-h-11 items-center gap-3 font-heading font-semibold">
+        <span class="grid size-9 place-items-center bg-foreground text-[0.8125rem] font-bold tracking-wider text-background" aria-hidden="true">VN</span>
+        <span class="whitespace-nowrap">Votre Nom</span>
+      </a>
+
+      <nav aria-label="Navigation principale" class="hidden lg:block">
+        <ul class="flex items-center gap-8">
+          <li><a class="nav-link" href="#projets">Projets</a></li>
+          <li><a class="nav-link" href="#a-propos">À propos</a></li>
+          <li><a class="nav-link" href="#parcours">Parcours</a></li>
+          <li><a class="nav-link" href="#contact">Contact</a></li>
+        </ul>
+      </nav>
+
+      <div class="flex items-center gap-2">
+        <button type="button" id="theme-toggle" class="js-only btn btn-outline btn-icon" aria-label="Thème sombre" aria-pressed="false">
+          <svg class="size-5 fill-current dark:hidden" aria-hidden="true"><use href="#i-moon"/></svg>
+          <svg class="hidden size-5 fill-current dark:block" aria-hidden="true"><use href="#i-sun"/></svg>
+        </button>
+        <a href="#contact" class="btn btn-primary hidden whitespace-nowrap lg:inline-flex">Me contacter</a>
+        <button type="button" id="menu-toggle" class="js-only group btn btn-outline btn-icon lg:hidden" aria-label="Menu" aria-expanded="false" aria-controls="menu-mobile">
+          <svg class="size-5 fill-current group-aria-expanded:hidden" aria-hidden="true"><use href="#i-list"/></svg>
+          <svg class="hidden size-5 fill-current group-aria-expanded:block" aria-hidden="true"><use href="#i-x"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <nav id="menu-mobile" class="mobile-nav border-t border-(--nav-border) lg:hidden" aria-label="Navigation mobile" data-open="false">
+      <ul class="wrap py-3">
+        <li><a class="flex min-h-12 items-center border-b border-border font-heading text-lg font-medium" href="#projets">Projets</a></li>
+        <li><a class="flex min-h-12 items-center border-b border-border font-heading text-lg font-medium" href="#a-propos">À propos</a></li>
+        <li><a class="flex min-h-12 items-center border-b border-border font-heading text-lg font-medium" href="#parcours">Parcours</a></li>
+        <li><a class="flex min-h-12 items-center font-heading text-lg font-medium" href="#contact">Contact</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main id="contenu">
+    <!-- ============================== ACCUEIL ============================== -->
+    <section id="accueil" class="border-b border-border" aria-labelledby="titre-accueil">
+      <div class="wrap pt-14 pb-14 md:pt-24 md:pb-20">
+        <div class="flex flex-wrap items-center justify-between gap-x-8 gap-y-3 text-muted-foreground">
+          <p class="eyebrow">Portfolio — <span data-year>2026</span></p>
+          <!-- À PERSONNALISER : votre disponibilité, ou supprimez la ligne -->
+          <p class="eyebrow flex items-center gap-2.5">
+            <span class="size-2 bg-accent" aria-hidden="true"></span>
+            Disponible pour de nouveaux projets
+          </p>
+        </div>
+
+        <!-- À PERSONNALISER : nom et métier -->
+        <h1 id="titre-accueil" class="mt-8 text-display font-bold wrap-break-word md:mt-10">
+          Votre Nom<span class="text-accent">.</span><br>
+          <span class="text-muted-foreground">Votre métier</span>
+        </h1>
+
+        <div class="mt-10 grid gap-8 md:mt-14 lg:grid-cols-12">
+          <!-- À PERSONNALISER : votre proposition de valeur en une phrase -->
+          <p class="max-w-2xl text-lead lg:col-span-7">
+            Dites ici, en une phrase, pour qui vous travaillez, ce que vous faites et le résultat que vous apportez.
+          </p>
+          <div class="flex flex-wrap items-start gap-3 lg:col-span-5 lg:justify-end">
+            <a href="#projets" class="btn btn-primary">
+              Voir mes projets
+              <svg class="size-5 fill-current" aria-hidden="true"><use href="#i-arrow-down"/></svg>
+            </a>
+            <a href="#contact" class="btn btn-outline">Me contacter</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- À PERSONNALISER : trois chiffres qui prouvent votre expérience -->
+      <div class="border-t border-border">
+        <dl class="wrap grid sm:grid-cols-3">
+          <div class="flex flex-col-reverse gap-1 border-b border-border py-6 sm:border-b-0 sm:py-8">
+            <dt class="eyebrow text-muted-foreground">Années d’expérience</dt>
+            <dd class="font-heading text-5xl font-bold tracking-tighter">00</dd>
+          </div>
+          <div class="flex flex-col-reverse gap-1 border-b border-border py-6 sm:border-b-0 sm:border-l sm:py-8 sm:pl-8">
+            <dt class="eyebrow text-muted-foreground">Projets livrés</dt>
+            <dd class="font-heading text-5xl font-bold tracking-tighter">00</dd>
+          </div>
+          <div class="flex flex-col-reverse gap-1 py-6 sm:border-l sm:border-border sm:py-8 sm:pl-8">
+            <dt class="eyebrow text-muted-foreground">Clients accompagnés</dt>
+            <dd class="font-heading text-5xl font-bold tracking-tighter">00</dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+
+    <!-- ============================== PROJETS ============================== -->
+    <section id="projets" class="section" aria-labelledby="titre-projets">
+      <div class="wrap">
+        <header class="grid items-end gap-6 md:grid-cols-12 md:gap-8">
+          <div class="reveal md:col-span-8">
+            <p class="eyebrow text-muted-foreground"><span class="text-accent">01</span> — Projets</p>
+            <h2 id="titre-projets" class="mt-4 text-title font-bold">Projets sélectionnés</h2>
+          </div>
+          <p class="text-muted-foreground md:col-span-4">
+            Pour chaque projet&nbsp;: le contexte, mon rôle et le résultat obtenu.
+          </p>
+        </header>
+
+        <!--
+          À PERSONNALISER : une carte par projet.
+          Pour utiliser une vraie image, remplacez le <svg> de .project-cover par :
+          <img src="assets/projets/mon-projet.webp" alt="Description de l'image" width="1200" height="900" loading="lazy" decoding="async">
+        -->
+        <ol class="mt-12 grid gap-x-8 gap-y-14 md:mt-20 md:grid-cols-2 md:gap-y-0 md:pb-24">
+          <li class="reveal md:even:mt-24">
+            <article class="project">
+              <div class="project-cover">
+                <svg viewBox="0 0 800 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+                  <line x1="0" y1="452" x2="800" y2="452" class="stroke-foreground" stroke-width="2"/>
+                  <circle cx="330" cy="290" r="170" class="fill-foreground"/>
+                  <rect x="476" y="120" width="150" height="150" class="fill-accent"/>
+                </svg>
+              </div>
+              <div class="mt-5 flex items-baseline justify-between gap-4 text-muted-foreground">
+                <p class="eyebrow">01</p>
+                <p class="text-sm">Secteur · Année</p>
+              </div>
+              <h3 class="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">
+                <a class="project-link inline-flex items-center gap-2" href="https://example.com" target="_blank" rel="noopener noreferrer">
+                  Nom du projet
+                  <svg class="project-arrow size-6 shrink-0 fill-current" aria-hidden="true"><use href="#i-arrow-up-right"/></svg>
+                  <span class="sr-only">(nouvel onglet)</span>
+                </a>
+              </h3>
+              <p class="mt-3 max-w-prose text-muted-foreground">
+                Le besoin du client, votre rôle et le résultat obtenu, en deux phrases. Ajoutez un chiffre si vous en avez un.
+              </p>
+              <ul class="mt-4 flex flex-wrap gap-2" aria-label="Mots-clés du projet">
+                <li class="tag">Rôle</li>
+                <li class="tag">Livrable</li>
+                <li class="tag">Outil</li>
+              </ul>
+            </article>
+          </li>
+
+          <li class="reveal md:even:mt-24">
+            <article class="project">
+              <div class="project-cover">
+                <svg viewBox="0 0 800 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+                  <defs>
+                    <pattern id="trame-points" width="80" height="80" patternUnits="userSpaceOnUse">
+                      <circle cx="40" cy="40" r="9" class="fill-foreground"/>
+                    </pattern>
+                  </defs>
+                  <rect x="80" y="60" width="640" height="480" fill="url(#trame-points)" opacity="0.28"/>
+                  <circle cx="440" cy="340" r="92" class="fill-accent"/>
+                  <rect x="120" y="100" width="160" height="160" class="fill-foreground"/>
+                </svg>
+              </div>
+              <div class="mt-5 flex items-baseline justify-between gap-4 text-muted-foreground">
+                <p class="eyebrow">02</p>
+                <p class="text-sm">Secteur · Année</p>
+              </div>
+              <h3 class="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">
+                <a class="project-link inline-flex items-center gap-2" href="https://example.com" target="_blank" rel="noopener noreferrer">
+                  Nom du projet
+                  <svg class="project-arrow size-6 shrink-0 fill-current" aria-hidden="true"><use href="#i-arrow-up-right"/></svg>
+                  <span class="sr-only">(nouvel onglet)</span>
+                </a>
+              </h3>
+              <p class="mt-3 max-w-prose text-muted-foreground">
+                Le besoin du client, votre rôle et le résultat obtenu, en deux phrases. Ajoutez un chiffre si vous en avez un.
+              </p>
+              <ul class="mt-4 flex flex-wrap gap-2" aria-label="Mots-clés du projet">
+                <li class="tag">Rôle</li>
+                <li class="tag">Livrable</li>
+                <li class="tag">Outil</li>
+              </ul>
+            </article>
+          </li>
+
+          <li class="reveal md:even:mt-24">
+            <article class="project">
+              <div class="project-cover">
+                <svg viewBox="0 0 800 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+                  <rect x="130" y="350" width="84" height="130" class="fill-foreground"/>
+                  <rect x="244" y="270" width="84" height="210" class="fill-foreground"/>
+                  <rect x="358" y="190" width="84" height="290" class="fill-foreground"/>
+                  <rect x="472" y="110" width="84" height="370" class="fill-accent"/>
+                  <rect x="586" y="230" width="84" height="250" class="fill-foreground"/>
+                  <line x1="0" y1="481" x2="800" y2="481" class="stroke-foreground" stroke-width="2"/>
+                </svg>
+              </div>
+              <div class="mt-5 flex items-baseline justify-between gap-4 text-muted-foreground">
+                <p class="eyebrow">03</p>
+                <p class="text-sm">Secteur · Année</p>
+              </div>
+              <h3 class="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">
+                <a class="project-link inline-flex items-center gap-2" href="https://example.com" target="_blank" rel="noopener noreferrer">
+                  Nom du projet
+                  <svg class="project-arrow size-6 shrink-0 fill-current" aria-hidden="true"><use href="#i-arrow-up-right"/></svg>
+                  <span class="sr-only">(nouvel onglet)</span>
+                </a>
+              </h3>
+              <p class="mt-3 max-w-prose text-muted-foreground">
+                Le besoin du client, votre rôle et le résultat obtenu, en deux phrases. Ajoutez un chiffre si vous en avez un.
+              </p>
+              <ul class="mt-4 flex flex-wrap gap-2" aria-label="Mots-clés du projet">
+                <li class="tag">Rôle</li>
+                <li class="tag">Livrable</li>
+                <li class="tag">Outil</li>
+              </ul>
+            </article>
+          </li>
+
+          <li class="reveal md:even:mt-24">
+            <article class="project">
+              <div class="project-cover">
+                <svg viewBox="0 0 800 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+                  <path d="M0 600V230A370 370 0 0 1 370 600Z" class="fill-foreground"/>
+                  <circle cx="560" cy="240" r="170" fill="none" class="stroke-foreground" stroke-width="2"/>
+                  <circle cx="560" cy="240" r="110" fill="none" class="stroke-foreground" stroke-width="2"/>
+                  <circle cx="560" cy="240" r="50" class="fill-accent"/>
+                </svg>
+              </div>
+              <div class="mt-5 flex items-baseline justify-between gap-4 text-muted-foreground">
+                <p class="eyebrow">04</p>
+                <p class="text-sm">Secteur · Année</p>
+              </div>
+              <h3 class="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">
+                <a class="project-link inline-flex items-center gap-2" href="https://example.com" target="_blank" rel="noopener noreferrer">
+                  Nom du projet
+                  <svg class="project-arrow size-6 shrink-0 fill-current" aria-hidden="true"><use href="#i-arrow-up-right"/></svg>
+                  <span class="sr-only">(nouvel onglet)</span>
+                </a>
+              </h3>
+              <p class="mt-3 max-w-prose text-muted-foreground">
+                Le besoin du client, votre rôle et le résultat obtenu, en deux phrases. Ajoutez un chiffre si vous en avez un.
+              </p>
+              <ul class="mt-4 flex flex-wrap gap-2" aria-label="Mots-clés du projet">
+                <li class="tag">Rôle</li>
+                <li class="tag">Livrable</li>
+                <li class="tag">Outil</li>
+              </ul>
+            </article>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ============================== À PROPOS ============================== -->
+    <section id="a-propos" class="section border-y border-border bg-muted" aria-labelledby="titre-a-propos">
+      <div class="wrap">
+        <p class="eyebrow text-muted-foreground"><span class="text-accent">02</span> — À propos</p>
+
+        <div class="mt-8 grid gap-10 md:grid-cols-12 md:gap-8">
+          <!-- À PERSONNALISER : remplacez ce bloc par votre portrait
+               <img src="assets/portrait.webp" alt="Portrait de Votre Nom" width="800" height="1000" loading="lazy" decoding="async" class="aspect-4/5 w-full border border-border object-cover"> -->
+          <div class="reveal md:col-span-4">
+            <div class="relative grid aspect-4/5 max-w-sm place-items-center border border-border bg-background md:max-w-none">
+              <span class="font-heading text-8xl font-bold tracking-tighter text-border" aria-hidden="true">VN</span>
+              <span class="eyebrow absolute bottom-4 left-4 text-muted-foreground">Votre portrait</span>
+            </div>
+          </div>
+
+          <div class="md:col-span-7 md:col-start-6">
+            <!-- À PERSONNALISER : votre présentation -->
+            <h2 id="titre-a-propos" class="reveal text-title font-bold">Une phrase qui vous résume.</h2>
+            <p class="mt-8 text-lead">
+              Présentez-vous en trois phrases&nbsp;: d’où vous venez, ce qui vous anime et la façon dont vous travaillez avec vos clients.
+            </p>
+            <p class="mt-6 max-w-prose text-muted-foreground">
+              Ajoutez ensuite ce qui rassure&nbsp;: vos domaines de prédilection, le type de clients que vous accompagnez, une référence dont vous êtes fier. Restez concret et écrivez comme vous parlez.
+            </p>
+          </div>
+        </div>
+
+        <!-- À PERSONNALISER : votre méthode (exemples à adapter) -->
+        <div class="mt-16 grid gap-8 border-t border-border-strong pt-8 md:mt-24 md:grid-cols-12">
+          <h3 class="eyebrow md:col-span-3">Ma méthode</h3>
+          <ol class="grid gap-8 sm:grid-cols-3 md:col-span-9">
+            <li class="reveal">
+              <p class="font-heading text-sm font-semibold text-accent" aria-hidden="true">01</p>
+              <h4 class="mt-2 text-xl font-semibold tracking-tight">Comprendre</h4>
+              <p class="mt-2 text-muted-foreground">Vos objectifs, vos contraintes et vos utilisateurs passent avant toute production.</p>
+            </li>
+            <li class="reveal" style="--reveal-delay: 80ms">
+              <p class="font-heading text-sm font-semibold text-accent" aria-hidden="true">02</p>
+              <h4 class="mt-2 text-xl font-semibold tracking-tight">Simplifier</h4>
+              <p class="mt-2 text-muted-foreground">Une solution claire, facile à utiliser et à faire évoluer, sans rien de superflu.</p>
+            </li>
+            <li class="reveal" style="--reveal-delay: 160ms">
+              <p class="font-heading text-sm font-semibold text-accent" aria-hidden="true">03</p>
+              <h4 class="mt-2 text-xl font-semibold tracking-tight">Livrer</h4>
+              <p class="mt-2 text-muted-foreground">Des points réguliers, des délais annoncés à l’avance, un résultat que l’on peut mesurer.</p>
+            </li>
+          </ol>
+        </div>
+
+        <!-- À PERSONNALISER : vos compétences, regroupées par famille -->
+        <div class="mt-12 grid gap-8 border-t border-border-strong pt-8 md:mt-16 md:grid-cols-12">
+          <h3 class="eyebrow md:col-span-3">Compétences</h3>
+          <div class="grid gap-8 sm:grid-cols-3 md:col-span-9">
+            <div>
+              <h4 class="text-xl font-semibold tracking-tight">Expertise</h4>
+              <ul class="mt-3 space-y-2 text-muted-foreground">
+                <li>Compétence 1</li>
+                <li>Compétence 2</li>
+                <li>Compétence 3</li>
+              </ul>
+            </div>
+            <div>
+              <h4 class="text-xl font-semibold tracking-tight">Méthodes</h4>
+              <ul class="mt-3 space-y-2 text-muted-foreground">
+                <li>Méthode 1</li>
+                <li>Méthode 2</li>
+                <li>Méthode 3</li>
+              </ul>
+            </div>
+            <div>
+              <h4 class="text-xl font-semibold tracking-tight">Outils</h4>
+              <ul class="mt-3 space-y-2 text-muted-foreground">
+                <li>Outil 1</li>
+                <li>Outil 2</li>
+                <li>Outil 3</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== PARCOURS ============================== -->
+    <section id="parcours" class="section" aria-labelledby="titre-parcours">
+      <div class="wrap">
+        <div class="reveal">
+          <p class="eyebrow text-muted-foreground"><span class="text-accent">03</span> — Parcours</p>
+          <h2 id="titre-parcours" class="mt-4 text-title font-bold">Expérience et formation</h2>
+        </div>
+
+        <!-- À PERSONNALISER : une ligne par poste ou diplôme, du plus récent au plus ancien -->
+        <ol class="mt-12 border-t border-border-strong md:mt-16">
+          <li class="grid gap-x-8 gap-y-2 border-b border-border py-8 md:grid-cols-12">
+            <p class="eyebrow text-muted-foreground md:col-span-3 md:pt-1.5">20XX — Aujourd’hui</p>
+            <div class="md:col-span-4">
+              <h3 class="text-xl font-semibold tracking-tight">Intitulé du poste</h3>
+              <p class="text-muted-foreground">Entreprise · Ville</p>
+            </div>
+            <p class="text-muted-foreground md:col-span-5">Votre mission principale et un résultat marquant, en une phrase.</p>
+          </li>
+          <li class="grid gap-x-8 gap-y-2 border-b border-border py-8 md:grid-cols-12">
+            <p class="eyebrow text-muted-foreground md:col-span-3 md:pt-1.5">20XX — 20XX</p>
+            <div class="md:col-span-4">
+              <h3 class="text-xl font-semibold tracking-tight">Intitulé du poste</h3>
+              <p class="text-muted-foreground">Entreprise · Ville</p>
+            </div>
+            <p class="text-muted-foreground md:col-span-5">Votre mission principale et un résultat marquant, en une phrase.</p>
+          </li>
+          <li class="grid gap-x-8 gap-y-2 border-b border-border py-8 md:grid-cols-12">
+            <p class="eyebrow text-muted-foreground md:col-span-3 md:pt-1.5">20XX — 20XX</p>
+            <div class="md:col-span-4">
+              <h3 class="text-xl font-semibold tracking-tight">Intitulé du poste</h3>
+              <p class="text-muted-foreground">Entreprise · Ville</p>
+            </div>
+            <p class="text-muted-foreground md:col-span-5">Votre mission principale et un résultat marquant, en une phrase.</p>
+          </li>
+          <li class="grid gap-x-8 gap-y-2 border-b border-border py-8 md:grid-cols-12">
+            <p class="eyebrow text-muted-foreground md:col-span-3 md:pt-1.5">20XX</p>
+            <div class="md:col-span-4">
+              <h3 class="text-xl font-semibold tracking-tight">Diplôme ou certification</h3>
+              <p class="text-muted-foreground">École ou organisme · Ville</p>
+            </div>
+            <p class="text-muted-foreground md:col-span-5">La spécialité suivie ou ce que cette formation vous a apporté.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ============================== CONTACT ============================== -->
+    <section id="contact" class="inverse section" aria-labelledby="titre-contact">
+      <div class="wrap">
+        <p class="eyebrow text-primary-muted"><span class="text-accent-on-primary">04</span> — Contact</p>
+        <h2 id="titre-contact" class="reveal mt-6 text-headline font-bold">
+          Un projet en tête&nbsp;?<br>
+          <span class="text-primary-muted">Parlons-en.</span>
+        </h2>
+
+        <div class="mt-12 grid gap-10 border-t border-primary-border pt-10 md:mt-16 md:grid-cols-12 md:gap-8">
+          <p class="text-lead md:col-span-5">
+            Décrivez-moi votre besoin en quelques lignes, je reviens vers vous rapidement.
+          </p>
+          <div class="md:col-span-6 md:col-start-7">
+            <!-- À PERSONNALISER : votre adresse e-mail (deux fois : href et texte) -->
+            <a href="mailto:bonjour@example.com" class="group inline-flex min-h-12 items-center gap-3 font-heading text-2xl font-semibold tracking-tight underline decoration-accent-on-primary decoration-2 underline-offset-8 transition-colors duration-200 hover:text-accent-on-primary md:text-4xl">
+              <span class="wrap-anywhere">bonjour@example.com</span>
+              <svg class="size-7 shrink-0 fill-current transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 md:size-9" aria-hidden="true"><use href="#i-arrow-up-right"/></svg>
+            </a>
+
+            <!-- À PERSONNALISER : vos profils (remplacez les adresses) -->
+            <ul class="mt-8 flex flex-wrap gap-3">
+              <li>
+                <a class="btn btn-outline" href="https://www.linkedin.com/" target="_blank" rel="noopener noreferrer">
+                  <svg class="size-5 fill-current" aria-hidden="true"><use href="#i-linkedin"/></svg>
+                  LinkedIn<span class="sr-only"> (nouvel onglet)</span>
+                </a>
+              </li>
+              <li>
+                <a class="btn btn-outline" href="https://github.com/" target="_blank" rel="noopener noreferrer">
+                  <svg class="size-5 fill-current" aria-hidden="true"><use href="#i-github"/></svg>
+                  GitHub<span class="sr-only"> (nouvel onglet)</span>
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============================== PIED DE PAGE ============================== -->
+  <footer>
+    <div class="wrap flex flex-col gap-2 py-6 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+      <p>© <span data-year>2026</span> Votre Nom. Tous droits réservés.</p>
+      <a href="#accueil" class="nav-link">Retour en haut de page</a>
+    </div>
+  </footer>
+</body>
+</html>

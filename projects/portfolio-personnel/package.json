@@ -1,0 +1,16 @@
+{
+  "name": "portfolio-personnel",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Portfolio personnel statique : HTML + Tailwind CSS v4 + design tokens.",
+  "scripts": {
+    "tokens": "node ../../.claude/skills/design-system/scripts/generate-tokens.cjs --config tokens.json -o src/tokens.css",
+    "css": "tailwindcss -i src/input.css -o assets/styles.css --minify",
+    "build": "npm run tokens && npm run css",
+    "dev": "tailwindcss -i src/input.css -o assets/styles.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.5",
+    "tailwindcss": "^4.3.5"
+  }
+}
