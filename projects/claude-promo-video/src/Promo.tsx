@@ -11,9 +11,10 @@ const C = {bg: '#0B0B10', fg: '#F8FAFC', muted: '#94A3B8', card: '#1E1E23', bord
 const clamp = {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'} as const;
 const ease = Easing.bezier(0.16, 1, 0.3, 1);
 
-const useSq = () => {
+// sq: square or vertical canvas (narrow layout); tall: vertical 9:16 tweaks on top of it.
+const useLayout = () => {
   const {width, height} = useVideoConfig();
-  return width === height;
+  return {sq: width <= height, tall: height > width};
 };
 
 const fadeInOut = (f: number, start: number, end: number, d = 12) =>
@@ -76,19 +77,19 @@ const Scene1: React.FC = () => {
   const {fps} = useVideoConfig();
   const sp = spring({frame: f - 8, fps, config: {damping: 14, stiffness: 90}});
   const letters = 'Claude'.split('');
-  const sq = useSq();
+  const {sq, tall} = useLayout();
   return (
     <AbsoluteFill style={{alignItems: 'center', justifyContent: 'center', opacity: fadeInOut(f, 0, 120, 10)}}>
       <div style={{display: 'flex', flexDirection: sq ? 'column' : 'row', alignItems: 'center', gap: sq ? 24 : 48}}>
-        <div style={{transform: `scale(${sp})`}}><Spark size={sq ? 170 : 200} rot={f * 0.8} /></div>
-        <div style={{display: 'flex', fontFamily: HEAD, fontWeight: 700, fontSize: sq ? 200 : 220, color: C.fg, letterSpacing: -6}}>
+        <div style={{transform: `scale(${sp})`}}><Spark size={tall ? 240 : sq ? 170 : 200} rot={f * 0.8} /></div>
+        <div style={{display: 'flex', fontFamily: HEAD, fontWeight: 700, fontSize: tall ? 240 : sq ? 200 : 220, color: C.fg, letterSpacing: -6}}>
           {letters.map((l, i) => {
             const t = interpolate(f, [20 + i * 3, 38 + i * 3], [0, 1], {...clamp, easing: ease});
             return <span key={i} style={{display: 'inline-block', opacity: t, transform: `translateY(${(1 - t) * 60}px)`, filter: `blur(${(1 - t) * 10}px)`}}>{l}</span>;
           })}
         </div>
       </div>
-      <div style={{marginTop: 24, fontFamily: BODY, fontSize: sq ? 36 : 40, color: C.muted, letterSpacing: 2, opacity: interpolate(f, [50, 70], [0, 1], clamp)}}>
+      <div style={{marginTop: 24, fontFamily: BODY, fontSize: tall ? 42 : sq ? 36 : 40, color: C.muted, letterSpacing: 2, opacity: interpolate(f, [50, 70], [0, 1], clamp)}}>
         Votre assistant IA, par Anthropic
       </div>
     </AbsoluteFill>
@@ -112,23 +113,23 @@ const Scene2: React.FC = () => {
     {label: 'Coder', icon: ICONS.code, at: 36},
     {label: 'Construire', icon: ICONS.build, at: 62},
   ];
-  const sq = useSq();
+  const {sq, tall} = useLayout();
   return (
     <AbsoluteFill style={{alignItems: 'center', justifyContent: 'center', opacity: fadeInOut(f, 0, 150, 10)}}>
-      <div style={{display: 'flex', flexDirection: sq ? 'column' : 'row', gap: sq ? 24 : 56}}>
+      <div style={{display: 'flex', flexDirection: sq ? 'column' : 'row', gap: tall ? 40 : sq ? 24 : 56}}>
         {items.map((it, i) => {
           const s = spring({frame: f - it.at, fps, config: {damping: 13, mass: 0.8}});
           const active = f > it.at && (i === items.length - 1 || f < items[i + 1].at + 10);
           return (
             <div key={it.label} style={{
-              width: sq ? 640 : 440, height: sq ? 170 : 360, borderRadius: 28, background: `${C.card}cc`,
+              width: sq ? (tall ? 820 : 640) : 440, height: tall ? 240 : sq ? 170 : 360, borderRadius: 28, background: `${C.card}cc`,
               border: `1.5px solid ${active ? C.accent : C.border}`,
               boxShadow: active ? `0 0 60px ${C.accent}55, inset 0 0 40px ${C.accent}22` : 'none',
               display: 'flex', flexDirection: sq ? 'row' : 'column', alignItems: 'center', justifyContent: sq ? 'flex-start' : 'center', gap: 32, padding: sq ? '0 56px' : 0, boxSizing: 'border-box',
               transform: `translateY(${(1 - s) * 80}px) scale(${0.9 + s * 0.1})`, opacity: s,
             }}>
               <Icon d={it.icon} />
-              <div style={{fontFamily: HEAD, fontWeight: 700, fontSize: 64, color: C.fg, flex: sq ? 1 : undefined}}>{it.label}</div>
+              <div style={{fontFamily: HEAD, fontWeight: 700, fontSize: tall ? 76 : 64, color: C.fg, flex: sq ? 1 : undefined}}>{it.label}</div>
               <div style={{width: sq ? interpolate(f, [it.at + 10, it.at + 30], [0, 80], {...clamp, easing: ease}) : interpolate(f, [it.at + 10, it.at + 30], [0, 200], {...clamp, easing: ease}), height: 3, background: C.accent, borderRadius: 2}} />
             </div>
           );
@@ -157,10 +158,10 @@ const Scene3: React.FC = () => {
     {n: 74, label: 'typographies', at: 88},
     {n: 120, label: 'règles UX', at: 120},
   ];
-  const sq = useSq();
+  const {sq, tall} = useLayout();
   const swatches = ['#0B0B10', '#1E293B', '#3B82F6', '#60A5FA', '#94A3B8', '#F8FAFC', '#D97757', '#22C55E'];
   return (
-    <AbsoluteFill style={{alignItems: 'center', justifyContent: 'center', paddingBottom: sq ? 60 : 0, opacity: fadeInOut(f, 0, 210, 10)}}>
+    <AbsoluteFill style={{alignItems: 'center', justifyContent: 'center', paddingBottom: tall ? 160 : sq ? 60 : 0, opacity: fadeInOut(f, 0, 210, 10)}}>
       <div style={{display: 'flex', alignItems: 'center', gap: sq ? 18 : 28, fontFamily: HEAD, fontWeight: 700, fontSize: sq ? 64 : 96, color: C.fg, opacity: head, transform: `translateY(${(1 - head) * -40}px)`}}>
         <Spark size={sq ? 58 : 84} rot={f} />
         <span>Claude</span>
@@ -170,18 +171,18 @@ const Scene3: React.FC = () => {
       <div style={{marginTop: 20, fontFamily: BODY, fontSize: sq ? 30 : 34, color: C.muted, opacity: interpolate(f, [18, 34], [0, 1], clamp)}}>
         L'intelligence design intégrée à votre assistant
       </div>
-      <div style={{display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: sq ? 24 : 32, marginTop: sq ? 36 : 72, width: sq ? 824 : undefined}}>
+      <div style={{display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: sq ? 24 : 32, marginTop: tall ? 72 : sq ? 36 : 72, width: sq ? 824 : undefined}}>
         {stats.map((s) => {
           const p = spring({frame: f - s.at, fps, config: {damping: 14}});
           return (
-            <div key={s.label} style={{width: sq ? 400 : 340, padding: sq ? '28px 0' : '40px 0', borderRadius: 24, background: `${C.card}dd`, border: `1.5px solid ${C.border}`, textAlign: 'center', opacity: p, transform: `translateY(${(1 - p) * 60}px)`, boxShadow: `0 20px 60px #00000080`}}>
-              <div style={{fontFamily: HEAD, fontWeight: 700, fontSize: sq ? 88 : 104, color: C.fg, lineHeight: 1}}><Counter to={s.n} start={s.at} /></div>
+            <div key={s.label} style={{width: sq ? 400 : 340, padding: tall ? '56px 0' : sq ? '28px 0' : '40px 0', borderRadius: 24, background: `${C.card}dd`, border: `1.5px solid ${C.border}`, textAlign: 'center', opacity: p, transform: `translateY(${(1 - p) * 60}px)`, boxShadow: `0 20px 60px #00000080`}}>
+              <div style={{fontFamily: HEAD, fontWeight: 700, fontSize: tall ? 120 : sq ? 88 : 104, color: C.fg, lineHeight: 1}}><Counter to={s.n} start={s.at} /></div>
               <div style={{fontFamily: BODY, fontSize: 32, color: C.glow, marginTop: 12, letterSpacing: 1}}>{s.label}</div>
             </div>
           );
         })}
       </div>
-      <div style={{display: 'flex', gap: 12, marginTop: sq ? 28 : 56}}>
+      <div style={{display: 'flex', gap: 12, marginTop: tall ? 64 : sq ? 28 : 56}}>
         {swatches.map((c, i) => {
           const t = interpolate(f, [62 + i * 4, 76 + i * 4], [0, 1], {...clamp, easing: ease});
           return <div key={c} style={{width: 72, height: 20, borderRadius: 10, background: c, border: `1px solid ${C.border}`, opacity: t, transform: `scaleX(${t})`}} />;
@@ -200,7 +201,7 @@ const Scene4: React.FC = () => {
   const morph = spring({frame: f - 44, fps, config: {damping: 16}});
   const cta = spring({frame: f - 72, fps, config: {damping: 14}});
   const ui = interpolate(f, [70, 80], [1, 0.0], clamp);
-  const sq = useSq();
+  const {sq, tall} = useLayout();
   const W = sq ? 900 : 1100;
   return (
     <AbsoluteFill style={{alignItems: 'center', justifyContent: 'center', opacity: interpolate(f, [0, 10], [0, 1], clamp)}}>
@@ -210,7 +211,7 @@ const Scene4: React.FC = () => {
           <span style={{color: C.glow, fontFamily: HEAD}}>›</span>
           <span>{PROMPT.slice(0, chars)}<span style={{opacity: Math.floor(f / 8) % 2 ? 1 : 0, color: C.glow}}>▍</span></span>
         </div>
-        <div style={{marginTop: 36, width: W, height: sq ? 380 : 400, borderRadius: 24, background: '#111118', border: `1.5px solid ${C.border}`, overflow: 'hidden', display: 'flex', opacity: morph, transform: `translateY(${(1 - morph) * 60}px)`}}>
+        <div style={{marginTop: 36, width: W, height: tall ? 640 : sq ? 380 : 400, borderRadius: 24, background: '#111118', border: `1.5px solid ${C.border}`, overflow: 'hidden', display: 'flex', opacity: morph, transform: `translateY(${(1 - morph) * 60}px)`}}>
           <div style={{width: 200, background: '#15151c', padding: 24, display: 'flex', flexDirection: 'column', gap: 18}}>
             {[0, 1, 2, 3, 4].map((i) => <div key={i} style={{height: 16, borderRadius: 8, background: i === 1 ? C.accent : C.border, width: `${90 - i * 8}%`}} />)}
           </div>
@@ -231,10 +232,10 @@ const Scene4: React.FC = () => {
       {/* CTA end card */}
       <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', opacity: cta, transform: `scale(${0.9 + cta * 0.1})`}}>
         <Spark size={140} rot={f * 0.8} />
-        <div style={{marginTop: 32, fontFamily: HEAD, fontWeight: 700, fontSize: sq ? 100 : 120, color: C.fg, letterSpacing: -3, textAlign: 'center', lineHeight: 1.05}}>
+        <div style={{marginTop: 32, fontFamily: HEAD, fontWeight: 700, fontSize: tall ? 116 : sq ? 100 : 120, color: C.fg, letterSpacing: -3, textAlign: 'center', lineHeight: 1.05}}>
           Claude <span style={{color: C.accent, fontWeight: 500}}>×</span>{sq ? <br /> : ' '}UI UX Pro Max
         </div>
-        <div style={{marginTop: sq ? 24 : 16, fontFamily: BODY, fontSize: sq ? 34 : 44, color: C.muted}}>Du prompt à l'interface. Pro, en quelques secondes.</div>
+        <div style={{marginTop: sq ? 24 : 16, fontFamily: BODY, fontSize: tall ? 36 : sq ? 34 : 44, color: C.muted, textAlign: 'center', maxWidth: tall ? 1000 : sq ? 900 : undefined}}>Du prompt à l'interface. Pro, en quelques secondes.</div>
         <div style={{marginTop: 48, padding: '22px 52px', borderRadius: 999, background: C.accent, fontFamily: HEAD, fontWeight: 700, fontSize: 38, color: '#000', boxShadow: `0 0 60px ${C.accent}88`}}>
           Essayez-le maintenant
         </div>
@@ -252,13 +253,13 @@ const SUBS = [
 ];
 const Subtitles: React.FC = () => {
   const f = useCurrentFrame();
-  const sq = useSq();
+  const {sq, tall} = useLayout();
   const s = SUBS.find((x) => f >= x.from && f < x.to);
   if (!s) return null;
   const o = fadeInOut(f, s.from, s.to, 6);
   return (
-    <div style={{position: 'absolute', bottom: sq ? 70 : 90, left: 0, right: 0, display: 'flex', justifyContent: 'center', opacity: o}}>
-      <div style={{maxWidth: sq ? 880 : undefined, textAlign: 'center', padding: '12px 28px', borderRadius: 12, background: '#000000b3', fontFamily: BODY, fontWeight: 500, fontSize: sq ? 32 : 36, color: C.fg}}>{s.text}</div>
+    <div style={{position: 'absolute', bottom: tall ? 300 : sq ? 70 : 90, left: 0, right: 0, display: 'flex', justifyContent: 'center', opacity: o}}>
+      <div style={{maxWidth: tall ? 1000 : sq ? 880 : undefined, textAlign: 'center', padding: '12px 28px', borderRadius: 12, background: '#000000b3', fontFamily: BODY, fontWeight: 500, fontSize: tall ? 36 : sq ? 32 : 36, color: C.fg}}>{s.text}</div>
     </div>
   );
 };

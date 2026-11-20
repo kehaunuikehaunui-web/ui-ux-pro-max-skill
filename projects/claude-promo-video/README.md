@@ -6,8 +6,9 @@ Remotion project for a 20-second promo (French voice-over) presenting Claude equ
 |---|---|---|
 | `Promo` | 1920×1080 (16:9) | `renders/claude-promo-20s-16x9.mp4` |
 | `PromoSquare` | 1080×1080 (1:1) | `renders/claude-promo-20s-1x1.mp4` |
+| `PromoVertical` | 1080×1920 (9:16) | `renders/claude-promo-20s-9x16.mp4` |
 
-Both compositions share `src/Promo.tsx`; the layout switches when width equals height.
+All compositions share `src/Promo.tsx`. A square or vertical canvas uses the narrow layout, and 9:16 enlarges it and keeps subtitles above the Reels/TikTok/Shorts UI area.
 
 ## Design system
 
@@ -32,6 +33,7 @@ npm install
 npm run studio          # preview
 npm run render          # 16:9
 npm run render:square   # 1:1
+npm run render:vertical # 9:16
 ./scripts/make-audio.sh # optional: regenerate voice-over (Piper TTS, fr-siwis-medium) and pad
 ```
 
