@@ -12,7 +12,7 @@ fi
 # Phonetic spellings: "you aïe, you ex" -> UI UX (English), "prompte" -> prompt.
 lines=(
   "Bonjour, je suis Claude."
-  "Je raisonne, je code, et je construis avec vous."
+  "Je raisonne. Je code. Et je construis avec vous."  # periods stop the "code, et" -> "condé" liaison
   "Équipé de you aïe, you ex, Pro Max : styles, palettes, typographies, et règles UX."
   "Du prompte à l'interface. Pro, en quelques secondes."
 )
