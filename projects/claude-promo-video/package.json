@@ -1,0 +1,21 @@
+{
+  "name": "claude-promo-video",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts Promo renders/claude-promo-20s-16x9.mp4 --codec=h264 --crf=18",
+    "render:square": "remotion render src/index.ts PromoSquare renders/claude-promo-20s-1x1.mp4 --codec=h264 --crf=18"
+  },
+  "dependencies": {
+    "remotion": "4.0.545",
+    "@remotion/cli": "4.0.545",
+    "@remotion/google-fonts": "4.0.545",
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
+  },
+  "devDependencies": {
+    "typescript": "5.6.3",
+    "@types/react": "19.0.0"
+  }
+}
