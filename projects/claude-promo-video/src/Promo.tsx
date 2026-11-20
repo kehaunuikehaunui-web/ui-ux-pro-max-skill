@@ -247,7 +247,7 @@ const Scene4: React.FC = () => {
 // ---------- Subtitles ----------
 const SUBS = [
   {from: 15, to: 72, text: 'Bonjour, je suis Claude.'},
-  {from: 130, to: 227, text: 'Je raisonne, je code, et je construis avec vous.'},
+  {from: 130, to: 242, text: 'Je raisonne. Je code. Et je construis avec vous.'},
   {from: 280, to: 474, text: 'Équipé de UI UX Pro Max : styles, palettes, typographies et règles UX.'},
   {from: 485, to: 547, text: "Du prompt à l'interface. Pro, en quelques secondes."},
 ];
