@@ -38,6 +38,11 @@ class TrackDeleter(private val context: Context) {
     fun batchRequest(uris: List<Uri>): IntentSender =
         MediaStore.createDeleteRequest(context.contentResolver, uris).intentSender
 
+    /** Android 11+ : mettre à la corbeille (`trashed` = true) ou restaurer (`trashed` = false). */
+    @RequiresApi(30)
+    fun trashRequest(uris: List<Uri>, trashed: Boolean): IntentSender =
+        MediaStore.createTrashRequest(context.contentResolver, uris, trashed).intentSender
+
     /** Suppression sans fenêtre système (Android 8–10, ou documents importés). */
     fun deleteNow(tracks: List<Track>): Outcome {
         val deleted = ArrayList<Track>()

@@ -175,25 +175,23 @@ private fun MenuItem(label: String, icon: ImageVector, onClick: () -> Unit) {
     )
 }
 
-/** Confirmation avant suppression définitive. */
+/** Confirmation avant suppression définitive (depuis la corbeille). */
 @Composable
-fun DeleteConfirmDialog(tracks: List<Track>, onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    val n = tracks.size
+fun DeleteConfirmDialog(count: Int, singleTitle: String?, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = KhnColors.SurfaceHigh,
         icon = { Icon(Icons.Rounded.DeleteForever, null, tint = KhnColors.Error) },
-        title = { Text(if (n == 1) "Supprimer cette musique ?" else "Supprimer $n musiques ?") },
+        title = { Text(if (count == 1) "Supprimer définitivement ?" else "Supprimer $count musiques définitivement ?") },
         text = {
             Column {
                 Text(
-                    if (n == 1) "« ${tracks.first().title} » sera effacée définitivement du téléphone."
-                    else "Ces $n musiques seront effacées définitivement du téléphone.",
+                    if (count == 1 && singleTitle != null) "« $singleTitle » sera effacée du téléphone."
+                    else "Ces $count musiques seront effacées du téléphone.",
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "Cette action est irréversible." +
-                        if (android.os.Build.VERSION.SDK_INT >= 29) " Android va ensuite te demander de confirmer." else "",
+                    "Elles ne pourront plus être récupérées. Android peut te demander de confirmer.",
                     color = KhnColors.TextMuted,
                     style = MaterialTheme.typography.bodySmall,
                 )

@@ -115,6 +115,26 @@ class UserDataRepository(context: Context, private val scope: CoroutineScope) {
         )
     }
 
+    // ---- Corbeille ----
+    fun addTrash(entries: List<TrashEntry>) = mutate { d -> d.copy(trash = entries + d.trash) }
+
+    fun removeTrash(ids: Set<String>) = mutate { d -> d.copy(trash = d.trash.filterNot { it.id in ids }) }
+
+    /** Retire des fichiers importés sans toucher aux favoris ni aux playlists (corbeille Android). */
+    fun removeImportedIds(trackIds: Set<String>) = mutate { d ->
+        d.copy(imported = d.imported.filterNot { "doc:${it.uri}" in trackIds })
+    }
+
+    /** Restauration : remet un titre (éventuellement sous un nouvel identifiant) dans ses favoris et playlists. */
+    fun restoreMembership(trackId: String, favorite: Boolean, playlistIds: List<String>) = mutate { d ->
+        d.copy(
+            favorites = if (favorite && trackId !in d.favorites) listOf(trackId) + d.favorites else d.favorites,
+            playlists = d.playlists.map { p ->
+                if (p.id in playlistIds && trackId !in p.trackIds) p.copy(trackIds = p.trackIds + trackId) else p
+            },
+        )
+    }
+
     // ---- Fichiers importés ----
     fun addImported(tracks: List<ImportedTrack>) = mutate { d ->
         val known = d.imported.map { it.uri }.toSet()

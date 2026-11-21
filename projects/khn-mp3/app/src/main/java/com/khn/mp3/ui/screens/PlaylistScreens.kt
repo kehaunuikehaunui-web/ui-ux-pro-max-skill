@@ -26,7 +26,6 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.DeleteForever
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.MoreVert
@@ -267,7 +266,7 @@ fun PlaylistDetailScreen(
                 })
                 if (!isFavorites && index > 0) add(MenuAction("Monter", Icons.Rounded.ArrowUpward) { vm.movePlaylistItem(playlistId, index, index - 1) })
                 if (!isFavorites && index < tracks.lastIndex) add(MenuAction("Descendre", Icons.Rounded.ArrowDownward) { vm.movePlaylistItem(playlistId, index, index + 1) })
-                add(MenuAction("Supprimer du téléphone", Icons.Rounded.DeleteForever) { vm.askDelete(listOf(track)) })
+                add(MenuAction("Mettre à la corbeille", Icons.Rounded.Delete) { vm.moveToTrash(listOf(track)) })
             }
             TrackRow(
                 track = track,

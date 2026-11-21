@@ -37,7 +37,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.khn.mp3.ui.MainViewModel
 import com.khn.mp3.ui.components.EmptyState
 import com.khn.mp3.ui.components.MenuAction
-import androidx.compose.material.icons.rounded.DeleteForever
+import androidx.compose.material.icons.rounded.Delete
 import com.khn.mp3.ui.components.SectionTitle
 import com.khn.mp3.ui.components.TrackRow
 import com.khn.mp3.ui.components.neonFieldColors
@@ -126,7 +126,7 @@ fun SearchScreen(
                         onAddToQueue = { vm.addToQueue(track) },
                         onAddToPlaylist = { onAddToPlaylist(listOf(track.id)) },
                         extraActions = listOf(
-                            MenuAction("Supprimer du téléphone", Icons.Rounded.DeleteForever) { vm.askDelete(listOf(track)) },
+                            MenuAction("Mettre à la corbeille", Icons.Rounded.Delete) { vm.moveToTrash(listOf(track)) },
                         ),
                     )
                 }

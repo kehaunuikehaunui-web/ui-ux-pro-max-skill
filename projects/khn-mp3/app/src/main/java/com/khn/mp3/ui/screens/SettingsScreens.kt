@@ -25,6 +25,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Equalizer
 import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.HideImage
@@ -81,9 +82,11 @@ fun SettingsScreen(
     contentPadding: PaddingValues,
     onOpenSound: () -> Unit,
     onImportFiles: () -> Unit,
+    onOpenTrash: () -> Unit = {},
 ) {
     val settings by vm.settings.collectAsStateWithLifecycle()
     val tracks by vm.tracks.collectAsStateWithLifecycle()
+    val trash by vm.trash.collectAsStateWithLifecycle()
     val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) vm.setBackgroundImage(uri)
     }
@@ -158,6 +161,11 @@ fun SettingsScreen(
             SettingsCard {
                 NavRow(Icons.Rounded.FolderOpen, "Ajouter des fichiers audio", "Choisir des musiques dans n'importe quel dossier", onImportFiles)
                 NavRow(Icons.Rounded.Refresh, "Analyser à nouveau", "${tracks.size} titres trouvés", vm::refreshLibrary)
+                NavRow(
+                    Icons.Rounded.Delete, "Corbeille",
+                    if (trash.isEmpty()) "Vide · les musiques supprimées y restent 30 jours" else "${trash.size} musique(s) récupérable(s)",
+                    onOpenTrash,
+                )
                 Spacer(Modifier.height(8.dp))
                 LabeledSlider("Ignorer les sons de moins de", "${minDur.roundToInt()} s") {
                     NeonSlider(minDur, { minDur = it }, valueRange = 0f..120f, steps = 23, onValueChangeFinished = { vm.setMinDuration(minDur.roundToInt()) })

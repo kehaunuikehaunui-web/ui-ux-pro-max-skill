@@ -65,12 +65,39 @@ data class DownloadEntry(
     val createdAt: Long,
 )
 
+/**
+ * Musique dans la corbeille.
+ * - [system] = true : corbeille d'Android (Android 11+), fichier toujours à [mediaUri].
+ * - [system] = false : corbeille interne, copie du fichier dans [file].
+ * Favoris et playlists sont mémorisés pour être rétablis à la restauration.
+ */
+@Serializable
+data class TrashEntry(
+    val id: String,
+    val system: Boolean,
+    val mediaUri: String? = null,
+    val file: String? = null,
+    val mime: String = "audio/mpeg",
+    val fileName: String,
+    val title: String,
+    val artist: String,
+    val album: String,
+    val durationMs: Long,
+    val originalId: String,
+    val deletedAt: Long,
+    val expiresAt: Long,
+    val favorite: Boolean = false,
+    val playlists: List<String> = emptyList(),
+    val imported: ImportedTrack? = null,
+)
+
 @Serializable
 data class UserData(
     val favorites: List<String> = emptyList(),
     val playlists: List<Playlist> = emptyList(),
     val imported: List<ImportedTrack> = emptyList(),
     val downloads: List<DownloadEntry> = emptyList(),
+    val trash: List<TrashEntry> = emptyList(),
 )
 
 enum class SortOrder(val label: String) {

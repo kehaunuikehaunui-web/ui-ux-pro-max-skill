@@ -16,6 +16,7 @@ import com.khn.mp3.data.ArchiveRepository
 import com.khn.mp3.data.DownloadRepository
 import com.khn.mp3.data.FAVORITES_PLAYLIST_ID
 import com.khn.mp3.data.FreeTrack
+import com.khn.mp3.data.TrashEntry
 import com.khn.mp3.data.JamendoRepository
 import com.khn.mp3.data.isYoutubeUrl
 import kotlinx.coroutines.CancellationException
@@ -39,6 +40,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -110,6 +112,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     init {
+        viewModelScope.launch(Dispatchers.IO) {
+            c.userData.loaded.first { it }
+            c.trash.purgeExpired()
+        }
         viewModelScope.launch {
             library.newTracks.collect { n ->
                 toast(if (n == 1) "1 nouvelle musique dans ta bibliothèque" else "$n nouvelles musiques dans ta bibliothèque")
@@ -214,102 +220,201 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ---------------- Suppression définitive ----------------
+    // ---------------- Corbeille ----------------
 
-    private val _deleteConfirm = MutableStateFlow<List<Track>?>(null)
-    /** Titres en attente de confirmation (« Supprimer définitivement ? »). */
-    val deleteConfirm: StateFlow<List<Track>?> = _deleteConfirm.asStateFlow()
-    fun askDelete(tracks: List<Track>) { if (tracks.isNotEmpty()) _deleteConfirm.value = tracks }
-    fun dismissDelete() { _deleteConfirm.value = null }
+    /** Contenu de la corbeille, le plus récent en premier. */
+    val trash: StateFlow<List<TrashEntry>> = c.userData.data
+        .map { d -> d.trash.sortedByDescending { it.deletedAt } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    private val _deleteApprovals = Channel<IntentSender>(Channel.BUFFERED)
-    /** Demandes d'autorisation système à afficher (Android 10+). */
-    val deleteApprovals = _deleteApprovals.receiveAsFlow()
-    private var pendingBatch: List<Track> = emptyList()
-    private val pendingSingles = ArrayDeque<Pair<Track, IntentSender>>()
-    private var deletedTotal = 0
-    private var failedTotal = 0
+    private val _systemRequests = Channel<IntentSender>(Channel.BUFFERED)
+    /** Fenêtres d'autorisation d'Android à afficher (corbeille, restauration, suppression). */
+    val systemRequests = _systemRequests.receiveAsFlow()
 
-    fun confirmDelete() {
-        val tracks = _deleteConfirm.value ?: return
-        _deleteConfirm.value = null
-        deletedTotal = 0
-        failedTotal = 0
+    private sealed interface Pending {
+        class Trash(val entries: List<TrashEntry>) : Pending
+        class Restore(val entries: List<TrashEntry>) : Pending
+        class DeleteForever(val entries: List<TrashEntry>) : Pending
+        /** Android 10 : une autorisation par fichier, la copie attend dans la corbeille interne. */
+        class Legacy(val queue: ArrayDeque<Triple<Track, IntentSender, TrashEntry>>) : Pending
+    }
+
+    private var pending: Pending? = null
+    private var movedCount = 0
+    private var failedCount = 0
+
+    /** « Supprimer » : met à la corbeille (récupérable 30 jours). */
+    fun moveToTrash(tracks: List<Track>) {
+        if (tracks.isEmpty() || pending != null) return
+        movedCount = 0
+        failedCount = 0
         val deleter = c.deleter
         viewModelScope.launch {
-            if (Build.VERSION.SDK_INT >= 30) {
-                val withUri = withContext(Dispatchers.IO) { tracks.map { it to deleter.mediaStoreUri(it) } }
-                val viaStore = withUri.filter { it.second != null }
-                val viaDocs = withUri.filter { it.second == null }.map { it.first }
-                if (viaDocs.isNotEmpty()) {
-                    val r = withContext(Dispatchers.IO) { deleter.deleteNow(viaDocs) }
-                    onDeleted(r.deleted)
-                    failedTotal += r.failed.size + r.needsApproval.size
-                }
-                if (viaStore.isNotEmpty()) {
-                    pendingBatch = viaStore.map { it.first }
-                    _deleteApprovals.send(deleter.batchRequest(viaStore.mapNotNull { it.second }))
-                    return@launch
-                }
-                finishDelete()
-            } else {
-                val r = withContext(Dispatchers.IO) { deleter.deleteNow(tracks) }
-                onDeleted(r.deleted)
-                failedTotal += r.failed.size
-                pendingSingles.addAll(r.needsApproval)
-                val first = pendingSingles.firstOrNull()
-                if (first != null) _deleteApprovals.send(first.second) else finishDelete()
-            }
-        }
-    }
+            val withUri = if (Build.VERSION.SDK_INT >= 30) {
+                withContext(Dispatchers.IO) { tracks.map { it to deleter.mediaStoreUri(it) } }
+            } else tracks.map { it to null }
+            val viaSystem = withUri.filter { it.second != null }
+            val viaCopy = withUri.filter { it.second == null }.map { it.first }
 
-    /** Réponse à la fenêtre système d'autorisation de suppression. */
-    fun onDeleteApproval(approved: Boolean) {
-        viewModelScope.launch {
-            if (pendingBatch.isNotEmpty()) {
-                val batch = pendingBatch
-                pendingBatch = emptyList()
-                if (approved) onDeleted(batch) // Android a déjà effacé les fichiers
-                finishDelete(cancelled = !approved)
+            // Corbeille interne : copie, puis suppression de l'original.
+            val legacyQueue = ArrayDeque<Triple<Track, IntentSender, TrashEntry>>()
+            for (t in viaCopy) {
+                val staged = c.trash.stageCopy(t)
+                if (staged == null) { failedCount++; continue }
+                val r = withContext(Dispatchers.IO) { deleter.deleteNow(listOf(t)) }
+                when {
+                    r.deleted.isNotEmpty() -> trashedCopy(t, staged)
+                    r.needsApproval.isNotEmpty() -> legacyQueue.addLast(Triple(t, r.needsApproval.first().second, staged))
+                    else -> { c.trash.discard(staged); failedCount++ }
+                }
+            }
+
+            if (viaSystem.isNotEmpty() && Build.VERSION.SDK_INT >= 30) {
+                val entries = viaSystem.map { (t, uri) ->
+                    c.trash.entryFor(t, system = true, mediaUri = uri, file = null, mime = "audio/*", fileName = t.title)
+                }
+                pending = Pending.Trash(entries)
+                _systemRequests.send(deleter.trashRequest(viaSystem.mapNotNull { it.second }, trashed = true))
                 return@launch
             }
-            val current = pendingSingles.removeFirstOrNull() ?: return@launch
-            if (approved) {
-                val r = withContext(Dispatchers.IO) { c.deleter.deleteNow(listOf(current.first)) }
-                onDeleted(r.deleted)
-                failedTotal += r.failed.size + r.needsApproval.size
-                val next = pendingSingles.firstOrNull()
-                if (next != null) {
-                    _deleteApprovals.send(next.second)
-                    return@launch
-                }
-            } else {
-                pendingSingles.clear()
+            if (legacyQueue.isNotEmpty()) {
+                pending = Pending.Legacy(legacyQueue)
+                _systemRequests.send(legacyQueue.first().second)
+                return@launch
             }
-            finishDelete(cancelled = !approved)
+            finishTrash(cancelled = false)
         }
     }
 
-    private fun onDeleted(list: List<Track>) {
-        if (list.isEmpty()) return
-        deletedTotal += list.size
-        val ids = list.mapTo(HashSet()) { it.id }
-        c.userData.forgetTracks(ids)
-        player.removeIds(ids)
+    private fun trashedCopy(t: Track, staged: TrashEntry) {
+        c.trash.commitCopies(listOf(staged))
+        player.removeIds(setOf(t.id))
+        movedCount++
     }
 
-    private fun finishDelete(cancelled: Boolean = false) {
+    private fun finishTrash(cancelled: Boolean) {
         library.refresh()
         toast(
             when {
-                deletedTotal > 0 && failedTotal > 0 -> "$deletedTotal supprimée(s) · $failedTotal impossible(s) à supprimer"
-                deletedTotal == 1 -> "1 musique supprimée du téléphone"
-                deletedTotal > 1 -> "$deletedTotal musiques supprimées du téléphone"
+                movedCount > 0 && failedCount > 0 -> "$movedCount dans la corbeille · $failedCount impossible(s) à supprimer"
+                movedCount == 1 -> "1 musique mise à la corbeille"
+                movedCount > 1 -> "$movedCount musiques mises à la corbeille"
                 cancelled -> "Suppression annulée"
                 else -> "Impossible de supprimer ce fichier"
             },
         )
     }
+
+    /** Réponse aux fenêtres d'autorisation d'Android. */
+    fun onSystemApproval(approved: Boolean) {
+        val p = pending ?: return
+        viewModelScope.launch {
+            when (p) {
+                is Pending.Trash -> {
+                    pending = null
+                    if (approved) {
+                        c.trash.commitSystem(p.entries)
+                        player.removeIds(p.entries.mapTo(HashSet()) { it.originalId })
+                        movedCount += p.entries.size
+                    }
+                    finishTrash(cancelled = !approved)
+                }
+                is Pending.Legacy -> {
+                    val (track, _, staged) = p.queue.removeFirst()
+                    if (approved) {
+                        val r = withContext(Dispatchers.IO) { c.deleter.deleteNow(listOf(track)) }
+                        if (r.deleted.isNotEmpty()) trashedCopy(track, staged)
+                        else { c.trash.discard(staged); failedCount++ }
+                        p.queue.firstOrNull()?.let {
+                            _systemRequests.send(it.second)
+                            return@launch
+                        }
+                    } else {
+                        c.trash.discard(staged)
+                        p.queue.forEach { c.trash.discard(it.third) }
+                        p.queue.clear()
+                    }
+                    pending = null
+                    finishTrash(cancelled = !approved)
+                }
+                is Pending.Restore -> {
+                    pending = null
+                    if (approved) {
+                        c.trash.onSystemRestored(p.entries)
+                        library.refresh()
+                        toast(restoredMessage(p.entries.size))
+                    } else toast("Restauration annulée")
+                }
+                is Pending.DeleteForever -> {
+                    pending = null
+                    if (approved) {
+                        c.trash.onDeletedForever(p.entries)
+                        toast(deletedForeverMessage(p.entries.size))
+                    } else toast("Suppression annulée")
+                }
+            }
+        }
+    }
+
+    /** Restaure des musiques de la corbeille (favoris et playlists compris). */
+    fun restoreFromTrash(entries: List<TrashEntry>) {
+        if (entries.isEmpty() || pending != null) return
+        viewModelScope.launch {
+            val copies = entries.filterNot { it.system }
+            val system = entries.filter { it.system && it.mediaUri != null }
+            if (copies.isNotEmpty()) {
+                val n = c.trash.restoreCopies(copies)
+                library.refresh()
+                toast(if (n == copies.size) restoredMessage(n) else "$n restaurée(s) · ${copies.size - n} impossible(s) à restaurer")
+            }
+            if (system.isNotEmpty() && Build.VERSION.SDK_INT >= 30) {
+                val request = runCatching {
+                    c.deleter.trashRequest(system.map { Uri.parse(it.mediaUri) }, trashed = false)
+                }.getOrNull()
+                if (request == null) {
+                    // Fichiers déjà effacés par Android (délai dépassé) : on retire leurs fiches.
+                    c.trash.onDeletedForever(system)
+                    toast("Ces musiques ont déjà été effacées définitivement par Android")
+                    return@launch
+                }
+                pending = Pending.Restore(system)
+                _systemRequests.send(request)
+            }
+        }
+    }
+
+    private val _foreverConfirm = MutableStateFlow<List<TrashEntry>?>(null)
+    /** Musiques en attente de confirmation de suppression définitive. */
+    val foreverConfirm: StateFlow<List<TrashEntry>?> = _foreverConfirm.asStateFlow()
+    fun askDeleteForever(entries: List<TrashEntry>) { if (entries.isNotEmpty()) _foreverConfirm.value = entries }
+    fun dismissDeleteForever() { _foreverConfirm.value = null }
+
+    fun confirmDeleteForever() {
+        val entries = _foreverConfirm.value ?: return
+        _foreverConfirm.value = null
+        if (pending != null) return
+        viewModelScope.launch {
+            val copies = entries.filterNot { it.system }
+            val system = entries.filter { it.system && it.mediaUri != null }
+            if (copies.isNotEmpty()) {
+                c.trash.onDeletedForever(copies)
+                if (system.isEmpty()) toast(deletedForeverMessage(copies.size))
+            }
+            if (system.isNotEmpty() && Build.VERSION.SDK_INT >= 30) {
+                val request = runCatching { c.deleter.batchRequest(system.map { Uri.parse(it.mediaUri) }) }.getOrNull()
+                if (request == null) {
+                    c.trash.onDeletedForever(system)
+                    toast(deletedForeverMessage(entries.size))
+                    return@launch
+                }
+                pending = Pending.DeleteForever(system)
+                _systemRequests.send(request)
+            }
+        }
+    }
+
+    private fun restoredMessage(n: Int) = if (n == 1) "1 musique restaurée" else "$n musiques restaurées"
+    private fun deletedForeverMessage(n: Int) = if (n == 1) "1 musique supprimée définitivement" else "$n musiques supprimées définitivement"
 
     // ---------------- Favoris & playlists ----------------
 

@@ -10,8 +10,9 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.DeleteForever
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -73,6 +74,7 @@ fun LibraryScreen(
     onAddToPlaylist: (List<String>) -> Unit,
     onRequestPermission: () -> Unit,
     onImportFiles: () -> Unit,
+    onOpenTrash: () -> Unit = {},
 ) {
     val tracks by vm.libraryTracks.collectAsStateWithLifecycle()
     val total by vm.tracks.collectAsStateWithLifecycle()
@@ -82,6 +84,7 @@ fun LibraryScreen(
     val scanning by vm.scanning.collectAsStateWithLifecycle()
     val hasPermission by vm.hasPermission.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
+    val trash by vm.trash.collectAsStateWithLifecycle()
 
     // Sélection multiple (appui long) pour supprimer plusieurs musiques.
     var selected by remember { mutableStateOf(emptySet<String>()) }
@@ -110,6 +113,13 @@ fun LibraryScreen(
                             style = MaterialTheme.typography.displaySmall.merge(TextStyle(brush = KhnColors.Neon)),
                             modifier = Modifier.weight(1f),
                         )
+                        IconButton(onClick = onOpenTrash) {
+                            BadgedBox(badge = {
+                                if (trash.isNotEmpty()) Badge(containerColor = KhnColors.Magenta) { Text("${trash.size}") }
+                            }) {
+                                Icon(Icons.Rounded.Delete, contentDescription = "Corbeille")
+                            }
+                        }
                         SortMenu(settings.sort, vm::setSort)
                         IconButton(onClick = onImportFiles) {
                             Icon(Icons.Rounded.FolderOpen, contentDescription = "Ajouter des fichiers audio")
@@ -217,7 +227,7 @@ fun LibraryScreen(
                                 add(MenuAction("Retirer de la bibliothèque", Icons.Rounded.Delete) { vm.removeImported(track) })
                             }
                             add(MenuAction("Sélectionner", Icons.Rounded.CheckCircle) { toggle(track.id) })
-                            add(MenuAction("Supprimer du téléphone", Icons.Rounded.DeleteForever) { vm.askDelete(listOf(track)) })
+                            add(MenuAction("Mettre à la corbeille", Icons.Rounded.Delete) { vm.moveToTrash(listOf(track)) })
                         },
                         modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null),
                     )
@@ -238,7 +248,7 @@ fun LibraryScreen(
             onClose = { selected = emptySet() },
             onSelectAll = { selected = if (selected.size == tracks.size) emptySet() else tracks.mapTo(HashSet()) { it.id } },
             onDelete = {
-                vm.askDelete(tracks.filter { it.id in selected })
+                vm.moveToTrash(tracks.filter { it.id in selected })
                 selected = emptySet()
             },
         )
@@ -266,7 +276,7 @@ private fun SelectionBar(count: Int, total: Int, onClose: () -> Unit, onSelectAl
             Text(if (count == total) "Aucune" else "Tout", color = KhnColors.Violet)
         }
         IconButton(onClick = onDelete) {
-            Icon(Icons.Rounded.DeleteForever, contentDescription = "Supprimer du téléphone", tint = KhnColors.Error)
+            Icon(Icons.Rounded.Delete, contentDescription = "Mettre à la corbeille", tint = KhnColors.Error)
         }
     }
 }

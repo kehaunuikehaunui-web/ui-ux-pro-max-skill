@@ -71,6 +71,7 @@ import com.khn.mp3.ui.screens.PlaylistsScreen
 import com.khn.mp3.ui.screens.SearchScreen
 import com.khn.mp3.ui.screens.SettingsScreen
 import com.khn.mp3.ui.screens.SoundScreen
+import com.khn.mp3.ui.screens.TrashScreen
 import com.khn.mp3.ui.theme.KhnColors
 import kotlinx.coroutines.flow.Flow
 import java.io.File
@@ -122,14 +123,14 @@ fun KhnAppRoot(openPlayerEvents: Flow<Unit>, vm: MainViewModel = viewModel()) {
 
     // Suppression définitive : fenêtre d'autorisation d'Android (10+).
     val deleteLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
-        vm.onDeleteApproval(it.resultCode == Activity.RESULT_OK)
+        vm.onSystemApproval(it.resultCode == Activity.RESULT_OK)
     }
     LaunchedEffect(Unit) {
-        vm.deleteApprovals.collect { sender ->
+        vm.systemRequests.collect { sender ->
             deleteLauncher.launch(IntentSenderRequest.Builder(sender).build())
         }
     }
-    val deleteConfirm by vm.deleteConfirm.collectAsStateWithLifecycle()
+    val foreverConfirm by vm.foreverConfirm.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) {
         vm.navigation.collect { route ->
             nowPlayingOpen = false
@@ -225,8 +226,13 @@ fun KhnAppRoot(openPlayerEvents: Flow<Unit>, vm: MainViewModel = viewModel()) {
         )
     }
 
-    deleteConfirm?.let { tracks ->
-        DeleteConfirmDialog(tracks, onConfirm = vm::confirmDelete, onDismiss = vm::dismissDelete)
+    foreverConfirm?.let { entries ->
+        DeleteConfirmDialog(
+            count = entries.size,
+            singleTitle = entries.singleOrNull()?.title,
+            onConfirm = vm::confirmDeleteForever,
+            onDismiss = vm::dismissDeleteForever,
+        )
     }
 
     addToPlaylistIds?.let { ids ->
@@ -257,7 +263,7 @@ private fun AppNavHost(
         popExitTransition = { fadeOut(tween(110)) },
     ) {
         composable(Tab.LIBRARY.route) {
-            LibraryScreen(vm, padding, onAddToPlaylist, onRequestPermission, onImportFiles)
+            LibraryScreen(vm, padding, onAddToPlaylist, onRequestPermission, onImportFiles, onOpenTrash = { nav.navigate("trash") })
         }
         composable(Tab.SEARCH.route) {
             SearchScreen(vm, padding, onAddToPlaylist, onOpenPlaylist = { nav.navigate("playlist/$it") })
@@ -276,9 +282,10 @@ private fun AppNavHost(
         }
         composable(Tab.DOWNLOADS.route) { DownloadScreen(vm, padding) }
         composable(Tab.SETTINGS.route) {
-            SettingsScreen(vm, padding, onOpenSound = { nav.navigate("sound") }, onImportFiles = onImportFiles)
+            SettingsScreen(vm, padding, onOpenSound = { nav.navigate("sound") }, onImportFiles = onImportFiles, onOpenTrash = { nav.navigate("trash") })
         }
         composable("sound") { SoundScreen(vm, padding, onBack = { nav.popBackStack() }) }
+        composable("trash") { TrashScreen(vm, padding, onBack = { nav.popBackStack() }) }
     }
 }
 
@@ -290,6 +297,7 @@ private fun BottomBar(nav: NavHostController) {
         route == null -> Tab.LIBRARY
         route.startsWith("playlist") -> Tab.PLAYLISTS
         route == "sound" -> Tab.SETTINGS
+        route == "trash" -> Tab.LIBRARY
         else -> Tab.entries.firstOrNull { it.route == route } ?: Tab.LIBRARY
     }
     NavigationBar(containerColor = KhnColors.Background.copy(alpha = 0.94f), tonalElevation = 0.dp) {
