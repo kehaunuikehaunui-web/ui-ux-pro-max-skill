@@ -1,0 +1,887 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Bureau KHN</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout : écran de jeu (bureau pixel + graphique) en haut, console de commandes et onglets de pilotage dessous.
+   Thème unique sombre "bureau de nuit" assumé. */
+:root{
+  color-scheme: dark;
+  --bg:#0a1020; --panel:#111a2e; --panel2:#0d1527; --line:#223150; --line2:#2e4166;
+  --fg:#e7eef9; --muted:#97a8c7; --dim:#62759a;
+  --lagoon:#3fe0c5; --gold:#f5c862; --up:#3ddc97; --down:#ff6b6b; --warn:#ffb547; --info:#8ab4ff;
+  --f-pixel:"Pixelify Sans","Courier New",monospace;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+html,body{background:var(--bg);color:var(--fg)}
+body{font:15px/1.5 var(--f-body)}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+button,input,textarea,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--lagoon);outline-offset:2px}
+.app{max-width:1480px;margin:0 auto;padding-block:14px 28px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:14px}
+
+/* En-tête */
+.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 20px}
+.brand{display:flex;align-items:center;gap:14px;min-width:0}
+.logo{font:700 38px/1 var(--f-pixel);color:var(--gold);letter-spacing:3px;text-shadow:3px 3px 0 #6b4c10}
+.brand-sub{display:grid;gap:4px}
+.brand-sub b{font:500 15px/1.2 var(--f-pixel);letter-spacing:.04em}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:600 10.5px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;padding:5px 7px;border:1px solid var(--line2);border-radius:3px;color:var(--muted);white-space:nowrap}
+.chip.demo{background:var(--gold);border-color:var(--gold);color:#1c1404}
+.chip.ok{color:var(--lagoon);border-color:#22585a}
+.chip.warn{color:var(--warn);border-color:#6a4c1c}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:5px;overflow:hidden}
+.seg button{background:transparent;border:0;padding:7px 11px;font:600 12px var(--f-mono);color:var(--muted);cursor:pointer}
+.seg button+button{border-left:1px solid var(--line2)}
+.seg button[aria-pressed="true"]{background:#1d2b48;color:var(--fg)}
+.btn{background:#18233b;border:1px solid var(--line2);border-radius:5px;padding:7px 12px;font:600 13px var(--f-body);cursor:pointer;color:var(--fg)}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--lagoon);border-color:var(--lagoon);color:#06231f}
+.btn.kill{background:#4a1018;border:2px solid var(--down);color:#ffd6d6;font:700 13px var(--f-pixel);letter-spacing:.06em;box-shadow:0 3px 0 #2a070c}
+.btn.kill[aria-pressed="true"]{background:var(--down);color:#2a070c}
+.btn.small{padding:4px 9px;font-size:12px}
+.clock{font:600 12px var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* KPI */
+.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px 12px;min-width:0}
+.kpi .lab{font:600 10.5px var(--f-mono);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.kpi .val{font:600 20px/1.3 var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi .sub{font:12px var(--f-mono);color:var(--dim);font-variant-numeric:tabular-nums}
+.pos{color:var(--up)} .neg{color:var(--down)}
+.bar{height:5px;background:#1a2540;border-radius:3px;margin-top:6px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--warn);width:0}
+
+/* Scène */
+.stage{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;min-width:0;display:flex;flex-direction:column}
+.card-h{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.card-h h2{margin:0;font:500 16px/1.2 var(--f-pixel);letter-spacing:.05em}
+.hint{font-size:12.5px;color:var(--dim)}
+.world-wrap{position:relative;padding:12px}
+.bezel{background:#05080f;border:3px solid #1b2742;border-radius:6px;padding:6px;box-shadow:inset 0 0 0 2px #0f1830}
+#world{display:block;width:100%;height:auto;aspect-ratio:320/192;image-rendering:pixelated;image-rendering:crisp-edges;cursor:default;border-radius:2px;background:#000}
+.legend-row{display:flex;flex-wrap:wrap;gap:6px 14px;padding:0 14px 12px;font-size:12.5px;color:var(--muted)}
+.legend-row span{display:inline-flex;align-items:center;gap:6px}
+.dot{width:9px;height:9px;border-radius:2px;display:inline-block}
+.robot-card{position:absolute;z-index:3;width:240px;background:#0c1426;border:1px solid var(--line2);border-radius:6px;padding:10px 12px;box-shadow:0 10px 30px rgba(0,0,0,.5);font-size:13px}
+.robot-card h3{margin:0 0 4px;font:500 15px var(--f-pixel);letter-spacing:.05em}
+.robot-card dl{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:6px 0 0}
+.robot-card dt{color:var(--dim)} .robot-card dd{margin:0}
+
+.chart-tabs{display:flex;gap:6px;flex-wrap:wrap}
+.mkt{background:transparent;border:1px solid var(--line2);border-radius:5px;padding:5px 9px;cursor:pointer;display:grid;text-align:left;gap:1px;min-width:92px}
+.mkt b{font:600 12px var(--f-mono)} .mkt span{font:12px var(--f-mono);font-variant-numeric:tabular-nums;color:var(--muted)}
+.mkt[aria-pressed="true"]{border-color:var(--gold);background:#1a2233}
+.chart-box{position:relative;padding:8px 10px 0;flex:1;display:flex;flex-direction:column;gap:6px;min-height:0}
+.chart-fill{position:relative;flex:1;min-height:270px}
+#chart{position:absolute;inset:0;width:100%;height:100%;display:block}
+.chart-meta{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 14px;font:12px var(--f-mono);color:var(--muted);padding:0 4px}
+.chart-meta .lg{display:inline-flex;align-items:center;gap:6px}
+.chart-meta .ln{width:14px;height:2px;display:inline-block}
+.eq-box{padding:6px 14px 12px}
+.eq-head{display:flex;justify-content:space-between;font:12px var(--f-mono);color:var(--muted)}
+#eq{width:100%;height:64px;display:block}
+
+/* Bas */
+.lower{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:14px;align-items:start}
+.log{list-style:none;margin:0;padding:6px 0;height:360px;overflow-y:auto;font:12.5px/1.45 var(--f-mono)}
+.log li{display:grid;grid-template-columns:62px 14px minmax(0,1fr);gap:6px;padding:3px 12px}
+.log li:nth-child(odd){background:#0f182b}
+.log time{color:var(--dim);font-variant-numeric:tabular-nums}
+.log .ic{text-align:center}
+.log .who{font:500 12.5px var(--f-pixel);letter-spacing:.04em;margin-right:6px}
+.cmd{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line)}
+.cmd label{font:600 13px var(--f-mono);color:var(--gold);align-self:center}
+.cmd input{flex:1;min-width:0;background:var(--panel2);border:1px solid var(--line2);border-radius:5px;padding:8px 10px;font:13px var(--f-mono)}
+.cmd-chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 12px}
+.cmd-chips button{background:transparent;border:1px dashed var(--line2);border-radius:4px;padding:3px 8px;font:12px var(--f-mono);color:var(--muted);cursor:pointer}
+.cmd-chips button:hover{color:var(--fg);border-color:var(--muted)}
+
+.tabs{display:flex;flex-wrap:wrap;gap:2px;padding:6px 8px 0;border-bottom:1px solid var(--line)}
+.tabs [role=tab]{background:transparent;border:0;border-bottom:2px solid transparent;padding:8px 10px;font:500 14px var(--f-pixel);letter-spacing:.04em;color:var(--muted);cursor:pointer}
+.tabs [role=tab][aria-selected="true"]{color:var(--fg);border-bottom-color:var(--gold)}
+.panel{padding:14px;display:grid;gap:14px;min-width:0}
+.panel h3{margin:0;font:500 15px var(--f-pixel);letter-spacing:.04em}
+.panel p{margin:0}
+.muted{color:var(--muted)} .small{font-size:12.5px}
+.form-grid{display:grid;gap:8px}
+.form-grid label{font-size:13px;color:var(--muted)}
+.field{width:100%;background:var(--panel2);border:1px solid var(--line2);border-radius:5px;padding:8px 10px;font:13px var(--f-mono)}
+textarea.field{min-height:84px;resize:vertical;font-family:var(--f-body)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.strat-list{display:grid;gap:10px}
+.strat{border:1px solid var(--line);border-radius:6px;padding:10px 12px;display:grid;gap:6px;background:var(--panel2)}
+.strat-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap}
+.strat-top b{font:500 14.5px var(--f-pixel);letter-spacing:.03em}
+.pill{font:600 10.5px/1 var(--f-mono);letter-spacing:.07em;text-transform:uppercase;padding:4px 6px;border-radius:3px;border:1px solid}
+.pill.active{color:var(--up);border-color:#1f6b4c}
+.pill.test,.pill.analyse{color:var(--info);border-color:#2f4f86}
+.pill.suspendue{color:var(--warn);border-color:#6a4c1c}
+.pill.rejetee,.pill.off{color:var(--dim);border-color:var(--line2)}
+.rules{font-size:13px;color:var(--muted)}
+.rules code{font:12px var(--f-mono);color:var(--fg)}
+.stats{display:flex;flex-wrap:wrap;gap:4px 16px;font:12px var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.tags{display:flex;flex-wrap:wrap;gap:5px}
+.tag{font:11.5px var(--f-mono);padding:2px 6px;border-radius:3px;background:#1d2a44;color:#cbd7ec}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font:12.5px var(--f-mono);font-variant-numeric:tabular-nums}
+th{text-align:left;font-weight:600;color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:6px 8px;border-bottom:1px solid var(--line)}
+td{padding:6px 8px;border-bottom:1px solid #18233a;vertical-align:top}
+td.diag{font-family:var(--f-body);font-size:12.5px;color:var(--muted);min-width:180px}
+.lessons{margin:0;padding-left:18px;display:grid;gap:4px;font-size:13px}
+.team{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.mate{display:grid;grid-template-columns:52px minmax(0,1fr);gap:10px;border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:var(--panel2);align-items:center}
+.mate canvas{width:52px;height:60px;image-rendering:pixelated}
+.mate b{font:500 14px var(--f-pixel);letter-spacing:.05em}
+.mate .st{font:12px var(--f-mono);color:var(--muted)}
+.queue{display:flex;flex-wrap:wrap;gap:6px}
+.risk-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.risk-grid .ctl{display:grid;gap:4px}
+.risk-grid output{font:600 13px var(--f-mono);color:var(--fg)}
+input[type=range]{width:100%;accent-color:var(--gold)}
+.note{border:1px solid var(--line2);border-radius:6px;padding:10px 12px;font-size:13.5px;background:#0e1830}
+.note.warn{border-color:#6a4c1c;background:#1d170b}
+.note.bad{border-color:#6b2730;background:#1e0f14}
+.calc{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.calc .out{font:600 18px var(--f-mono);font-variant-numeric:tabular-nums}
+.foot{font-size:12.5px;color:var(--dim);text-align:center;padding-top:4px}
+a{color:var(--info)}
+
+@media (max-width:1100px){.stage,.lower{grid-template-columns:minmax(0,1fr)}.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:560px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.logo{font-size:30px}.log{height:300px}.chart-fill{min-height:230px}.kpi .val{font-size:17px}}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<style>
+.chip.live{color:var(--up);border-color:#1f6b4c}
+.chip.bad{color:var(--down);border-color:#6b2730}
+.top a.logout{font-size:12.5px;color:var(--muted)}
+.offline{position:absolute;inset:12px;display:grid;place-items:center;background:rgba(5,8,15,.72);border-radius:6px;font:500 15px var(--f-pixel);letter-spacing:.05em;text-align:center;padding:16px}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="logo" aria-label="KHN">KHN</div>
+      <div class="brand-sub">
+        <b>Bureau de trading autonome</b>
+        <div class="chips">
+          <span class="chip demo">Démo</span>
+          <span class="chip" id="chipMode">Mode…</span>
+          <span class="chip" id="chipConn">Connexion…</span>
+          <span class="chip" id="chipAI">IA…</span>
+        </div>
+      </div>
+    </div>
+    <div class="controls">
+      <span class="clock" id="clock">—</span>
+      <button type="button" class="btn kill" id="killBtn" aria-pressed="false">ARRÊT D'URGENCE</button>
+      <a class="logout" href="/logout">Se déconnecter</a>
+    </div>
+  </header>
+
+  <section class="kpis" aria-label="Compte démo">
+    <div class="kpi"><div class="lab">Capital démo</div><div class="val" id="kEq">—</div><div class="sub" id="kEqE">—</div></div>
+    <div class="kpi"><div class="lab">Résultat du jour</div><div class="val" id="kDay">—</div><div class="sub" id="kDayS">—</div></div>
+    <div class="kpi"><div class="lab">Résultat total</div><div class="val" id="kTot">—</div><div class="sub" id="kTotS">—</div></div>
+    <div class="kpi"><div class="lab">Trades gagnants</div><div class="val" id="kWin">—</div><div class="sub" id="kWinS">—</div></div>
+    <div class="kpi"><div class="lab">Baisse max (drawdown)</div><div class="val" id="kDD">—</div><div class="bar"><i id="kDDbar"></i></div></div>
+    <div class="kpi"><div class="lab">Positions ouvertes</div><div class="val" id="kPos">—</div><div class="sub" id="kPosS">—</div></div>
+  </section>
+
+  <section class="stage">
+    <div class="card">
+      <div class="card-h"><h2>Le bureau</h2><span class="hint">Chaque robot exécute une vraie tâche du serveur. Clique-le pour la voir.</span></div>
+      <div class="world-wrap" id="worldWrap">
+        <div class="bezel"><canvas id="world" width="320" height="192" role="img" aria-label="Bureau en pixel art : les robots de KHN surveillent les marchés, passent les ordres et analysent leurs erreurs. Le détail de chaque robot est dans l'onglet Équipe."></canvas></div>
+        <div class="robot-card" id="robotCard" hidden></div>
+        <div class="offline" id="offline">Connexion au serveur de KHN…</div>
+      </div>
+      <div class="legend-row">
+        <span><i class="dot" style="background:#f5c862"></i>Bureau de KHN</span>
+        <span><i class="dot" style="background:#3fe0c5"></i>Surveillance</span>
+        <span><i class="dot" style="background:#8ab4ff"></i>Exécution</span>
+        <span><i class="dot" style="background:#ff8a5c"></i>Risque</span>
+        <span><i class="dot" style="background:#b48cff"></i>Analyse et serveurs</span>
+        <span><i class="dot" style="background:#ff8fab"></i>Coin vidéo</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h2>Graphique</h2><div class="chart-tabs" id="mktTabs" role="group" aria-label="Marché affiché"></div></div>
+      <div class="chart-box">
+        <div class="chart-meta">
+          <span id="regime">Régime : —</span>
+          <span><span class="lg"><i class="ln" style="background:#8ab4ff"></i>EMA 21</span> &nbsp; <span class="lg"><i class="ln" style="background:#f5c862"></i>EMA 50</span> &nbsp; <span class="lg">▲▼ trades</span></span>
+        </div>
+        <div class="chart-fill"><canvas id="chart" role="img" aria-label="Graphique en chandeliers 5 minutes avec moyennes mobiles, positions et trades de KHN"></canvas></div>
+      </div>
+      <div class="eq-box"><div class="eq-head"><span>Évolution du capital démo</span><span id="eqLab">—</span></div><canvas id="eq" role="img" aria-label="Courbe du capital démo"></canvas></div>
+    </div>
+  </section>
+
+  <section class="lower">
+    <div class="card">
+      <div class="card-h"><h2>Console de KHN</h2><span class="hint">Tape « aide » pour la liste des commandes</span></div>
+      <ol class="log" id="log" aria-live="polite" aria-label="Journal d'activité des robots"></ol>
+      <form class="cmd" id="cmdForm" autocomplete="off">
+        <label for="cmdIn">khn&gt;</label>
+        <input id="cmdIn" placeholder="ex. statut · risque 0.5 · apprendre https://youtu.be/… · pourquoi as-tu perdu ?" aria-label="Commande pour KHN">
+        <button class="btn primary" type="submit">Envoyer</button>
+      </form>
+      <div class="cmd-chips" id="cmdChips"><button type="button">statut</button><button type="button">rapport</button><button type="button">pause</button><button type="button">reprendre</button><button type="button">risque 0.5</button><button type="button">aide</button></div>
+    </div>
+    <div class="card">
+      <div class="tabs" role="tablist" aria-label="Pilotage">
+        <button role="tab" id="t-strat" aria-controls="p-strat" aria-selected="true">Stratégies</button>
+        <button role="tab" id="t-pos" aria-controls="p-pos" aria-selected="false" tabindex="-1">Positions &amp; journal</button>
+        <button role="tab" id="t-risk" aria-controls="p-risk" aria-selected="false" tabindex="-1">Risque</button>
+        <button role="tab" id="t-team" aria-controls="p-team" aria-selected="false" tabindex="-1">Équipe</button>
+        <button role="tab" id="t-broker" aria-controls="p-broker" aria-selected="false" tabindex="-1">Broker</button>
+      </div>
+      <div class="panel" role="tabpanel" id="p-strat" aria-labelledby="t-strat">
+        <form class="form-grid" id="learnForm">
+          <h3>Apprendre une stratégie</h3>
+          <label for="learnUrl">Lien de la vidéo (YouTube ou autre)</label>
+          <input class="field" id="learnUrl" type="url" placeholder="https://www.youtube.com/watch?v=…" required>
+          <label for="learnNotes">Transcription ou règles (facultatif pour YouTube)</label>
+          <textarea class="field" id="learnNotes" placeholder="Laisse vide : KHN récupère la transcription YouTube lui-même. Si YouTube bloque le serveur, colle-la ici (bouton « … » sous la vidéo → « Afficher la transcription »)."></textarea>
+          <div class="row"><button class="btn primary" type="submit">Envoyer à KHN</button><span class="small muted" id="learnInfo">KHN extrait des règles chiffrées, les teste sur l'historique réel, puis en démo.</span></div>
+        </form>
+        <div class="strat-list" id="stratList"></div>
+      </div>
+      <div class="panel" role="tabpanel" id="p-pos" aria-labelledby="t-pos" hidden>
+        <h3>Positions ouvertes</h3><div class="tbl-wrap" id="posTable"></div>
+        <h3>Leçons apprises</h3><ol class="lessons" id="lessons"></ol>
+        <h3>Journal des trades</h3><div class="tbl-wrap" id="journal"></div>
+      </div>
+      <div class="panel" role="tabpanel" id="p-risk" aria-labelledby="t-risk" hidden>
+        <div class="note" id="riskNote">—</div>
+        <div class="risk-grid">
+          <div class="ctl"><label for="rTrade">Risque par trade</label><input id="rTrade" type="range" min="0.25" max="2" step="0.25" value="1"><output id="oTrade">—</output></div>
+          <div class="ctl"><label for="rDaily">Perte max par jour</label><input id="rDaily" type="range" min="1" max="10" step="0.5" value="3"><output id="oDaily">—</output></div>
+          <div class="ctl"><label for="rDD">Baisse max avant blocage</label><input id="rDD" type="range" min="5" max="30" step="1" value="10"><output id="oDD">—</output></div>
+          <div class="ctl"><label for="rPos">Positions simultanées max</label><input id="rPos" type="range" min="1" max="3" step="1" value="2"><output id="oPos">—</output></div>
+          <div class="ctl"><label for="rLev">Levier (papier seulement)</label><input id="rLev" type="range" min="1" max="3" step="1" value="1"><output id="oLev">—</output></div>
+          <div class="ctl"><label for="rShort">Sens</label><select class="field" id="rShort"><option value="1">Achat et vente à découvert</option><option value="0">Achat seulement</option></select></div>
+        </div>
+        <h3>Réinitialiser la démo</h3>
+        <div class="row">
+          <label for="resetCap" class="small muted">Capital de départ (XPF)</label>
+          <input class="field" id="resetCap" type="number" min="1000" step="1000" value="1000" style="max-width:160px">
+          <button class="btn" type="button" id="resetBtn">Réinitialiser</button>
+          <span class="small muted" id="resetInfo">Remet le compte à zéro. Les stratégies et les leçons sont conservées.</span>
+        </div>
+      </div>
+      <div class="panel" role="tabpanel" id="p-team" aria-labelledby="t-team" hidden>
+        <p class="small muted">KHN travaille seul au départ. Quand des tâches attendent ou sont ratées, il fait monter un robot spécialisé par l'ascenseur.</p>
+        <div class="team" id="team"></div>
+        <h3>File d'attente</h3><div class="queue" id="queue"></div>
+        <div class="row" id="recruitRow"></div>
+      </div>
+      <div class="panel" role="tabpanel" id="p-broker" aria-labelledby="t-broker" hidden>
+        <div class="note" id="brokerNote">—</div>
+        <h3>Recommandation</h3>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Plateforme</th><th>Démo / API</th><th>Régulation</th><th>Depuis la Polynésie</th><th>Verdict</th></tr></thead>
+          <tbody>
+            <tr><td>Binance</td><td>Spot Testnet gratuit, sans dépôt</td><td>Sans licence MiCA ; inscriptions UE suspendues depuis juillet 2026 (presse)</td><td>Statut incertain</td><td class="pos">Démo (phase 2)</td></tr>
+            <tr><td>Kraken</td><td>API + futures démo</td><td>Licence MiCA (Banque centrale d'Irlande, 25/06/2025)</td><td>Virement SWIFT en EUR, 15–50 €, 2–5 jours</td><td class="pos">Réel, plus tard</td></tr>
+            <tr><td>Coinbase</td><td>API</td><td>Licence MiCA (CSSF Luxembourg, 20/06/2025)</td><td>Frais de trading élevés</td><td class="muted">Alternative</td></tr>
+            <tr><td>Bitget</td><td>Démo intégrée</td><td>Absent du registre CASP de l'ESMA</td><td>—</td><td class="neg">À éviter</td></tr>
+          </tbody></table></div>
+        <h3>Objectif de revenu : le calcul</h3>
+        <div class="calc">
+          <div class="ctl"><label for="cCap" class="small muted">Capital (XPF)</label><input class="field" id="cCap" type="number" min="0" step="1000" value="1000"></div>
+          <div class="ctl"><label for="cRet" class="small muted">Rendement mensuel visé : <output id="oRet">3 %</output></label><input id="cRet" type="range" min="1" max="10" step="0.5" value="3"></div>
+          <div><div class="small muted">Gain mensuel estimé</div><div class="out" id="cGain">—</div></div>
+          <div><div class="small muted">Capital nécessaire pour 300 € / 500 € par mois</div><div class="out" id="cNeed">—</div></div>
+        </div>
+        <p class="small muted">Repère : 2 à 5 % par mois est déjà un très bon résultat, rarement tenu dans la durée.</p>
+      </div>
+    </div>
+  </section>
+  <p class="foot" id="foot">Phase 2 · démo : aucun ordre en argent réel. Le trading comporte un risque de perte en capital.</p>
+</div>
+
+<script>
+(() => {
+'use strict';
+/* ===== Utilitaires ===== */
+const XPF_PER_EUR = 119.33, W = 320, H = 192, T = 16;
+const $ = (s, r = document) => r.querySelector(s);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const rnd = Math.random;
+const nf0 = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
+const nf1 = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const nf2 = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const nf3 = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+const sg = v => v > 0 ? '+' : v < 0 ? '−' : '';
+let RATE = 110;  // XPF par USDT, fourni par le serveur
+const toX = u => u * RATE;
+const fx = u => nf0.format(Math.round(toX(u))) + ' XPF';
+const fxs = u => { const v = Math.round(toX(u)); return sg(v) + nf0.format(Math.abs(v)) + ' XPF'; };
+const fe = u => nf2.format(toX(u) / XPF_PER_EUR) + ' €';
+const fR = r => sg(r) + nf2.format(Math.abs(r || 0)) + ' R';
+const fP = p => p >= 1000 ? nf0.format(p) : p >= 10 ? nf2.format(p) : nf3.format(p);
+const pct = v => sg(v) + nf1.format(Math.abs(v)) + ' %';
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function shade(hex, a) { const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = (n >> 8) & 255, b = n & 255; const f = v => Math.round(a < 0 ? v * (1 + a) : v + (255 - v) * a); return '#' + [f(r), f(g), f(b)].map(v => clamp(v, 0, 255).toString(16).padStart(2, '0')).join(''); }
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const thm = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Pacific/Tahiti', hour: '2-digit', minute: '2-digit', hour12: false });
+const hm = ms => thm.format(new Date(ms));
+
+/* ================= Police pixel (style Minecraft, 5×7 proportionnelle) ================= */
+const GLYPHS = {A:[14,17,17,31,17,17,17],B:[30,17,17,30,17,17,30],C:[14,17,16,16,16,17,14],D:[30,17,17,17,17,17,30],E:[31,16,16,30,16,16,31],F:[31,16,16,30,16,16,16],G:[14,17,16,23,17,17,15],H:[17,17,17,31,17,17,17],I:[7,2,2,2,2,2,7],J:[7,2,2,2,2,18,12],K:[17,18,20,24,20,18,17],L:[16,16,16,16,16,16,31],M:[17,27,21,21,17,17,17],N:[17,17,25,21,19,17,17],O:[14,17,17,17,17,17,14],P:[30,17,17,30,16,16,16],Q:[14,17,17,17,21,18,13],R:[30,17,17,30,20,18,17],S:[15,16,16,14,1,1,30],T:[31,4,4,4,4,4,4],U:[17,17,17,17,17,17,14],V:[17,17,17,17,17,10,4],W:[17,17,17,21,21,21,10],X:[17,17,10,4,10,17,17],Y:[17,17,17,10,4,4,4],Z:[31,1,2,4,8,16,31],'0':[14,17,19,21,25,17,14],'1':[4,12,4,4,4,4,14],'2':[14,17,1,2,4,8,31],'3':[31,2,4,2,1,17,14],'4':[2,6,10,18,31,2,2],'5':[31,16,30,1,1,17,14],'6':[6,8,16,30,17,17,14],'7':[31,1,2,4,8,8,8],'8':[14,17,17,14,17,17,14],'9':[14,17,17,15,1,2,12],' ':[0,0,0,0,0,0,0],'-':[0,0,0,14,0,0,0],'.':[0,0,0,0,0,0,16],',':[0,0,0,0,0,16,16],'!':[16,16,16,16,16,0,16],'?':[14,17,1,2,4,0,4],':':[0,16,0,0,0,16,0],'/':[1,1,2,4,8,16,16],'%':[24,25,2,4,8,19,3],'+':[0,4,4,31,4,4,0],'$':[4,15,20,14,5,30,4],'>':[8,4,2,1,2,4,8],'<':[2,4,8,16,8,4,2],'#':[10,10,31,10,31,10,10],'(':[2,4,4,4,4,4,2],')':[8,4,4,4,4,4,8],"'":[16,16,0,0,0,0,0],'=':[0,0,31,0,31,0,0],'*':[0,21,14,31,14,21,0]};
+const G = {};
+for (const ch in GLYPHS) { const rows = GLYPHS[ch]; let or = 0; rows.forEach(r => or |= r); let mn = 5, mx = -1; for (let c = 0; c < 5; c++) if (or & (16 >> c)) { mn = Math.min(mn, c); mx = Math.max(mx, c); } if (mx < 0) { mn = 0; mx = 2; } G[ch] = { rows, mn, w: mx - mn + 1 }; }
+const norm = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[€]/g, 'E').replace(/[×]/g, 'X');
+function textW(s) { let w = 0; for (const ch of norm(s)) w += (G[ch] || G['?']).w + 1; return Math.max(0, w - 1); }
+function ptext(g, s, x, y, col) { g.fillStyle = col; let cx = x; for (const ch of norm(s)) { const gl = G[ch] || G['?']; for (let r = 0; r < 7; r++) { const row = gl.rows[r]; if (!row) continue; for (let c = 0; c < gl.w; c++) if (row & (16 >> (c + gl.mn))) g.fillRect(cx + c, y + r, 1, 1); } cx += gl.w + 1; } }
+
+
+/* ===== État local, alimenté par le serveur ===== */
+let SNAP = null;
+const S = { focus: 'BTC', eqHist: [], positions: [], risk: { maxDD: 10 }, killed: false, ddHalt: false, dayHalt: '', acct: { day: '', start: 0 }, riskMult: 1, lessons: [], journal: [], frozen: false };
+const M = {};
+const equity = () => SNAP ? SNAP.acct.equity : 0;
+const dd = () => SNAP ? SNAP.acct.dd : 0;
+const unreal = p => p.unreal || 0;
+const TASK = { scan: { station: 'scan', label: 'SCAN' }, order: { station: 'exec', label: 'ORDRE' }, post: { station: 'board', label: 'ANALYSE' }, corr: { station: 'rack', label: 'CORRECTION' }, bt: { station: 'rack', label: 'BACKTEST' }, video: { station: 'tv', label: 'VIDEO' }, audit: { station: 'risk', label: 'RISQUE' } };
+const TASK_FR = { scan: 'surveillance', order: 'ordre', post: 'analyse de trade', corr: 'auto-correction', bt: 'backtest', video: 'étude vidéo', audit: 'contrôle du risque' };
+const ROLES = {
+  KHN: { color: '#f5c862', eye: '#3fe0c5', role: 'Chef trader', spec: [], desc: 'Supervise tout, surveille et exécute quand il est seul.' },
+  SCOUT: { color: '#3fe0c5', eye: '#f5f7ff', role: 'Surveillance des marchés', spec: ['scan'], desc: 'Scanne chaque marché à la clôture de chaque bougie de 5 min.' },
+  EXEC: { color: '#8ab4ff', eye: '#f5f7ff', role: 'Exécution des ordres', spec: ['order'], desc: 'Passe les ordres avec stop et objectif.' },
+  QUANT: { color: '#b48cff', eye: '#f5f7ff', role: 'Analyse et auto-correction', spec: ['post', 'corr', 'bt'], desc: 'Trouve les erreurs et teste les corrections.' },
+  LEARN: { color: '#ff8fab', eye: '#f5f7ff', role: 'Étude des stratégies', spec: ['video'], desc: 'Récupère la transcription et la transforme en règles testables.' },
+  RISK: { color: '#ff8a5c', eye: '#f5f7ff', role: 'Contrôle du risque', spec: ['audit'], desc: 'Surveille l\'exposition et la baisse du capital.' },
+};
+
+/* ================= Monde pixel : carte & stations ================= */
+const BLOCK = new Set();
+const blk = (x0, x1, y0, y1) => { for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) BLOCK.add(x + ',' + y); };
+blk(1, 3, 4, 4); blk(4, 6, 4, 4); blk(8, 11, 4, 4); blk(13, 15, 4, 4); blk(13, 15, 8, 8); blk(19, 19, 2, 6); blk(1, 3, 8, 8); blk(7, 8, 8, 9); blk(11, 11, 11, 11);
+[[0, 2], [16, 2], [19, 11], [0, 11]].forEach(([x, y]) => BLOCK.add(x + ',' + y));
+const walk = (x, y) => x >= 0 && x < 20 && y >= 2 && y < 12 && !BLOCK.has(x + ',' + y);
+const SP = (tx, ty, face, ox = 0) => ({ tx, ty, face, ox });
+const SPOTS = {
+  khn: [SP(9, 5, 'up', 8)], scan: [SP(2, 5, 'up'), SP(5, 5, 'up')], exec: [SP(14, 5, 'up')], risk: [SP(14, 9, 'up')],
+  board: [SP(6, 2, 'up'), SP(8, 2, 'up')], rack: [SP(18, 4, 'right'), SP(18, 6, 'right')], tv: [SP(1, 10, 'up'), SP(3, 10, 'up')],
+  dock: [SP(15, 11, 'down'), SP(16, 11, 'down'), SP(17, 11, 'down')], coffee: [SP(10, 11, 'right')],
+  table: [SP(6, 8, 'right'), SP(9, 9, 'left'), SP(6, 9, 'right'), SP(9, 8, 'left')],
+};
+const spotPx = s => ({ x: s.tx * T + 8 + (s.ox || 0), y: s.ty * T + 14 });
+function bfs(sx, sy, tx, ty) {
+  if (sx === tx && sy === ty) return [];
+  const key = (x, y) => x + ',' + y, prev = new Map([[key(sx, sy), null]]), q = [[sx, sy]];
+  while (q.length) {
+    const [x, y] = q.shift();
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx, ny = y + dy, k = key(nx, ny);
+      if (prev.has(k)) continue;
+      if (!(nx === tx && ny === ty) && !walk(nx, ny)) continue;
+      prev.set(k, [x, y]);
+      if (nx === tx && ny === ty) { const path = []; let c = [nx, ny]; while (c && !(c[0] === sx && c[1] === sy)) { path.unshift(c); c = prev.get(key(c[0], c[1])); } return path; }
+      q.push([nx, ny]);
+    }
+  }
+  return [];
+}
+
+
+/* ===== Robots (animés à partir des événements du serveur) ===== */
+const agents = [];
+const agentByName = n => agents.find(a => a.name === n && !a.leaving);
+class Agent {
+  constructor(name, x, y) { this.name = name; this.R = ROLES[name] || ROLES.KHN; this.x = x; this.y = y; this.path = []; this.state = 'idle'; this.task = null; this.spot = null; this.goal = null; this.face = 'down'; this.anim = rnd() * 3; this.done = 0; this.bubble = null; this.mood = null; this.moodT = 0; this.idleT = 0; this.blinkT = 2 + rnd() * 3; this.leaving = false; this.server = 'idle'; }
+  tile() { return [clamp(Math.floor(this.x / T), 0, 19), clamp(Math.floor((this.y - 2) / T), 2, 11)]; }
+  goTo(spot, goal) { this.spot = spot; this.goal = goal; const [sx, sy] = this.tile(); const p = bfs(sx, sy, spot.tx, spot.ty).map(([x, y]) => ({ x: x * T + 8, y: y * T + 14 })); p.push(spotPx(spot)); this.path = p; this.state = 'walk'; }
+  say(text, kind) { this.bubble = { text: norm(text).slice(0, 18), t: 2.6, kind }; }
+  update(dt) {
+    this.anim += dt; if (this.moodT > 0 && (this.moodT -= dt) <= 0) this.mood = null;
+    if ((this.blinkT -= dt) < 0) this.blinkT = 2 + rnd() * 4;
+    if (this.state === 'walk') {
+      const tg = this.path[0]; if (!tg) return this.arrive();
+      const dx = tg.x - this.x, dy = tg.y - this.y, d = Math.hypot(dx, dy), st = 52 * dt;
+      if (Math.abs(dx) > Math.abs(dy)) this.face = dx > 0 ? 'right' : 'left'; else if (d > 0.1) this.face = dy > 0 ? 'down' : 'up';
+      if (d <= st) { this.x = tg.x; this.y = tg.y; this.path.shift(); if (!this.path.length) this.arrive(); } else { this.x += dx / d * st; this.y += dy / d * st; }
+    } else if (this.state !== 'work') this.idleT += dt;
+  }
+  arrive() {
+    this.face = this.spot ? this.spot.face : this.face;
+    if (this.leaving) { const i = agents.indexOf(this); if (i >= 0) agents.splice(i, 1); elevator(1.2); return; }
+    if (this.goal === 'task' && this.task) this.state = 'work';
+    else if (this.goal === 'rest') this.state = 'rest';
+    else { this.state = 'idle'; this.idleT = 0; }
+  }
+}
+function spotsFor(a, type) { if (a.name === 'KHN' && (type === 'scan' || type === 'order')) return SPOTS.khn; return SPOTS[TASK[type].station]; }
+function freeSpot(list, a) { return list.find(s => !agents.some(o => o !== a && o.spot === s)) || null; }
+const elev = { open: 0, t: 0 };
+function elevator(s) { elev.t = Math.max(elev.t, s); }
+function spawn(name, quiet) { if (agentByName(name) || !ROLES[name]) return; const a = name === 'KHN' && quiet ? new Agent(name, spotPx(SPOTS.khn[0]).x, spotPx(SPOTS.khn[0]).y) : new Agent(name, 288, 34); if (name === 'KHN' && quiet) { a.spot = SPOTS.khn[0]; a.face = 'up'; } else { elevator(1.6); a.say('BONJOUR!', 'work'); sparkle(288, 26); } agents.push(a); }
+function leave(name) { const a = agentByName(name); if (!a || name === 'KHN') return; a.leaving = true; a.task = null; a.goTo(SP(18, 2, 'up'), 'leave'); }
+function idleBehaviour() {
+  for (const a of agents) {
+    if (a.leaving || a.state !== 'idle' || a.task) continue;
+    if (a.name === 'KHN') { if (a.spot !== SPOTS.khn[0] && a.idleT > 2) a.goTo(SPOTS.khn[0], 'home'); continue; }
+    if (a.idleT > 9) { const d = freeSpot(SPOTS.dock, a); if (d) a.goTo(d, 'rest'); else a.idleT = 0; }
+    else if (a.idleT > 4 && rnd() < 0.004) { const pool = rnd() < .5 ? SPOTS.coffee : SPOTS.table; const s = freeSpot(pool, a); if (s) a.goTo(s, 'chill'); }
+  }
+}
+
+/* ================= Particules ================= */
+const parts = [];
+function burst(win) { if (reduceMotion) return; for (let i = 0; i < 10; i++) parts.push({ x: 160 + (rnd() - .5) * 60, y: 20, vx: (rnd() - .5) * 20, vy: -10 - rnd() * 20, life: 1.4, col: win ? '#3ddc97' : '#ff6b6b' }); }
+function sparkle(x, y) { if (reduceMotion) return; for (let i = 0; i < 14; i++) parts.push({ x, y, vx: (rnd() - .5) * 40, vy: (rnd() - .7) * 40, life: 1, col: i % 2 ? '#f5c862' : '#ffffff' }); }
+
+
+/* ================= Rendu du monde ================= */
+const cv = $('#world'), g = cv.getContext('2d'); g.imageSmoothingEnabled = false;
+const r = (c, x, y, w, h) => { g.fillStyle = c; g.fillRect(x, y, w, h); };
+let BG = null;
+function buildBG() {
+  const c = document.createElement('canvas'); c.width = W; c.height = H; const b = c.getContext('2d');
+  const R = (col, x, y, w, h) => { b.fillStyle = col; b.fillRect(x, y, w, h); };
+  const rng = mulberry(7);
+  // parquet
+  for (let k = 0; k < 20; k++) {
+    const y = 32 + k * 8; R(k % 2 ? '#6e4b31' : '#745034', 0, y, W, 8);
+    R('#5a3c27', 0, y + 7, W, 1);
+    let x = (k * 37) % 48; while (x < W) { R('#553823', x, y, 1, 7); x += 40 + (rng() * 16 | 0); }
+    for (let i = 0; i < 14; i++) R(rng() < .5 ? '#7d5839' : '#674630', rng() * W | 0, y + 1 + (rng() * 5 | 0), 2 + (rng() * 3 | 0), 1);
+  }
+  // mur du fond
+  R('#18263d', 0, 0, W, 2); R('#29415f', 0, 2, W, 20); R('#223858', 0, 22, W, 8); R('#36557e', 0, 22, W, 1); R('#142035', 0, 30, W, 2);
+  for (let x = 8; x < W; x += 16) R('#1d3150', x, 24, 1, 6);
+  // tapis (motif tapa)
+  R('#e2b85e', 112, 50, 96, 60); R('#163f46', 116, 54, 88, 52);
+  for (let x = 116; x < 204; x += 6) { R('#7a3b22', x, 51, 3, 2); R('#7a3b22', x + 1, 53, 1, 1); R('#7a3b22', x, 107, 3, 2); R('#7a3b22', x + 1, 106, 1, 1); }
+  for (let y = 58; y < 104; y += 8) for (let x = 122; x < 200; x += 12) { R('#1f5a60', x, y, 4, 1); R('#1f5a60', x + 1, y + 1, 2, 1); }
+  // bureaux
+  const desk = (tx, ty, wt, stripe) => { const x = tx * T, y = ty * T, w = wt * T; R('rgba(0,0,0,.28)', x + 1, y + 15, w - 2, 3); R('#47576f', x + 1, y + 3, w - 2, 7); R('#5d7090', x + 1, y + 3, w - 2, 1); R('#2b3649', x + 1, y + 10, w - 2, 5); R('#1c2432', x + 1, y + 14, w - 2, 1); if (stripe) R(stripe, x + 3, y + 11, w - 6, 1); };
+  desk(1, 4, 3, '#3fe0c5'); desk(4, 4, 3, '#3fe0c5'); desk(8, 4, 4, '#f5c862'); desk(13, 4, 3, '#8ab4ff'); desk(13, 8, 3, '#ff8a5c');
+  [[22, 71], [38, 71], [70, 71], [86, 71], [140, 71], [168, 71], [214, 71], [214, 135]].forEach(([x, y]) => { R('#c3cdda', x, y, 8, 2); R('#8e9bb0', x, y + 2, 8, 1); });
+  R('#f5c862', 154, 75, 12, 3); R('#b8913a', 154, 77, 12, 1);
+  // serveurs
+  R('#2a3446', 305, 37, 14, 3); R('#121822', 305, 40, 14, 72); for (let k = 0; k < 4; k++) R('#1b2433', 306, 42 + k * 17, 12, 15); R('rgba(0,0,0,.3)', 304, 112, 16, 3);
+  // fenêtre, tableau, écran, ascenseur
+  R('#d5dde8', 16, 4, 60, 24); R('#a9b6c7', 16, 26, 60, 2);
+  R('#8f9bb0', 82, 3, 60, 24); R('#eef2f7', 84, 5, 56, 19); R('#6b778c', 90, 26, 44, 2);
+  R('#06090f', 162, 3, 92, 26); R('#1b2230', 186, 29, 44, 2);
+  R('#5d6a80', 270, 2, 36, 30); R('#7a879c', 272, 4, 32, 28);
+  // coin vidéo
+  R('#6b4a33', 17, 134, 46, 10); R('#8a6245', 17, 133, 46, 2); R('#4b3322', 17, 143, 46, 1);
+  R('#2c6f73', 14, 166, 52, 12); R('#3b8a8e', 14, 166, 52, 3); R('#235a5d', 14, 177, 52, 2); R('#2c6f73', 12, 164, 4, 14); R('#2c6f73', 64, 164, 4, 14);
+  // table de réunion
+  R('rgba(0,0,0,.25)', 114, 152, 30, 4); R('#5a3b27', 113, 132, 30, 20); R('#7a5236', 114, 131, 28, 18); R('#8f6342', 114, 131, 28, 2); R('#c3cdda', 122, 138, 10, 6); R('#3fe0c5', 123, 139, 8, 4);
+  // machine à café
+  R('#2b2f3a', 178, 170, 13, 18); R('#3c4252', 178, 170, 13, 3); R('#11151d', 181, 175, 7, 6); R('#ff5a5a', 186, 171, 2, 1); R('rgba(0,0,0,.3)', 177, 188, 15, 3);
+  // stations de recharge
+  for (let k = 0; k < 3; k++) { R('#1b2740', 242 + k * 16, 183, 12, 5); R('#2c3d60', 243 + k * 16, 184, 10, 3); }
+  // plantes
+  const plant = (x, y) => { R('rgba(0,0,0,.3)', x + 3, y + 14, 10, 2); R('#a0522d', x + 4, y + 9, 8, 6); R('#7a3d20', x + 4, y + 9, 8, 1); R('#2f8f4e', x + 3, y + 1, 4, 8); R('#3fae5f', x + 7, y - 1, 4, 10); R('#2f8f4e', x + 10, y + 3, 3, 6); R('#56c876', x + 8, y, 1, 3); };
+  plant(0, 32); plant(256, 32); plant(304, 172); plant(0, 172);
+  BG = c;
+}
+function tahiti() { const p = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Pacific/Tahiti', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date()); const [h, m] = p.split(':').map(Number); return { h: (h % 24) + m / 60, label: p }; }
+let TH = tahiti(); setInterval(() => TH = tahiti(), 20000);
+function darkness(h) { if (h >= 7 && h < 17.5) return 0; if (h >= 17.5 && h < 19) return (h - 17.5) / 1.5 * 0.42; if (h >= 5.5 && h < 7) return (7 - h) / 1.5 * 0.42; return 0.42; }
+function drawWindow(now) {
+  const h = TH.h, night = h < 5.5 || h >= 19, dusk = (h >= 17 && h < 19) || (h >= 5.5 && h < 7);
+  const sky = night ? ['#0b1640', '#13235a', '#1d2f6b'] : dusk ? ['#ff8c5a', '#ffb067', '#ffd68a'] : ['#69bff5', '#93d3fa', '#c3e9ff'];
+  const x0 = 18, y0 = 6, w = 56, hh = 20;
+  r(sky[0], x0, y0, w, 6); r(sky[1], x0, y0 + 6, w, 5); r(sky[2], x0, y0 + 11, w, 3);
+  if (night) { for (let i = 0; i < 9; i++) { const sx = x0 + (i * 13 + 5) % w, sy = y0 + (i * 7) % 10; if ((Math.floor(now / 600) + i) % 4) r('#fff', sx, sy, 1, 1); } r('#f4f1d0', x0 + 42, y0 + 2, 4, 4); r(sky[0], x0 + 44, y0 + 2, 2, 2); }
+  else r(dusk ? '#fff1b0' : '#fff7c2', x0 + 40, y0 + (dusk ? 9 : 3), 5, 4);
+  // Moorea : silhouette des pics
+  const mt = night ? '#0d1a3c' : dusk ? '#9b5a6a' : '#4f8fa8';
+  [[30, 4], [34, 7], [37, 5], [40, 8], [44, 6], [48, 3]].forEach(([mx, mh], i, a) => r(mt, x0 + mx - 4, y0 + 14 - mh, 6, mh));
+  const sea = night ? '#0f2a4a' : dusk ? '#c96f62' : '#1fb5b0';
+  r(sea, x0, y0 + 14, w, 6); r(night ? '#163a63' : dusk ? '#e08a6f' : '#5fd6cf', x0, y0 + 14, w, 1);
+  for (let i = 0; i < 6; i++) { const sx = x0 + ((i * 11 + Math.floor(now / 300)) % w); r(night ? '#2c5a8c' : '#a6f0ea', sx, y0 + 16 + (i % 3), 3, 1); }
+  // palmier
+  const pm = night ? '#06101f' : dusk ? '#3b2230' : '#1f5d3a';
+  r(pm, x0 + 6, y0 + 7, 2, 13); r(pm, x0 + 1, y0 + 6, 6, 2); r(pm, x0 + 7, y0 + 5, 7, 2); r(pm, x0, y0 + 8, 2, 2); r(pm, x0 + 13, y0 + 7, 2, 2); r(pm, x0 + 4, y0 + 4, 4, 2);
+  r('#d5dde8', 45, 4, 2, 24);
+}
+function miniLine(m, x, y, w, h, n) {
+  const C = m.candles, s = C.slice(-n).map(c => c.c).concat([m.price]);
+  let lo = Math.min(...s), hi = Math.max(...s); if (hi - lo < 1e-9) hi = lo + 1;
+  const up = s[s.length - 1] >= s[0];
+  g.fillStyle = up ? '#3ddc97' : '#ff6b6b';
+  for (let i = 0; i < w; i++) { const v = s[Math.floor(i / (w - 1) * (s.length - 1))]; const yy = y + h - 1 - Math.round((v - lo) / (hi - lo) * (h - 1)); g.fillRect(x + i, yy, 1, 1); }
+}
+function monitor(x, y, w, h, fn) { r('#0b0f16', x, y, w, h); r('#1c2433', x + w / 2 - 1 | 0, y + h, 2, 2); r('#0e1a2c', x + 1, y + 1, w - 2, h - 2); if (fn) fn(x + 1, y + 1, w - 2, h - 2); }
+function drawScreens(now) {
+  const mk = Object.keys(M), keys = [0, 1, 2].map(i => mk[i % mk.length]);
+  [132, 148, 164].forEach((x, i) => monitor(x, 57, 15, 11, (a, b, w, h) => miniLine(M[keys[i]], a, b + 1, w, h - 2, 30)));
+  monitor(181, 59, 9, 9, (a, b, w, h) => { const e = S.eqHist.slice(-40); if (e.length > 2) { let lo = Math.min(...e), hi = Math.max(...e); if (hi - lo < 1e-6) hi = lo + 1; g.fillStyle = '#f5c862'; for (let i = 0; i < w; i++) { const v = e[Math.floor(i / (w - 1) * (e.length - 1))]; g.fillRect(a + i, b + h - 1 - Math.round((v - lo) / (hi - lo) * (h - 1)), 1, 1); } } });
+  const scanOn = k => agents.some(a => a.state === 'work' && a.task && a.task.type === 'scan' && a.task.data.k === k);
+  [[19, keys[0]], [35, keys[1]], [67, keys[2]], [83, keys[0]]].forEach(([x, k], i) => monitor(x, 57, 14, 11, (a, b, w, h) => { miniLine(M[i === 3 ? keys[1] : k], a, b + 1, w, h - 2, 24); if (scanOn(k) && Math.floor(now / 200) % 2) r('rgba(63,224,197,.35)', a, b, w, h); }));
+  monitor(211, 57, 22, 11, (a, b, w, h) => { for (let i = 0; i < 5; i++) { r('#3ddc97', a + 1, b + 1 + i * 2, 4 + ((now / 170 + i * 3) % 6 | 0), 1); r('#ff6b6b', a + w - 1 - (4 + ((now / 190 + i * 5) % 6 | 0)), b + 1 + i * 2, 4 + ((now / 190 + i * 5) % 6 | 0), 1); } });
+  monitor(236, 59, 12, 9, (a, b, w, h) => { S.positions.slice(0, 3).forEach((p, i) => r(unreal(p) >= 0 ? '#3ddc97' : '#ff6b6b', a + 1, b + 1 + i * 2, w - 2, 1)); });
+  monitor(212, 121, 18, 11, (a, b, w, h) => { const d = dd(), lim = S.risk.maxDD / 100; r('#1a2540', a + 1, b + h - 3, w - 2, 2); r(d > lim * .5 ? '#ffb547' : '#3ddc97', a + 1, b + h - 3, Math.max(1, Math.round((w - 2) * Math.min(1, d / lim))), 2); ptext(g, 'R', a + 1, b, '#ff8a5c'); });
+  // gyrophare risque
+  r('#3a4256', 246, 118, 2, 12); const lvl = S.killed || S.ddHalt || S.dayHalt === S.acct.day ? 2 : S.riskMult < 1 ? 1 : 0;
+  r(lvl === 2 ? (Math.floor(now / 250) % 2 && !reduceMotion ? '#ff3b3b' : '#7a1d1d') : lvl === 1 ? '#ffb547' : '#3ddc97', 244, 114, 6, 4);
+  // grand écran
+  const m = M[S.focus]; r('#0c1626', 164, 5, 88, 22);
+  ptext(g, S.focus, 166, 6, '#f5c862'); ptext(g, nf0.format(Math.round(m.price)).replace(/\s/g, ' '), 166 + textW(S.focus) + 4, 6, '#e7eef9');
+  const cs = m.candles.slice(-27).concat([m.cur]); let lo = Infinity, hi = -Infinity; cs.forEach(c => { lo = Math.min(lo, c.l); hi = Math.max(hi, c.h); }); if (hi - lo < 1e-9) hi = lo + 1;
+  cs.forEach((c, i) => { const X = 166 + i * 3, yh = 25 - Math.round((c.h - lo) / (hi - lo) * 10), yl = 25 - Math.round((c.l - lo) / (hi - lo) * 10), yo = 25 - Math.round((c.o - lo) / (hi - lo) * 10), yc = 25 - Math.round((c.c - lo) / (hi - lo) * 10); const col = c.c >= c.o ? '#3ddc97' : '#ff6b6b'; r(col, X + 1, yh, 1, yl - yh + 1); r(col, X, Math.min(yo, yc), 2, Math.abs(yo - yc) + 1); });
+  const e = equity(), d0 = S.acct.start, pl = (e >= d0 ? '+' : '-') + nf0.format(Math.abs(Math.round(toX(e - d0)))).replace(/\s/g, ' '); ptext(g, pl, 250 - textW(pl), 6, e >= d0 ? '#3ddc97' : '#ff6b6b');
+  // tableau blanc
+  ptext(g, 'PLAN', 86, 6, '#2b4466');
+  const nL = Math.min(5, S.lessons.length + Math.floor(S.journal.filter(t => t.diag).length / 4));
+  const rg = mulberry(3);
+  for (let i = 0; i < nL; i++) { const col = ['#2a6fdb', '#d64545', '#1f9d6b'][i % 3]; const len = 14 + (rg() * 26 | 0); r(col, 86, 14 + i * 2, 2, 1); r(col, 90, 14 + i * 2, len, 1); }
+  r('#2b4466', 124, 8, 1, 14); [[126, 18, 4], [129, 15, 6], [132, 12, 5], [135, 9, 6]].forEach(([x, y, hh]) => r('#1f9d6b', x, y, 2, hh));
+  // horloge (heure de Tahiti)
+  const cx = 151, cy = 14; r('#d5dde8', cx - 6, cy - 6, 13, 13); r('#f4f6fb', cx - 5, cy - 5, 11, 11);
+  const ang = (TH.h % 12) / 12 * Math.PI * 2, am = (TH.h % 1) * Math.PI * 2;
+  for (let k = 1; k <= 3; k++) r('#18263d', cx + Math.round(Math.sin(ang) * k), cy - Math.round(Math.cos(ang) * k), 1, 1);
+  for (let k = 1; k <= 4; k++) r('#d64545', cx + Math.round(Math.sin(am) * k), cy - Math.round(Math.cos(am) * k), 1, 1);
+  // serveurs (LED)
+  const busy = agents.some(a => a.state === 'work' && a.task && TASK[a.task.type].station === 'rack');
+  for (let k = 0; k < 4; k++) for (let j = 0; j < 4; j++) { const on = ((Math.floor(now / (busy ? 90 : 400)) + k * 3 + j * 5) % 7) < 3; r(on ? (j % 2 ? '#3ddc97' : '#3fe0c5') : '#16301f', 308 + j * 2, 45 + k * 17, 1, 1); r('#0b0f16', 308, 49 + k * 17, 8, 1); }
+  // télé
+  const vid = agents.some(a => a.state === 'work' && a.task && a.task.type === 'video');
+  r('#0b0f16', 22, 114, 36, 19); r('#1c2433', 38, 133, 4, 1); r(vid ? '#24324d' : '#101826', 24, 116, 32, 14);
+  if (vid) { r('#ff4d4d', 34, 119, 2, 7); r('#ff4d4d', 36, 120, 2, 5); r('#ff4d4d', 38, 121, 2, 3); r('#e7eef9', 26, 128, Math.floor((now / 80) % 28), 1); } else { r('#1d2a40', 26, 118, 6, 1); r('#1d2a40', 26, 120, 3, 1); }
+  // ascenseur
+  const o = Math.round(elev.open * 12); r('#9aa7ba', 274, 6, 28, 26); r('#0b1220', 288 - o, 6, o * 2, 26); r('#aab6c8', 274, 6, 14 - o, 26); r('#aab6c8', 288 + o, 6, 14 - o, 26); r('#7d8aa0', 288 - o - 1, 6, 1, 26); r('#7d8aa0', 288 + o, 6, 1, 26);
+  r('#0b1220', 282, 1, 12, 4); r(elev.open > 0.05 ? '#3ddc97' : '#f5c862', 285, 2, 6, 2);
+  // recharge
+  agents.forEach(a => { if (a.state === 'rest') { const i = SPOTS.dock.indexOf(a.spot); if (i >= 0 && Math.floor(now / 400) % 2) r('#3fe0c5', 243 + i * 16, 186, 10, 1); } });
+}
+function drawRobot(gg, a, x, y) {
+  const t = a.anim, st = a.state, face = a.face || 'down';
+  const C = a.R.color, D = shade(C, -0.42), L = shade(C, 0.38), E = a.R.eye;
+  const R2 = (c, X, Y, w, h) => { gg.fillStyle = c; gg.fillRect(X, Y, w, h); };
+  const walking = st === 'walk', working = st === 'work', resting = st === 'rest';
+  const ph = walking ? Math.floor(t * 9) % 2 : 0, hb = !walking && !working && !resting && Math.floor(t * 1.4) % 2 ? 1 : 0;
+  const side = face === 'left' || face === 'right', dir = face === 'left' ? -1 : 1;
+  R2('rgba(0,0,0,.33)', x - 5, y - 1, 11, 2);
+  // jambes
+  if (!side) { R2(D, x - 3, y - 4, 2, ph ? 3 : 4); R2(D, x + 2, y - 4, 2, ph ? 4 : 3); }
+  else { R2(D, x - 2 + (ph ? dir : 0), y - 4, 2, 4); R2(shade(C, -0.55), x + 1 - (ph ? dir : 0), y - 4, 2, 4); }
+  // corps
+  const bw = side ? 7 : 9, bx = x - (side ? 3 : 4);
+  R2(C, bx, y - 10, bw, 6); R2(L, bx, y - 10, bw, 1); R2(D, bx, y - 5, bw, 1);
+  const led = working ? (Math.floor(t * 6) % 2 ? '#4ade80' : '#1f6b3e') : a.mood === 'loss' ? '#ff5a5a' : '#0b1626';
+  if (face === 'down') R2(led, x - 1, y - 8, 3, 2); else if (face === 'up') { R2(D, x - 2, y - 9, 5, 3); R2(led, x - 1, y - 8, 3, 1); } else R2(led, x + dir, y - 8, 1, 2);
+  // bras
+  const typing = working && face === 'up', tp = Math.floor(t * 10) % 2;
+  if (!side) {
+    if (typing) { R2(D, x - 6, y - 12 + tp, 2, 4); R2(D, x + 5, y - 11 - tp, 2, 4); }
+    else { R2(D, x - 6, y - 10 + (walking && ph ? 1 : 0), 2, 4); R2(D, x + 5, y - 10 + (walking && !ph ? 1 : 0), 2, 4); }
+  } else R2(D, x - 1 + (walking ? (ph ? dir : -dir) : 0), y - 10, 2, 5);
+  R2(D, x - 1, y - 11, 3, 1);
+  // tête
+  const hy = y - 19 - hb;
+  R2(C, x - 5, hy + 1, 11, 6); R2(C, x - 4, hy, 9, 8); R2(L, x - 4, hy, 9, 1); R2(D, x - 4, hy + 7, 9, 1);
+  const blink = a.blinkT < 0.15;
+  if (face === 'down') {
+    R2('#0b1626', x - 4, hy + 2, 9, 4);
+    if (a.mood === 'loss') { const ec = '#ff5a5a';[[-4, 2], [-2, 2], [-3, 3], [-4, 4], [-2, 4], [2, 2], [4, 2], [3, 3], [2, 4], [4, 4]].forEach(([dx, dy]) => R2(ec, x + dx, hy + dy + 0, 1, 1)); }
+    else if (a.mood === 'win') { [[-3, 4], [-2, 3], [-1, 4], [1, 4], [2, 3], [3, 4]].forEach(([dx, dy]) => R2(E, x + dx, hy + dy, 1, 1)); }
+    else if (blink) { R2(E, x - 3, hy + 4, 2, 1); R2(E, x + 2, hy + 4, 2, 1); }
+    else { R2(E, x - 3, hy + 3, 2, 2); R2(E, x + 2, hy + 3, 2, 2); }
+  } else if (face === 'up') { R2(D, x - 3, hy + 2, 7, 3); R2(shade(C, -0.6), x - 2, hy + 3, 5, 1); }
+  else { R2('#0b1626', dir > 0 ? x : x - 4, hy + 2, 5, 4); R2(a.mood === 'loss' ? '#ff5a5a' : E, dir > 0 ? x + 2 : x - 3, hy + 3, 2, blink ? 1 : 2); R2(D, dir > 0 ? x - 4 : x + 3, hy + 3, 2, 2); }
+  // antenne
+  R2(D, x, hy - 2, 1, 2);
+  const bulb = working ? (Math.floor(t * 4) % 2 ? '#4ade80' : '#2a7a4a') : a.mood === 'loss' ? '#ff5a5a' : resting ? '#5f7193' : a.name === 'KHN' ? '#fff3c4' : L;
+  R2(bulb, x - 1, hy - 4, 3, 2);
+}
+function placeRect(placed, x, y, w, h) { let yy = y; for (let k = 0; k < 6; k++) { if (!placed.some(p => x < p.x + p.w && x + w > p.x && yy < p.y + p.h && yy + h > p.y)) break; yy -= h + 1; } yy = Math.max(1, yy); placed.push({ x, y: yy, w, h }); return yy; }
+function nametag(a, x, by) {
+  const w = textW(a.name) + 4, bx = Math.round(x - w / 2);
+  if (by < a.y - 34) r('rgba(0,0,0,.55)', x, by + 9, 1, a.y - 33 - by - 9);
+  r('rgba(0,0,0,.55)', bx, by, w, 9); ptext(g, a.name, bx + 2, by + 1, a.name === 'KHN' ? '#ffe08a' : '#ffffff');
+}
+function bubble(a, x, by, bx, w) {
+  const b = a.bubble; if (!b) return;
+  const bg = b.kind === 'err' ? '#ffe1e1' : b.kind === 'win' ? '#dbffe9' : '#f4f6fb', fg = b.kind === 'err' ? '#9b1c1c' : b.kind === 'win' ? '#0f6b3c' : '#14213a';
+  r('#0b1220', bx - 1, by - 1, w + 2, 11); r(bg, bx, by, w, 9); r(bg, clamp(x, bx + 2, bx + w - 3) - 1, by + 9, 3, 1); r('#0b1220', clamp(x, bx + 2, bx + w - 3), by + 10, 1, 1);
+  ptext(g, b.text, bx + 3, by + 1, fg);
+}
+function renderWorld(now) {
+  g.drawImage(BG, 0, 0); drawWindow(now); drawScreens(now);
+  const list = agents.slice().sort((a, b) => a.y - b.y);
+  for (const a of list) drawRobot(g, a, Math.round(a.x), Math.round(a.y));
+  for (const p of parts) { r(p.col, Math.round(p.x), Math.round(p.y), 2, 2); }
+  const dk = darkness(TH.h);
+  if (dk > 0) {
+    g.fillStyle = `rgba(6,10,32,${dk})`; g.fillRect(0, 0, W, H);
+    g.globalCompositeOperation = 'lighter'; g.fillStyle = 'rgba(80,140,255,0.10)';
+    [[160, 64, 36], [208, 15, 40], [40, 120, 22], [230, 64, 18], [40, 64, 26], [80, 64, 20]].forEach(([x, y, rr]) => { g.beginPath(); g.arc(x, y, rr, 0, Math.PI * 2); g.fill(); });
+    g.globalCompositeOperation = 'source-over';
+  }
+  const placed = [], byX = list.slice().sort((p, q) => q.y - p.y || p.x - q.x), tags = new Map();
+  for (const a of byX) { const x = Math.round(a.x), w = textW(a.name) + 4; tags.set(a, placeRect(placed, Math.round(x - w / 2), Math.round(a.y) - 33, w, 9)); }
+  for (const a of byX) { if (!a.bubble) continue; const x = Math.round(a.x), w = textW(a.bubble.text) + 6, bx = clamp(Math.round(x - w / 2), 1, W - w - 1); a._bub = [placeRect(placed, bx - 1, tags.get(a) - 13, w + 2, 12), bx, w]; }
+  for (const a of byX) { const x = Math.round(a.x); nametag(a, x, tags.get(a)); if (a.bubble && a._bub) bubble(a, x, a._bub[0] + 1, a._bub[1], a._bub[2]); if (a.state === 'rest' && Math.floor(now / 500) % 2) ptext(g, 'Z', x + 6, Math.round(a.y) - 24, '#8ab4ff'); }
+  if (S.killed || S.frozen) { r('rgba(0,0,0,.45)', 0, 84, W, 20); const t = S.killed ? 'ARRET D\'URGENCE' : 'SIMULATION FIGEE'; ptext(g, t, Math.round(W / 2 - textW(t) / 2), 91, S.killed ? '#ff6b6b' : '#e7eef9'); }
+}
+
+
+/* ===== Synchronisation avec le serveur ===== */
+function applySnapshot(s) {
+  SNAP = s; RATE = s.rate || RATE;
+  for (const k in s.markets) {
+    const mk = s.markets[k], cs = mk.candles.map(c => ({ t: c[0], o: c[1], h: c[2], l: c[3], c: c[4] }));
+    M[k] = { k, sym: mk.sym, candles: cs.slice(0, -1), cur: cs[cs.length - 1], price: mk.price, ema21: mk.ema21, ema50: mk.ema50, regime: mk.regime, chg: mk.chg };
+  }
+  if (!M[S.focus]) S.focus = Object.keys(M)[0];
+  Object.assign(S, { eqHist: s.eq || [], positions: s.positions || [], risk: { maxDD: s.risk.max_dd }, killed: s.flags.killed, ddHalt: s.flags.dd_halt, dayHalt: s.flags.day_halt, acct: { day: s.acct.day, start: s.acct.start }, riskMult: s.risk_mult, lessons: s.lessons || [], journal: s.journal || [] });
+  const names = new Set(s.team.map(t => t.name));
+  s.team.forEach(t => { if (!agentByName(t.name)) spawn(t.name, !booted); const a = agentByName(t.name); if (a) { a.done = t.done; a.server = t.state; } });
+  agents.filter(a => !a.leaving && !names.has(a.name)).forEach(a => leave(a.name));
+  booted = true;
+  if (s.logs) { logEl.innerHTML = ''; s.logs.forEach(addLog); }
+  ensureTabs(); rev.data++;
+}
+let booted = false;
+function onEvent(ev) {
+  if (ev.type === 'state') return applySnapshot(ev);
+  if (ev.type === 'log') return addLog(ev.entry);
+  if (ev.type === 'team') { if (ev.action === 'join') spawn(ev.name); else leave(ev.name); return; }
+  if (ev.type === 'task') {
+    const a = agentByName(ev.agent); if (!a) return;
+    if (ev.phase === 'start') {
+      a.task = { type: ev.task, data: { k: ev.k } };
+      const list = spotsFor(a, ev.task), here = a.spot && list.includes(a.spot) && a.state !== 'walk';
+      a.say(TASK[ev.task].label + (ev.k ? ' ' + ev.k : ''), 'work');
+      if (here) { a.goal = 'task'; a.state = 'work'; } else a.goTo(freeSpot(list, a) || list[0], 'task');
+    } else { a.task = null; if (a.state === 'work') { a.state = 'idle'; a.idleT = 0; } }
+    return;
+  }
+  if (ev.type === 'fx') {
+    const a = agentByName(ev.agent) || agentByName('KHN');
+    if (ev.kind === 'win' || ev.kind === 'loss') { burst(ev.kind === 'win'); if (a) { a.mood = ev.kind; a.moodT = 2.5; a.say(ev.kind === 'win' ? ev.text : 'AIE ' + ev.text, ev.kind === 'win' ? 'win' : 'err'); } }
+    else if (a) { a.say(ev.text, ev.kind === 'fix' ? 'win' : 'work'); if (ev.kind === 'fix') sparkle(a.x, a.y - 20); }
+  }
+}
+async function api(path, body) {
+  try {
+    const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), credentials: 'same-origin' });
+    if (r.status === 401) { location.href = '/login'; return null; }
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) addLog({ ts: Date.now(), who: 'KHN', type: 'error', text: j.error || ('Erreur ' + r.status) });
+    return j;
+  } catch (e) { addLog({ ts: Date.now(), who: 'KHN', type: 'error', text: 'Serveur injoignable : la commande n\'est pas partie.' }); return null; }
+}
+const command = text => api('/api/command', { text });
+let ws = null, wsDelay = 1000, online = false;
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(proto + '//' + location.host + '/ws');
+  ws.onopen = () => { wsDelay = 1000; online = true; };
+  ws.onmessage = m => { try { onEvent(JSON.parse(m.data)); } catch (e) { console.error(e); } };
+  ws.onclose = e => { online = false; if (e.code === 1008) { location.href = '/login'; return; } setTimeout(connect, wsDelay); wsDelay = Math.min(15000, wsDelay * 2); };
+}
+
+/* ===== Graphique ===== */
+const ch = $('#chart'), eqc = $('#eq'); let hoverX = null;
+ch.addEventListener('mousemove', e => { const b = ch.getBoundingClientRect(); hoverX = e.clientX - b.left; });
+ch.addEventListener('mouseleave', () => hoverX = null);
+function setupCanvas(c) { const b = c.getBoundingClientRect(), d = devicePixelRatio || 1, w = Math.max(160, Math.round(b.width)), h = Math.round(b.height); if (c.width !== w * d || c.height !== h * d) { c.width = w * d; c.height = h * d; } const x = c.getContext('2d'); x.setTransform(d, 0, 0, d, 0, 0); x.clearRect(0, 0, w, h); return { x, w, h }; }
+function niceTicks(lo, hi, n) { const span = hi - lo, raw = span / n, mag = Math.pow(10, Math.floor(Math.log10(raw))), st = [1, 2, 2.5, 5, 10].map(f => f * mag).find(s => span / s <= n) || 10 * mag; const out = []; for (let v = Math.ceil(lo / st) * st; v <= hi; v += st) out.push(v); return out; }
+function drawChart() {
+  const m = M[S.focus]; if (!m) return;
+  const { x: c, w, h } = setupCanvas(ch);
+  const N = w < 420 ? 48 : 72, closed = m.candles.slice(-(N - 1)), cs = closed.concat([m.cur]);
+  const padR = 64, padL = 6, padT = 8, padB = 20, pw = w - padR - padL, ph = h - padT - padB;
+  let lo = Infinity, hi = -Infinity; cs.forEach(k => { lo = Math.min(lo, k.l); hi = Math.max(hi, k.h); });
+  const pos = S.positions.filter(p => p.k === S.focus); pos.forEach(p => { lo = Math.min(lo, p.stop, p.tp); hi = Math.max(hi, p.stop, p.tp); });
+  const pad = (hi - lo) * 0.06 || 1; lo -= pad; hi += pad;
+  const Y = v => padT + (hi - v) / (hi - lo) * ph, step = pw / cs.length, X = i => padL + i * step + step / 2;
+  c.font = '11px "JetBrains Mono", monospace'; c.textBaseline = 'middle';
+  niceTicks(lo, hi, 5).forEach(v => { const y = Math.round(Y(v)) + .5; c.strokeStyle = '#1b2742'; c.lineWidth = 1; c.beginPath(); c.moveTo(padL, y); c.lineTo(padL + pw, y); c.stroke(); c.fillStyle = '#62759a'; c.fillText(fP(v), padL + pw + 8, y); });
+  c.fillStyle = '#62759a'; c.textBaseline = 'alphabetic';
+  cs.forEach((k, i) => { if (Math.floor(k.t / 300000) % 16 === 0) c.fillText(hm(k.t), X(i) - 15, h - 5); });
+  [[m.ema21, '#8ab4ff'], [m.ema50, '#f5c862']].forEach(([s, col]) => { if (!s) return; const off = s.length - closed.length; c.strokeStyle = col; c.lineWidth = 1.5; c.beginPath(); let st = false; closed.forEach((_, i) => { const v = s[off + i]; if (v == null) return; st ? c.lineTo(X(i), Y(v)) : c.moveTo(X(i), Y(v)); st = true; }); c.stroke(); });
+  const bw = Math.max(1, Math.floor(step * 0.62));
+  cs.forEach((k, i) => { const up = k.c >= k.o, col = up ? '#3ddc97' : '#ff6b6b', xx = Math.round(X(i)); c.fillStyle = col; c.fillRect(xx, Math.round(Y(k.h)), 1, Math.max(1, Math.round(Y(k.l) - Y(k.h)))); const y0 = Math.round(Y(Math.max(k.o, k.c))), y1 = Math.round(Y(Math.min(k.o, k.c))), bh = Math.max(1, y1 - y0); if (up && bw > 2) { c.fillStyle = '#111a2e'; c.fillRect(xx - (bw >> 1), y0, bw, bh); c.strokeStyle = col; c.lineWidth = 1; c.strokeRect(xx - (bw >> 1) + .5, y0 + .5, bw - 1, Math.max(0, bh - 1)); } else { c.fillStyle = col; c.fillRect(xx - (bw >> 1), y0, bw, bh); } });
+  const idx = t => cs.findIndex(k => k.t === t);
+  S.journal.filter(t => t.k === S.focus).slice(0, 20).forEach(t => { const i0 = idx(t.t0), i1 = idx(t.t1); c.fillStyle = t.side === 'long' ? '#3ddc97' : '#ff6b6b'; if (i0 >= 0) { const xx = X(i0), yy = Y(t.entry); c.beginPath(); if (t.side === 'long') { c.moveTo(xx, yy + 4); c.lineTo(xx - 5, yy + 12); c.lineTo(xx + 5, yy + 12); } else { c.moveTo(xx, yy - 4); c.lineTo(xx - 5, yy - 12); c.lineTo(xx + 5, yy - 12); } c.fill(); } if (i1 >= 0) { c.beginPath(); c.arc(X(i1), Y(t.exit), 4, 0, Math.PI * 2); c.fillStyle = '#111a2e'; c.fill(); c.lineWidth = 2; c.strokeStyle = t.pnl >= 0 ? '#3ddc97' : '#ff6b6b'; c.stroke(); } });
+  c.setLineDash([4, 3]); c.lineWidth = 1;
+  const lab = (v, col, t) => { const y = Y(v); c.strokeStyle = col; c.beginPath(); c.moveTo(padL, y); c.lineTo(padL + pw, y); c.stroke(); c.setLineDash([]); c.fillStyle = col; c.fillRect(padL + pw + 2, y - 8, padR - 4, 16); c.fillStyle = '#0a1020'; c.textBaseline = 'middle'; c.fillText(t, padL + pw + 6, y); c.setLineDash([4, 3]); };
+  pos.forEach(p => { lab(p.tp, '#3ddc97', 'TP'); lab(p.stop, '#ff6b6b', 'SL'); const ye = Y(p.entry); c.strokeStyle = '#97a8c7'; c.beginPath(); c.moveTo(padL, ye); c.lineTo(padL + pw, ye); c.stroke(); });
+  c.setLineDash([]);
+  const py = Y(m.price), upNow = m.cur.c >= m.cur.o; c.fillStyle = upNow ? '#3ddc97' : '#ff6b6b'; c.fillRect(padL + pw + 2, py - 9, padR - 4, 18); c.fillStyle = '#0a1020'; c.textBaseline = 'middle'; c.font = '600 11px "JetBrains Mono", monospace'; c.fillText(fP(m.price), padL + pw + 5, py);
+  if (hoverX != null && hoverX > padL && hoverX < padL + pw) {
+    const i = clamp(Math.floor((hoverX - padL) / step), 0, cs.length - 1), k = cs[i], xx = Math.round(X(i)) + .5;
+    c.strokeStyle = '#2e4166'; c.beginPath(); c.moveTo(xx, padT); c.lineTo(xx, padT + ph); c.stroke();
+    const lines = [hm(k.t) + '  ' + S.focus, 'O ' + fP(k.o) + '  H ' + fP(k.h), 'B ' + fP(k.l) + '  F ' + fP(k.c), 'Variation ' + pct((k.c - k.o) / k.o * 100)];
+    c.font = '11px "JetBrains Mono", monospace'; const tw = Math.max(...lines.map(l => c.measureText(l).width)) + 16, th = lines.length * 15 + 10;
+    const tx = xx + 10 + tw > padL + pw ? xx - 10 - tw : xx + 10;
+    c.fillStyle = 'rgba(10,16,32,.95)'; c.strokeStyle = '#2e4166'; c.fillRect(tx, padT + 4, tw, th); c.strokeRect(tx + .5, padT + 4.5, tw - 1, th - 1);
+    c.fillStyle = '#e7eef9'; c.textBaseline = 'top'; lines.forEach((l, j) => c.fillText(l, tx + 8, padT + 10 + j * 15));
+  }
+  $('#regime').textContent = 'Régime détecté : ' + (m.regime || '—');
+}
+function drawEq() {
+  const { x: c, w, h } = setupCanvas(eqc), e = S.eqHist.slice(-400); if (e.length < 2 || !SNAP) return;
+  const base = SNAP.acct.start; let lo = Math.min(base, ...e), hi = Math.max(base, ...e); const pd = (hi - lo) * 0.15 || base * 0.01 || 1; lo -= pd; hi += pd;
+  const X = i => 2 + i / (e.length - 1) * (w - 60), Y = v => 4 + (hi - v) / (hi - lo) * (h - 8);
+  c.strokeStyle = '#2e4166'; c.setLineDash([3, 3]); c.beginPath(); c.moveTo(2, Y(base)); c.lineTo(w - 58, Y(base)); c.stroke(); c.setLineDash([]);
+  const last = e[e.length - 1], col = last >= base ? '#3ddc97' : '#ff6b6b';
+  const gr = c.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, last >= base ? 'rgba(61,220,151,.22)' : 'rgba(255,107,107,.22)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  c.beginPath(); e.forEach((v, i) => i ? c.lineTo(X(i), Y(v)) : c.moveTo(X(i), Y(v))); c.lineTo(X(e.length - 1), h); c.lineTo(X(0), h); c.closePath(); c.fillStyle = gr; c.fill();
+  c.beginPath(); e.forEach((v, i) => i ? c.lineTo(X(i), Y(v)) : c.moveTo(X(i), Y(v))); c.strokeStyle = col; c.lineWidth = 2; c.stroke();
+  c.beginPath(); c.arc(X(e.length - 1), Y(last), 3.5, 0, Math.PI * 2); c.fillStyle = col; c.fill();
+  c.fillStyle = '#97a8c7'; c.font = '11px "JetBrains Mono", monospace'; c.textBaseline = 'middle'; c.fillText('départ', w - 52, Y(base));
+}
+
+/* ===== Console ===== */
+const ICON = { info: ['·', '#62759a'], signal: ['◆', '#8ab4ff'], order: ['▶', '#f5c862'], win: ['▲', '#3ddc97'], loss: ['▼', '#ff6b6b'], error: ['✗', '#ff6b6b'], fix: ['★', '#f5c862'], risk: ['⚠', '#ffb547'], team: ['+', '#3fe0c5'], learn: ['▣', '#ff8fab'], ai: ['✦', '#b48cff'], you: ['›', '#e7eef9'] };
+const logEl = $('#log');
+function addLog(e) {
+  const li = document.createElement('li'), [ic, col] = ICON[e.type] || ICON.info, wc = e.who === 'TOI' ? '#e7eef9' : (ROLES[e.who] || ROLES.KHN).color;
+  li.innerHTML = `<time>${esc(hm(e.ts))}</time><span class="ic" style="color:${col}" aria-hidden="true">${ic}</span><span><span class="who" style="color:${wc}">${esc(e.who)}</span>${esc(e.text)}</span>`;
+  logEl.prepend(li); while (logEl.children.length > 200) logEl.lastChild.remove();
+}
+const hist = []; let hi = -1;
+$('#cmdForm').addEventListener('submit', e => { e.preventDefault(); const v = $('#cmdIn').value.trim(); if (!v) return; hist.unshift(v); hi = -1; $('#cmdIn').value = ''; command(v); });
+$('#cmdIn').addEventListener('keydown', e => { if (e.key === 'ArrowUp' && hist.length) { hi = Math.min(hist.length - 1, hi + 1); e.target.value = hist[hi]; e.preventDefault(); } else if (e.key === 'ArrowDown') { hi = Math.max(-1, hi - 1); e.target.value = hi >= 0 ? hist[hi] : ''; e.preventDefault(); } });
+$('#cmdChips').addEventListener('click', e => { const b = e.target.closest('button'); if (b) command(b.textContent); });
+$('#learnForm').addEventListener('submit', async e => { e.preventDefault(); const u = $('#learnUrl').value.trim(), n = $('#learnNotes').value.trim(); const r = await api('/api/learn', { url: u, notes: n }); if (r && r.ok) { $('#learnUrl').value = ''; $('#learnNotes').value = ''; $('#learnInfo').textContent = n ? 'Reçu. LEARN étudie ton texte, puis QUANT teste la stratégie.' : 'Reçu. LEARN récupère la transcription YouTube, puis QUANT teste la stratégie.'; } });
+$('#killBtn').addEventListener('click', () => command(S.killed ? 'reprendre' : 'stop'));
+
+/* ===== Onglets & panneaux ===== */
+const tabs = [...document.querySelectorAll('[role=tab]')];
+function selectTab(t) { tabs.forEach(x => { const on = x === t; x.setAttribute('aria-selected', String(on)); x.tabIndex = on ? 0 : -1; $('#' + x.getAttribute('aria-controls')).hidden = !on; }); seen.k = ''; renderPanels(); }
+tabs.forEach((t, i) => { t.addEventListener('click', () => selectTab(t)); t.addEventListener('keydown', e => { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { const n = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]; n.focus(); selectTab(n); } }); });
+function ensureTabs() { const el = $('#mktTabs'); const keys = Object.keys(M); if (el.dataset.k === keys.join()) return; el.dataset.k = keys.join(); el.innerHTML = keys.map(k => `<button type="button" class="mkt" data-k="${k}" aria-pressed="${k === S.focus}"><b>${esc(M[k].sym.replace('USDT', '/USDT'))}</b><span id="px-${k}">—</span></button>`).join(''); }
+$('#mktTabs').addEventListener('click', e => { const b = e.target.closest('.mkt'); if (!b) return; S.focus = b.dataset.k; document.querySelectorAll('.mkt').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.k === S.focus))); });
+const rev = { data: 0 }, seen = { k: '' };
+function condTxt(c) { const o = x => ({ close: 'prix', ema: 'EMA ' + x.n, sma: 'MM ' + x.n, rsi: 'RSI ' + x.n, atr: 'ATR ' + x.n, bb_up: 'Bollinger haute', bb_lo: 'Bollinger basse', bb_mid: 'Bollinger milieu', don_hi: 'plus haut ' + x.n + ' bougies', don_lo: 'plus bas ' + x.n + ' bougies', macd: 'MACD', macd_sig: 'signal MACD', num: String(x.v).replace('.', ',') }[x.k]); return o(c.a) + ' ' + ({ '>': 'au-dessus de', '<': 'sous', cross_above: 'croise au-dessus de', cross_below: 'croise sous' }[c.op]) + ' ' + o(c.b); }
+function filtTags(s) { const f = s.filters || {}, t = []; if (f.htfAlign) t.push('sens EMA 100'); if (f.minTrend != null) t.push('tendance ≥ ' + nf2.format(f.minTrend)); if (f.maxTrend != null) t.push('tendance ≤ ' + nf2.format(f.maxTrend)); if (f.maxVolPct != null) t.push('volatilité ≤ ' + Math.round(f.maxVolPct * 100) + 'e centile'); return t; }
+const ST_FR = { active: 'en démo', test: 'en test', analyse: 'analyse', suspendue: 'suspendue', rejetee: 'rejetée', off: 'coupée' };
+function renderStrats() {
+  $('#stratList').innerHTML = SNAP.strategies.slice().reverse().map(s => {
+    const L = s.live, b = s.bt, has = (s.long || []).length || (s.short || []).length;
+    const rules = s.status === 'analyse' ? '<span>LEARN étudie la vidéo…</span>' : ((s.long || []).length ? `<div><b>Achat :</b> ${s.long.map(c => '<code>' + esc(condTxt(c)) + '</code>').join(' et ')}</div>` : '') + ((s.short || []).length ? `<div><b>Vente :</b> ${s.short.map(c => '<code>' + esc(condTxt(c)) + '</code>').join(' et ')}</div>` : '') + (has ? `<div><b>Stop :</b> ${s.stop.type === 'atr' ? nf1.format(s.stop.mult) + ' × ATR' : nf2.format(s.stop.value) + ' %'} · <b>Objectif :</b> ${nf1.format(s.tp.rr)} R</div>` : '');
+    const tags = filtTags(s);
+    return `<article class="strat"><div class="strat-top"><b>n° ${s.num} · ${esc(s.name)}</b><span class="pill ${esc(s.status)}">${ST_FR[s.status] || esc(s.status)}</span></div>
+      <div class="small muted">${esc(s.source || '')}${s.url ? ` · <a href="${esc(s.url)}" target="_blank" rel="noopener">voir la source</a>` : ''}${s.version > 1 ? ' · version ' + s.version : ''}</div>
+      ${s.summary ? `<p class="small">${esc(s.summary)}</p>` : ''}<div class="rules">${rules}</div>
+      ${tags.length ? `<div class="tags">${tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
+      ${s.notes && s.notes.length ? `<div class="small muted">${s.notes.map(esc).join('<br>')}</div>` : ''}
+      <div class="stats"><span>Démo : ${L.n} trades · ${L.n ? Math.round(L.w / L.n * 100) : 0} % gagnants · ${fR(L.n ? L.sumR / L.n : 0)}/trade</span>${b ? `<span>Test hors échantillon : ${b.oos.n} trades · ${fR(b.oos.expR)}/trade · facteur ${nf2.format(b.oos.pf)}</span>` : ''}</div>
+      ${s.status !== 'analyse' && has ? `<div class="row"><button class="btn small" data-cmd="strat ${s.status === 'active' ? 'off' : 'on'} ${s.num}">${s.status === 'active' ? 'Couper' : 'Activer'}</button><button class="btn small" data-cmd="backtest ${s.num}">Backtest</button><button class="btn small" data-cmd="corriger ${s.num}">Auto-correction</button></div>` : ''}
+    </article>`;
+  }).join('');
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-cmd]'); if (b) command(b.dataset.cmd); });
+function renderPos() {
+  $('#posTable').innerHTML = S.positions.length ? `<table><thead><tr><th>Marché</th><th>Sens</th><th>Entrée</th><th>Actuel</th><th>Résultat</th><th>Stop</th><th>Objectif</th><th>Stratégie</th><th></th></tr></thead><tbody>${S.positions.map(p => `<tr><td>${esc(p.k)}</td><td>${p.side === 'long' ? 'Achat' : 'Vente'}</td><td>${fP(p.entry)}</td><td>${M[p.k] ? fP(M[p.k].price) : '—'}</td><td class="${p.unreal >= 0 ? 'pos' : 'neg'}">${fxs(p.unreal)}</td><td>${fP(p.stop)}</td><td>${fP(p.tp)}</td><td>${esc(p.sname)}</td><td><button class="btn small" data-cmd="fermer ${esc(p.k.toLowerCase())}">Fermer</button></td></tr>`).join('')}</tbody></table>` : '<p class="small muted">Aucune position. KHN attend un signal validé par le contrôle du risque.</p>';
+  $('#lessons').innerHTML = S.lessons.length ? S.lessons.slice(0, 10).map(l => `<li><b>${esc(l.sname)}</b> : ${esc(l.text)} <span class="muted small">(${esc(new Date(l.ts).toLocaleDateString('fr-FR'))} · test ${fR(l.before)} → ${fR(l.after)})</span></li>`).join('') : '<li class="muted">Pas encore de correction adoptée. KHN corrige une stratégie après 6 trades ou 3 pertes de suite, si la correction tient sur des données jamais vues.</li>';
+  $('#journal').innerHTML = S.journal.length ? `<table><thead><tr><th>#</th><th>Marché</th><th>Sens</th><th>Résultat</th><th>R</th><th>Sortie</th><th>Stratégie</th><th>Diagnostic</th></tr></thead><tbody>${S.journal.slice(0, 30).map(t => `<tr><td>${t.id}</td><td>${esc(t.k)}</td><td>${t.side === 'long' ? 'Achat' : 'Vente'}</td><td class="${t.pnl >= 0 ? 'pos' : 'neg'}">${fxs(t.pnl)}</td><td>${fR(t.r)}</td><td>${({ tp: 'objectif', stop: 'stop', signal: 'signal', temps: 'durée', manuel: 'manuel', urgence: 'urgence' })[t.reason] || esc(t.reason)}</td><td>${esc(t.sname)}</td><td class="diag">${t.diag ? esc(t.diag.text) : (t.manual ? 'Ordre manuel' : '<span class="muted">analyse en attente…</span>')}</td></tr>`).join('')}</tbody></table>` : '<p class="small muted">Aucun trade clôturé pour l\'instant.</p>';
+}
+function avatar(name) { const c = document.createElement('canvas'); c.width = 26; c.height = 30; drawRobot(c.getContext('2d'), { R: ROLES[name], name, anim: 0, state: 'idle', face: 'down', blinkT: 1, mood: null }, 13, 29); return c; }
+const STATE_FR = { idle: 'disponible', work: 'au travail', rest: 'en recharge' };
+function renderTeam() {
+  const el = $('#team'); el.innerHTML = '';
+  SNAP.team.forEach(t => { const d = document.createElement('div'); d.className = 'mate'; d.appendChild(avatar(t.name)); const info = document.createElement('div'); info.innerHTML = `<b style="color:${ROLES[t.name].color}">${esc(t.name)}</b><div class="small">${esc(t.role)}</div><div class="st">${t.task ? esc(TASK_FR[t.task.type] + (t.task.k ? ' ' + t.task.k : '')) : STATE_FR[t.state] || t.state} · ${t.done} tâches</div>${t.name !== 'KHN' ? `<button class="btn small" data-cmd="renvoyer ${t.name.toLowerCase()}" style="margin-top:4px">Renvoyer</button>` : ''}`; d.appendChild(info); el.appendChild(d); });
+  const q = SNAP.queue || {}; $('#queue').innerHTML = Object.keys(q).length ? Object.entries(q).map(([k, v]) => `<span class="tag">${TASK_FR[k]} × ${v}</span>`).join('') : '<span class="small muted">Rien en attente.</span>';
+  const miss = Object.keys(ROLES).filter(n => n !== 'KHN' && !SNAP.team.some(t => t.name === n));
+  $('#recruitRow').innerHTML = miss.length ? '<span class="small muted">Appeler :</span>' + miss.map(n => `<button class="btn small" data-cmd="recruter ${n.toLowerCase()}">${n} · ${esc(ROLES[n].role.toLowerCase())}</button>`).join('') : '<span class="small muted">Équipe complète.</span>';
+}
+const RK = [['rTrade', 'per_trade', 'oTrade', v => nf2.format(v) + ' %'], ['rDaily', 'max_daily', 'oDaily', v => nf1.format(v) + ' %'], ['rDD', 'max_dd', 'oDD', v => nf0.format(v) + ' %'], ['rPos', 'max_pos', 'oPos', v => String(v)], ['rLev', 'lev', 'oLev', v => v + '×']];
+let riskTouched = 0, riskTimer = null;
+function syncRisk() { if (Date.now() - riskTouched < 3000) return; const r = SNAP.risk; RK.forEach(([id, key, out, f]) => { $('#' + id).value = r[key]; $('#' + out).textContent = f(r[key]); }); $('#rShort').value = r.shorts ? '1' : '0'; $('#rShort').disabled = !SNAP.can_short; $('#rLev').disabled = !SNAP.can_short || !r.shorts; }
+function pushRisk() { riskTouched = Date.now(); clearTimeout(riskTimer); riskTimer = setTimeout(() => { const d = {}; RK.forEach(([id, key]) => d[key] = +$('#' + id).value); d.shorts = $('#rShort').value === '1'; api('/api/risk', d); }, 400); }
+RK.forEach(([id, key, out, f]) => $('#' + id).addEventListener('input', e => { $('#' + out).textContent = f(+e.target.value); pushRisk(); }));
+$('#rShort').addEventListener('change', pushRisk);
+function renderRiskNote() {
+  const e = equity(), rx = e * SNAP.risk.per_trade / 100 * SNAP.risk_mult, mn = SNAP.min_notional, small = e < mn * 2;
+  const n = $('#riskNote'); n.className = 'note' + (small ? ' warn' : '');
+  n.innerHTML = `Risque par trade : <b>${fx(rx)}</b> (${fe(rx)})${SNAP.risk_mult < 1 ? ' — mode prudent ×0,5' : ''}. Ordre minimum de l'exchange : <b>≈ ${fx(mn)}</b> (${nf2.format(mn)} USDT).${SNAP.can_short ? '' : ' <br>Testnet spot : achat seulement, pas de vente à découvert ni de levier.'}${small ? ' <br>Avec ce capital, une seule position tient au minimum d\'ordre : KHN refuse les trades dont le risque dépasserait 1,5 fois la limite.' : ''}`;
+}
+let resetArm = 0;
+$('#resetBtn').addEventListener('click', () => { const v = Math.max(1000, Math.round(+$('#resetCap').value || 1000)); if (Date.now() - resetArm < 4000) { resetArm = 0; $('#resetBtn').textContent = 'Réinitialiser'; command('capital ' + v); } else { resetArm = Date.now(); $('#resetBtn').textContent = 'Confirmer'; $('#resetInfo').textContent = 'Clique encore pour confirmer (4 s).'; setTimeout(() => { if (resetArm) { resetArm = 0; $('#resetBtn').textContent = 'Réinitialiser'; $('#resetInfo').textContent = 'Remet le compte à zéro. Les stratégies et les leçons sont conservées.'; } }, 4000); } });
+function calc() { const cap = Math.max(0, +$('#cCap').value || 0), ret = +$('#cRet').value; $('#oRet').textContent = nf1.format(ret) + ' %'; const g = cap * ret / 100; $('#cGain').textContent = nf0.format(Math.round(g)) + ' XPF · ' + nf2.format(g / XPF_PER_EUR) + ' €'; const need = e => e * XPF_PER_EUR / (ret / 100); $('#cNeed').textContent = nf0.format(Math.round(need(300))) + ' / ' + nf0.format(Math.round(need(500))) + ' XPF'; }
+['cCap', 'cRet'].forEach(id => $('#' + id).addEventListener('input', calc)); calc();
+const MODE = { sim: ['Simulation', 'Marché synthétique pour tester sans réseau. Aucun prix réel.'], paper: ['Papier · prix réels', 'Prix réels Binance, ordres simulés par KHN. Aucun compte nécessaire.'], testnet: ['Testnet Binance', 'Ordres réels envoyés au testnet Binance, en argent fictif.'] };
+function renderPanels() {
+  if (!SNAP) return;
+  const vis = id => !$('#' + id).hidden, key = rev.data + $('[role=tab][aria-selected=true]').id;
+  if (key === seen.k) return; seen.k = key;
+  if (vis('p-strat')) renderStrats();
+  if (vis('p-pos')) renderPos();
+  if (vis('p-team')) renderTeam();
+  if (vis('p-risk')) { syncRisk(); renderRiskNote(); }
+  if (vis('p-broker')) $('#brokerNote').innerHTML = `<b>Mode actuel : ${esc(MODE[SNAP.mode][0])}.</b> ${esc(MODE[SNAP.mode][1])} Le trading réel est désactivé en phase 2 : KHN ne sait envoyer des ordres qu'au testnet.`;
+}
+// les boutons d'un panneau ne doivent pas être recréés sous la souris
+document.addEventListener('pointerdown', e => { if (e.target.closest('.panel button')) seen.hold = Date.now(); });
+function renderKPI() {
+  if (!SNAP) return;
+  const a = SNAP.acct, e = a.equity, d0 = a.start, day = e - (a.day_start || e), tot = e - d0, st = SNAP.stats;
+  $('#kEq').textContent = fx(e); $('#kEqE').textContent = fe(e) + ' · départ ' + fx(d0);
+  const kd = $('#kDay'); kd.textContent = fxs(day); kd.className = 'val ' + (day > 0 ? 'pos' : day < 0 ? 'neg' : ''); $('#kDayS').textContent = pct(day / (a.day_start || 1) * 100) + ' · limite −' + nf1.format(SNAP.risk.max_daily) + ' %';
+  const kt = $('#kTot'); kt.textContent = fxs(tot); kt.className = 'val ' + (tot > 0 ? 'pos' : tot < 0 ? 'neg' : ''); $('#kTotS').textContent = pct(tot / (d0 || 1) * 100) + ' · ' + nf2.format(tot) + ' USDT';
+  $('#kWin').textContent = st.n ? Math.round(st.w / st.n * 100) + ' %' : '—'; $('#kWinS').textContent = st.n + ' trades clôturés';
+  $('#kDD').textContent = nf1.format(a.dd * 100) + ' %'; $('#kDDbar').style.width = Math.min(100, a.dd / (SNAP.risk.max_dd / 100) * 100) + '%'; $('#kDDbar').style.background = a.dd > SNAP.risk.max_dd / 200 ? 'var(--down)' : 'var(--warn)';
+  const f = SNAP.flags; $('#kPos').textContent = SNAP.positions.length + ' / ' + SNAP.risk.max_pos; $('#kPosS').textContent = f.killed ? 'arrêt d\'urgence' : f.paused ? 'en pause' : f.dd_halt ? 'bloqué (baisse max)' : f.day_halt === a.day ? 'stop du jour' : 'trading actif';
+  for (const k in M) { const el = $('#px-' + k); if (el) { el.textContent = fP(M[k].price) + ' ' + pct(M[k].chg); el.style.color = M[k].chg >= 0 ? 'var(--up)' : 'var(--down)'; } }
+  $('#clock').textContent = 'Tahiti ' + hm(Date.now());
+  $('#eqLab').textContent = fx(e) + (st.n ? ' · ' + fxs(st.pnl) + ' réalisés' : '');
+  const cm = $('#chipMode'); cm.textContent = MODE[SNAP.mode][0]; cm.className = 'chip' + (SNAP.mode === 'testnet' ? ' live' : '');
+  const cc = $('#chipConn'); const ok = online && SNAP.connected; cc.textContent = online ? (SNAP.connected ? 'Marché connecté' : SNAP.status) : 'Serveur hors ligne'; cc.className = 'chip ' + (ok ? 'ok' : 'bad');
+  const ai = $('#chipAI'); ai.textContent = SNAP.ai ? 'IA Claude active' : 'IA : mots-clés'; ai.className = 'chip ' + (SNAP.ai ? 'ok' : 'warn');
+  const kb = $('#killBtn'); kb.setAttribute('aria-pressed', String(f.killed)); kb.textContent = f.killed ? 'RÉACTIVER KHN' : 'ARRÊT D\'URGENCE';
+  $('#offline').hidden = online && SNAP.ready; $('#offline').textContent = !online ? 'Connexion au serveur de KHN perdue. Nouvel essai…' : 'KHN démarre : ' + SNAP.status + '…';
+  $('#foot').textContent = `Phase 2 · ${MODE[SNAP.mode][0]} · aucun ordre en argent réel. Le trading comporte un risque de perte en capital.`;
+}
+
+/* ===== Clic robot ===== */
+cv.addEventListener('click', e => {
+  const b = cv.getBoundingClientRect(), x = (e.clientX - b.left) / b.width * W, y = (e.clientY - b.top) / b.height * H;
+  const a = agents.slice().sort((p, q) => q.y - p.y).find(a => x > a.x - 8 && x < a.x + 8 && y > a.y - 34 && y < a.y + 1);
+  const card = $('#robotCard'); if (!a) { card.hidden = true; return; }
+  card.dataset.name = a.name; fillCard(a); const wb = $('#worldWrap').getBoundingClientRect();
+  card.style.left = clamp(e.clientX - wb.left + 12, 8, wb.width - 250) + 'px'; card.style.top = clamp(e.clientY - wb.top - 20, 8, wb.height - 170) + 'px'; card.hidden = false;
+});
+cv.addEventListener('mousemove', e => { const b = cv.getBoundingClientRect(), x = (e.clientX - b.left) / b.width * W, y = (e.clientY - b.top) / b.height * H; cv.style.cursor = agents.some(a => x > a.x - 8 && x < a.x + 8 && y > a.y - 34 && y < a.y + 1) ? 'pointer' : 'default'; });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#robotCard').hidden = true; });
+function fillCard(a) { const st = a.leaving ? 'quitte le bureau' : a.task ? TASK_FR[a.task.type] + (a.task.data.k ? ' ' + a.task.data.k : '') : a.state === 'rest' ? 'en recharge' : a.state === 'walk' ? 'se déplace' : 'disponible'; $('#robotCard').innerHTML = `<h3 style="color:${a.R.color}">${esc(a.name)}</h3><div class="small muted">${esc(a.R.role)}</div><dl><dt>Statut</dt><dd>${esc(st)}</dd><dt>Tâches faites</dt><dd>${a.done}</dd><dt>Spécialité</dt><dd>${a.R.spec.length ? a.R.spec.map(s => TASK_FR[s]).join(', ') + ' (×1,6)' : 'polyvalent'}</dd></dl><p class="small muted" style="margin:6px 0 0">${esc(a.R.desc)}</p>`; }
+
+/* ===== Boucle d'affichage ===== */
+let last = performance.now(), uiT = 0, chartT = 0;
+function frame(now) {
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  idleBehaviour(); agents.slice().forEach(a => a.update(dt));
+  for (const a of agents) if (a.bubble && (a.bubble.t -= dt) <= 0) a.bubble = null;
+  elev.t -= dt; elev.open = clamp(elev.open + (elev.t > 0 ? dt * 3 : -dt * 3), 0, 1);
+  for (let i = parts.length - 1; i >= 0; i--) { const p = parts[i]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 30 * dt; if ((p.life -= dt) <= 0) parts.splice(i, 1); }
+  if (SNAP) renderWorld(now);
+  if ((chartT += dt) > 0.25) { chartT = 0; if (SNAP) { drawChart(); drawEq(); } }
+  if ((uiT += dt) > 0.4) { uiT = 0; renderKPI(); if (!seen.hold || Date.now() - seen.hold > 600) renderPanels(); const card = $('#robotCard'); if (!card.hidden) { const a = agentByName(card.dataset.name); if (a) fillCard(a); else card.hidden = true; } }
+  requestAnimationFrame(frame);
+}
+buildBG();
+fetch('/api/state', { credentials: 'same-origin' }).then(r => { if (r.status === 401) { location.href = '/login'; return null; } return r.json(); }).then(s => { if (s) applySnapshot(s); connect(); }).catch(() => connect());
+requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>

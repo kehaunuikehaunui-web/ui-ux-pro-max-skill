@@ -1,0 +1,4 @@
+{$KHN_DOMAIN} {
+	encode gzip
+	reverse_proxy khn:8000
+}

@@ -1,0 +1,28 @@
+services:
+  khn:
+    build: .
+    env_file: .env
+    environment:
+      KHN_HOST: 0.0.0.0
+      KHN_DATA_DIR: /app/data
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "127.0.0.1:8000:8000"   # accessible seulement depuis le serveur (tunnel SSH ou Caddy)
+    restart: unless-stopped
+
+  caddy:                         # HTTPS automatique si tu as un nom de domaine (optionnel)
+    image: caddy:2.8.4
+    profiles: ["https"]
+    env_file: .env
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on: [khn]
+    restart: unless-stopped
+
+volumes:
+  caddy_data:

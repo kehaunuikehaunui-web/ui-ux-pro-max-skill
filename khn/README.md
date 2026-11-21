@@ -1,22 +1,35 @@
 # KHN — bot de trading crypto (démo)
 
-Prototype : `prototype/index.html` (publié en artifact privé claude.ai).
-Bureau en pixel art où des robots surveillent un marché crypto simulé (BTC, ETH, SOL),
-prennent des positions en démo, analysent leurs pertes et corrigent leurs stratégies.
+| Dossier | Contenu |
+|---|---|
+| `prototype/` | Phase 1 : prototype autonome dans le navigateur (marché synthétique), publié en artifact. |
+| `engine/` | Phase 2 : moteur Python (FastAPI) qui tourne 24 h/24 sur un serveur. |
+| `web/` | Phase 2 : interface pixel branchée sur le moteur (`index.html` est généré par `build_client.py`). |
+| `tests/` | Tests du moteur (`python -m unittest discover -s tests`). |
+| `DEPLOY.md` | Installation pas à pas sur un serveur. |
 
-## Ce que fait le prototype
+## Phase 2 : ce que fait le moteur
 
 | Fonction | Mise en œuvre |
 |---|---|
-| Surveillance | Un scan par marché à chaque bougie de 5 min (simulée). Signal → ordre. |
-| Exécution autonome | Stop et objectif posés à l'entrée, taille calculée sur le risque. |
-| Gestion du risque | 1 % par trade, perte max du jour 3 %, baisse max 10 %, ordre minimum 5 USDT, arrêt d'urgence. |
-| Auto-correction | Diagnostic de chaque perte (contre-tendance, mauvais régime, volatilité, stop serré, sortie tardive). Correction adoptée seulement si elle améliore le résultat sur des données jamais vues (test hors échantillon 30 %). |
-| Équipe | KHN seul au départ. Tâches ratées ou file trop longue → recrutement d'un spécialiste (SCOUT, EXEC, QUANT, LEARN, RISK). |
-| Apprentissage vidéo | Lien + transcription → Claude extrait des règles chiffrées (format JSON ci-dessous) → backtest → démo si positif. |
-| Mémoire | Stratégies, leçons et journal sauvegardés (base de l'artifact, sinon navigateur). |
+| Données | Bougies 5 min réelles de Binance (`paper`) ou du testnet (`testnet`), marché synthétique (`sim`). |
+| Exécution | `paper` : ordres simulés sur prix réels, achat et vente à découvert. `testnet` : ordres au marché signés sur testnet.binance.vision (spot, achat seulement). Aucun ordre possible ailleurs. |
+| Risque | 1 % par trade, perte max du jour 3 % (jour de Tahiti), baisse max 10 %, filtres Binance (minimum d'ordre, pas de quantité), arrêt d'urgence. |
+| Auto-correction | Diagnostic de chaque perte, correction adoptée seulement si elle tient sur les 30 % d'historique jamais vus. |
+| Équipe | Tâches réelles (scan, ordre, analyse, correction, backtest, vidéo, risque) exécutées par des robots ; recrutement quand une tâche attend ou est ratée. |
+| Vidéos | Transcription YouTube récupérée automatiquement, règles extraites par Claude (`claude-opus-5-5`, sortie JSON structurée, repli automatique sur un autre modèle en cas de refus), puis backtest. |
+| Mémoire | SQLite dans `data/`, une base par mode. |
+| Accès | Mot de passe, cookie signé, interface et commandes en temps réel (WebSocket). |
 
-## Format des stratégies (commun prototype / moteur phase 2)
+## Lancer en local (sans serveur)
+
+```bash
+cd khn
+pip install -r requirements.txt
+KHN_MODE=sim KHN_PASSWORD=essai python -m engine     # puis http://localhost:8000
+```
+
+## Format des stratégies
 
 ```json
 {
@@ -31,16 +44,13 @@ Opérandes : `close, ema, sma, rsi, atr, bb_up, bb_lo, bb_mid, don_hi, don_lo, m
 
 ## Feuille de route
 
-1. **Phase 1 (fait)** : prototype visuel, marché simulé, moteur complet côté navigateur.
-2. **Phase 2** : moteur Python sur serveur 24/7 (VPS ~5 €/mois) branché sur
-   Binance Spot Testnet (gratuit, sans dépôt) avec données réelles ; transcription YouTube
-   récupérée automatiquement ; API Claude pour l'analyse ; même interface pixel en lecture.
-3. **Phase 3** : passage en réel uniquement après 2–3 mois de démo positive et un capital
-   suffisant. Broker visé : Kraken (licence MiCA). Depuis la Polynésie : virement SWIFT
-   15–50 € → inutile avec 1 000 XPF.
+1. **Phase 1 (fait)** : prototype visuel.
+2. **Phase 2 (fait)** : moteur serveur, prix réels, testnet, Claude, transcription YouTube.
+3. **Phase 3** : stops posés chez l'exchange (ordres OCO), puis passage en réel seulement après 2–3 mois
+   de démo positive et un capital suffisant. Broker visé : Kraken (licence MiCA).
 
 ## Limites connues
 
-- Le marché est synthétique : les résultats ne prédisent rien sur le marché réel.
-- KHN ne travaille que lorsque la page est ouverte (phase 1).
-- Sans transcription, une vidéo ne peut pas être analysée.
+- Les résultats en démo ne garantissent rien en réel.
+- YouTube bloque souvent les adresses de serveurs loués : coller la transcription reste possible.
+- En testnet, les stops sont surveillés par KHN, pas posés chez Binance.

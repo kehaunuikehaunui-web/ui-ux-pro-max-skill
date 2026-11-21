@@ -1,0 +1,489 @@
+<!--@@HEAD@@-->
+<style>
+.chip.live{color:var(--up);border-color:#1f6b4c}
+.chip.bad{color:var(--down);border-color:#6b2730}
+.top a.logout{font-size:12.5px;color:var(--muted)}
+.offline{position:absolute;inset:12px;display:grid;place-items:center;background:rgba(5,8,15,.72);border-radius:6px;font:500 15px var(--f-pixel);letter-spacing:.05em;text-align:center;padding:16px}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="logo" aria-label="KHN">KHN</div>
+      <div class="brand-sub">
+        <b>Bureau de trading autonome</b>
+        <div class="chips">
+          <span class="chip demo">Démo</span>
+          <span class="chip" id="chipMode">Mode…</span>
+          <span class="chip" id="chipConn">Connexion…</span>
+          <span class="chip" id="chipAI">IA…</span>
+        </div>
+      </div>
+    </div>
+    <div class="controls">
+      <span class="clock" id="clock">—</span>
+      <button type="button" class="btn kill" id="killBtn" aria-pressed="false">ARRÊT D'URGENCE</button>
+      <a class="logout" href="/logout">Se déconnecter</a>
+    </div>
+  </header>
+
+  <section class="kpis" aria-label="Compte démo">
+    <div class="kpi"><div class="lab">Capital démo</div><div class="val" id="kEq">—</div><div class="sub" id="kEqE">—</div></div>
+    <div class="kpi"><div class="lab">Résultat du jour</div><div class="val" id="kDay">—</div><div class="sub" id="kDayS">—</div></div>
+    <div class="kpi"><div class="lab">Résultat total</div><div class="val" id="kTot">—</div><div class="sub" id="kTotS">—</div></div>
+    <div class="kpi"><div class="lab">Trades gagnants</div><div class="val" id="kWin">—</div><div class="sub" id="kWinS">—</div></div>
+    <div class="kpi"><div class="lab">Baisse max (drawdown)</div><div class="val" id="kDD">—</div><div class="bar"><i id="kDDbar"></i></div></div>
+    <div class="kpi"><div class="lab">Positions ouvertes</div><div class="val" id="kPos">—</div><div class="sub" id="kPosS">—</div></div>
+  </section>
+
+  <section class="stage">
+    <div class="card">
+      <div class="card-h"><h2>Le bureau</h2><span class="hint">Chaque robot exécute une vraie tâche du serveur. Clique-le pour la voir.</span></div>
+      <div class="world-wrap" id="worldWrap">
+        <div class="bezel"><canvas id="world" width="320" height="192" role="img" aria-label="Bureau en pixel art : les robots de KHN surveillent les marchés, passent les ordres et analysent leurs erreurs. Le détail de chaque robot est dans l'onglet Équipe."></canvas></div>
+        <div class="robot-card" id="robotCard" hidden></div>
+        <div class="offline" id="offline">Connexion au serveur de KHN…</div>
+      </div>
+      <div class="legend-row">
+        <span><i class="dot" style="background:#f5c862"></i>Bureau de KHN</span>
+        <span><i class="dot" style="background:#3fe0c5"></i>Surveillance</span>
+        <span><i class="dot" style="background:#8ab4ff"></i>Exécution</span>
+        <span><i class="dot" style="background:#ff8a5c"></i>Risque</span>
+        <span><i class="dot" style="background:#b48cff"></i>Analyse et serveurs</span>
+        <span><i class="dot" style="background:#ff8fab"></i>Coin vidéo</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h2>Graphique</h2><div class="chart-tabs" id="mktTabs" role="group" aria-label="Marché affiché"></div></div>
+      <div class="chart-box">
+        <div class="chart-meta">
+          <span id="regime">Régime : —</span>
+          <span><span class="lg"><i class="ln" style="background:#8ab4ff"></i>EMA 21</span> &nbsp; <span class="lg"><i class="ln" style="background:#f5c862"></i>EMA 50</span> &nbsp; <span class="lg">▲▼ trades</span></span>
+        </div>
+        <div class="chart-fill"><canvas id="chart" role="img" aria-label="Graphique en chandeliers 5 minutes avec moyennes mobiles, positions et trades de KHN"></canvas></div>
+      </div>
+      <div class="eq-box"><div class="eq-head"><span>Évolution du capital démo</span><span id="eqLab">—</span></div><canvas id="eq" role="img" aria-label="Courbe du capital démo"></canvas></div>
+    </div>
+  </section>
+
+  <section class="lower">
+    <div class="card">
+      <div class="card-h"><h2>Console de KHN</h2><span class="hint">Tape « aide » pour la liste des commandes</span></div>
+      <ol class="log" id="log" aria-live="polite" aria-label="Journal d'activité des robots"></ol>
+      <form class="cmd" id="cmdForm" autocomplete="off">
+        <label for="cmdIn">khn&gt;</label>
+        <input id="cmdIn" placeholder="ex. statut · risque 0.5 · apprendre https://youtu.be/… · pourquoi as-tu perdu ?" aria-label="Commande pour KHN">
+        <button class="btn primary" type="submit">Envoyer</button>
+      </form>
+      <div class="cmd-chips" id="cmdChips"><button type="button">statut</button><button type="button">rapport</button><button type="button">pause</button><button type="button">reprendre</button><button type="button">risque 0.5</button><button type="button">aide</button></div>
+    </div>
+    <div class="card">
+      <div class="tabs" role="tablist" aria-label="Pilotage">
+        <button role="tab" id="t-strat" aria-controls="p-strat" aria-selected="true">Stratégies</button>
+        <button role="tab" id="t-pos" aria-controls="p-pos" aria-selected="false" tabindex="-1">Positions &amp; journal</button>
+        <button role="tab" id="t-risk" aria-controls="p-risk" aria-selected="false" tabindex="-1">Risque</button>
+        <button role="tab" id="t-team" aria-controls="p-team" aria-selected="false" tabindex="-1">Équipe</button>
+        <button role="tab" id="t-broker" aria-controls="p-broker" aria-selected="false" tabindex="-1">Broker</button>
+      </div>
+      <div class="panel" role="tabpanel" id="p-strat" aria-labelledby="t-strat">
+        <form class="form-grid" id="learnForm">
+          <h3>Apprendre une stratégie</h3>
+          <label for="learnUrl">Lien de la vidéo (YouTube ou autre)</label>
+          <input class="field" id="learnUrl" type="url" placeholder="https://www.youtube.com/watch?v=…" required>
+          <label for="learnNotes">Transcription ou règles (facultatif pour YouTube)</label>
+          <textarea class="field" id="learnNotes" placeholder="Laisse vide : KHN récupère la transcription YouTube lui-même. Si YouTube bloque le serveur, colle-la ici (bouton « … » sous la vidéo → « Afficher la transcription »)."></textarea>
+          <div class="row"><button class="btn primary" type="submit">Envoyer à KHN</button><span class="small muted" id="learnInfo">KHN extrait des règles chiffrées, les teste sur l'historique réel, puis en démo.</span></div>
+        </form>
+        <div class="strat-list" id="stratList"></div>
+      </div>
+      <div class="panel" role="tabpanel" id="p-pos" aria-labelledby="t-pos" hidden>
+        <h3>Positions ouvertes</h3><div class="tbl-wrap" id="posTable"></div>
+        <h3>Leçons apprises</h3><ol class="lessons" id="lessons"></ol>
+        <h3>Journal des trades</h3><div class="tbl-wrap" id="journal"></div>
+      </div>
+      <div class="panel" role="tabpanel" id="p-risk" aria-labelledby="t-risk" hidden>
+        <div class="note" id="riskNote">—</div>
+        <div class="risk-grid">
+          <div class="ctl"><label for="rTrade">Risque par trade</label><input id="rTrade" type="range" min="0.25" max="2" step="0.25" value="1"><output id="oTrade">—</output></div>
+          <div class="ctl"><label for="rDaily">Perte max par jour</label><input id="rDaily" type="range" min="1" max="10" step="0.5" value="3"><output id="oDaily">—</output></div>
+          <div class="ctl"><label for="rDD">Baisse max avant blocage</label><input id="rDD" type="range" min="5" max="30" step="1" value="10"><output id="oDD">—</output></div>
+          <div class="ctl"><label for="rPos">Positions simultanées max</label><input id="rPos" type="range" min="1" max="3" step="1" value="2"><output id="oPos">—</output></div>
+          <div class="ctl"><label for="rLev">Levier (papier seulement)</label><input id="rLev" type="range" min="1" max="3" step="1" value="1"><output id="oLev">—</output></div>
+          <div class="ctl"><label for="rShort">Sens</label><select class="field" id="rShort"><option value="1">Achat et vente à découvert</option><option value="0">Achat seulement</option></select></div>
+        </div>
+        <h3>Réinitialiser la démo</h3>
+        <div class="row">
+          <label for="resetCap" class="small muted">Capital de départ (XPF)</label>
+          <input class="field" id="resetCap" type="number" min="1000" step="1000" value="1000" style="max-width:160px">
+          <button class="btn" type="button" id="resetBtn">Réinitialiser</button>
+          <span class="small muted" id="resetInfo">Remet le compte à zéro. Les stratégies et les leçons sont conservées.</span>
+        </div>
+      </div>
+      <div class="panel" role="tabpanel" id="p-team" aria-labelledby="t-team" hidden>
+        <p class="small muted">KHN travaille seul au départ. Quand des tâches attendent ou sont ratées, il fait monter un robot spécialisé par l'ascenseur.</p>
+        <div class="team" id="team"></div>
+        <h3>File d'attente</h3><div class="queue" id="queue"></div>
+        <div class="row" id="recruitRow"></div>
+      </div>
+      <div class="panel" role="tabpanel" id="p-broker" aria-labelledby="t-broker" hidden>
+        <div class="note" id="brokerNote">—</div>
+        <h3>Recommandation</h3>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Plateforme</th><th>Démo / API</th><th>Régulation</th><th>Depuis la Polynésie</th><th>Verdict</th></tr></thead>
+          <tbody>
+            <tr><td>Binance</td><td>Spot Testnet gratuit, sans dépôt</td><td>Sans licence MiCA ; inscriptions UE suspendues depuis juillet 2026 (presse)</td><td>Statut incertain</td><td class="pos">Démo (phase 2)</td></tr>
+            <tr><td>Kraken</td><td>API + futures démo</td><td>Licence MiCA (Banque centrale d'Irlande, 25/06/2025)</td><td>Virement SWIFT en EUR, 15–50 €, 2–5 jours</td><td class="pos">Réel, plus tard</td></tr>
+            <tr><td>Coinbase</td><td>API</td><td>Licence MiCA (CSSF Luxembourg, 20/06/2025)</td><td>Frais de trading élevés</td><td class="muted">Alternative</td></tr>
+            <tr><td>Bitget</td><td>Démo intégrée</td><td>Absent du registre CASP de l'ESMA</td><td>—</td><td class="neg">À éviter</td></tr>
+          </tbody></table></div>
+        <h3>Objectif de revenu : le calcul</h3>
+        <div class="calc">
+          <div class="ctl"><label for="cCap" class="small muted">Capital (XPF)</label><input class="field" id="cCap" type="number" min="0" step="1000" value="1000"></div>
+          <div class="ctl"><label for="cRet" class="small muted">Rendement mensuel visé : <output id="oRet">3 %</output></label><input id="cRet" type="range" min="1" max="10" step="0.5" value="3"></div>
+          <div><div class="small muted">Gain mensuel estimé</div><div class="out" id="cGain">—</div></div>
+          <div><div class="small muted">Capital nécessaire pour 300 € / 500 € par mois</div><div class="out" id="cNeed">—</div></div>
+        </div>
+        <p class="small muted">Repère : 2 à 5 % par mois est déjà un très bon résultat, rarement tenu dans la durée.</p>
+      </div>
+    </div>
+  </section>
+  <p class="foot" id="foot">Phase 2 · démo : aucun ordre en argent réel. Le trading comporte un risque de perte en capital.</p>
+</div>
+
+<script>
+(() => {
+'use strict';
+/* ===== Utilitaires ===== */
+const XPF_PER_EUR = 119.33, W = 320, H = 192, T = 16;
+const $ = (s, r = document) => r.querySelector(s);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const rnd = Math.random;
+const nf0 = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
+const nf1 = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const nf2 = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const nf3 = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+const sg = v => v > 0 ? '+' : v < 0 ? '−' : '';
+let RATE = 110;  // XPF par USDT, fourni par le serveur
+const toX = u => u * RATE;
+const fx = u => nf0.format(Math.round(toX(u))) + ' XPF';
+const fxs = u => { const v = Math.round(toX(u)); return sg(v) + nf0.format(Math.abs(v)) + ' XPF'; };
+const fe = u => nf2.format(toX(u) / XPF_PER_EUR) + ' €';
+const fR = r => sg(r) + nf2.format(Math.abs(r || 0)) + ' R';
+const fP = p => p >= 1000 ? nf0.format(p) : p >= 10 ? nf2.format(p) : nf3.format(p);
+const pct = v => sg(v) + nf1.format(Math.abs(v)) + ' %';
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function shade(hex, a) { const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = (n >> 8) & 255, b = n & 255; const f = v => Math.round(a < 0 ? v * (1 + a) : v + (255 - v) * a); return '#' + [f(r), f(g), f(b)].map(v => clamp(v, 0, 255).toString(16).padStart(2, '0')).join(''); }
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const thm = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Pacific/Tahiti', hour: '2-digit', minute: '2-digit', hour12: false });
+const hm = ms => thm.format(new Date(ms));
+
+/*@@FONT@@*/
+
+/* ===== État local, alimenté par le serveur ===== */
+let SNAP = null;
+const S = { focus: 'BTC', eqHist: [], positions: [], risk: { maxDD: 10 }, killed: false, ddHalt: false, dayHalt: '', acct: { day: '', start: 0 }, riskMult: 1, lessons: [], journal: [], frozen: false };
+const M = {};
+const equity = () => SNAP ? SNAP.acct.equity : 0;
+const dd = () => SNAP ? SNAP.acct.dd : 0;
+const unreal = p => p.unreal || 0;
+const TASK = { scan: { station: 'scan', label: 'SCAN' }, order: { station: 'exec', label: 'ORDRE' }, post: { station: 'board', label: 'ANALYSE' }, corr: { station: 'rack', label: 'CORRECTION' }, bt: { station: 'rack', label: 'BACKTEST' }, video: { station: 'tv', label: 'VIDEO' }, audit: { station: 'risk', label: 'RISQUE' } };
+const TASK_FR = { scan: 'surveillance', order: 'ordre', post: 'analyse de trade', corr: 'auto-correction', bt: 'backtest', video: 'étude vidéo', audit: 'contrôle du risque' };
+const ROLES = {
+  KHN: { color: '#f5c862', eye: '#3fe0c5', role: 'Chef trader', spec: [], desc: 'Supervise tout, surveille et exécute quand il est seul.' },
+  SCOUT: { color: '#3fe0c5', eye: '#f5f7ff', role: 'Surveillance des marchés', spec: ['scan'], desc: 'Scanne chaque marché à la clôture de chaque bougie de 5 min.' },
+  EXEC: { color: '#8ab4ff', eye: '#f5f7ff', role: 'Exécution des ordres', spec: ['order'], desc: 'Passe les ordres avec stop et objectif.' },
+  QUANT: { color: '#b48cff', eye: '#f5f7ff', role: 'Analyse et auto-correction', spec: ['post', 'corr', 'bt'], desc: 'Trouve les erreurs et teste les corrections.' },
+  LEARN: { color: '#ff8fab', eye: '#f5f7ff', role: 'Étude des stratégies', spec: ['video'], desc: 'Récupère la transcription et la transforme en règles testables.' },
+  RISK: { color: '#ff8a5c', eye: '#f5f7ff', role: 'Contrôle du risque', spec: ['audit'], desc: 'Surveille l\'exposition et la baisse du capital.' },
+};
+
+/*@@MAP@@*/
+
+/* ===== Robots (animés à partir des événements du serveur) ===== */
+const agents = [];
+const agentByName = n => agents.find(a => a.name === n && !a.leaving);
+class Agent {
+  constructor(name, x, y) { this.name = name; this.R = ROLES[name] || ROLES.KHN; this.x = x; this.y = y; this.path = []; this.state = 'idle'; this.task = null; this.spot = null; this.goal = null; this.face = 'down'; this.anim = rnd() * 3; this.done = 0; this.bubble = null; this.mood = null; this.moodT = 0; this.idleT = 0; this.blinkT = 2 + rnd() * 3; this.leaving = false; this.server = 'idle'; }
+  tile() { return [clamp(Math.floor(this.x / T), 0, 19), clamp(Math.floor((this.y - 2) / T), 2, 11)]; }
+  goTo(spot, goal) { this.spot = spot; this.goal = goal; const [sx, sy] = this.tile(); const p = bfs(sx, sy, spot.tx, spot.ty).map(([x, y]) => ({ x: x * T + 8, y: y * T + 14 })); p.push(spotPx(spot)); this.path = p; this.state = 'walk'; }
+  say(text, kind) { this.bubble = { text: norm(text).slice(0, 18), t: 2.6, kind }; }
+  update(dt) {
+    this.anim += dt; if (this.moodT > 0 && (this.moodT -= dt) <= 0) this.mood = null;
+    if ((this.blinkT -= dt) < 0) this.blinkT = 2 + rnd() * 4;
+    if (this.state === 'walk') {
+      const tg = this.path[0]; if (!tg) return this.arrive();
+      const dx = tg.x - this.x, dy = tg.y - this.y, d = Math.hypot(dx, dy), st = 52 * dt;
+      if (Math.abs(dx) > Math.abs(dy)) this.face = dx > 0 ? 'right' : 'left'; else if (d > 0.1) this.face = dy > 0 ? 'down' : 'up';
+      if (d <= st) { this.x = tg.x; this.y = tg.y; this.path.shift(); if (!this.path.length) this.arrive(); } else { this.x += dx / d * st; this.y += dy / d * st; }
+    } else if (this.state !== 'work') this.idleT += dt;
+  }
+  arrive() {
+    this.face = this.spot ? this.spot.face : this.face;
+    if (this.leaving) { const i = agents.indexOf(this); if (i >= 0) agents.splice(i, 1); elevator(1.2); return; }
+    if (this.goal === 'task' && this.task) this.state = 'work';
+    else if (this.goal === 'rest') this.state = 'rest';
+    else { this.state = 'idle'; this.idleT = 0; }
+  }
+}
+function spotsFor(a, type) { if (a.name === 'KHN' && (type === 'scan' || type === 'order')) return SPOTS.khn; return SPOTS[TASK[type].station]; }
+function freeSpot(list, a) { return list.find(s => !agents.some(o => o !== a && o.spot === s)) || null; }
+const elev = { open: 0, t: 0 };
+function elevator(s) { elev.t = Math.max(elev.t, s); }
+function spawn(name, quiet) { if (agentByName(name) || !ROLES[name]) return; const a = name === 'KHN' && quiet ? new Agent(name, spotPx(SPOTS.khn[0]).x, spotPx(SPOTS.khn[0]).y) : new Agent(name, 288, 34); if (name === 'KHN' && quiet) { a.spot = SPOTS.khn[0]; a.face = 'up'; } else { elevator(1.6); a.say('BONJOUR!', 'work'); sparkle(288, 26); } agents.push(a); }
+function leave(name) { const a = agentByName(name); if (!a || name === 'KHN') return; a.leaving = true; a.task = null; a.goTo(SP(18, 2, 'up'), 'leave'); }
+function idleBehaviour() {
+  for (const a of agents) {
+    if (a.leaving || a.state !== 'idle' || a.task) continue;
+    if (a.name === 'KHN') { if (a.spot !== SPOTS.khn[0] && a.idleT > 2) a.goTo(SPOTS.khn[0], 'home'); continue; }
+    if (a.idleT > 9) { const d = freeSpot(SPOTS.dock, a); if (d) a.goTo(d, 'rest'); else a.idleT = 0; }
+    else if (a.idleT > 4 && rnd() < 0.004) { const pool = rnd() < .5 ? SPOTS.coffee : SPOTS.table; const s = freeSpot(pool, a); if (s) a.goTo(s, 'chill'); }
+  }
+}
+
+/*@@PARTS@@*/
+
+/*@@RENDER@@*/
+
+/* ===== Synchronisation avec le serveur ===== */
+function applySnapshot(s) {
+  SNAP = s; RATE = s.rate || RATE;
+  for (const k in s.markets) {
+    const mk = s.markets[k], cs = mk.candles.map(c => ({ t: c[0], o: c[1], h: c[2], l: c[3], c: c[4] }));
+    M[k] = { k, sym: mk.sym, candles: cs.slice(0, -1), cur: cs[cs.length - 1], price: mk.price, ema21: mk.ema21, ema50: mk.ema50, regime: mk.regime, chg: mk.chg };
+  }
+  if (!M[S.focus]) S.focus = Object.keys(M)[0];
+  Object.assign(S, { eqHist: s.eq || [], positions: s.positions || [], risk: { maxDD: s.risk.max_dd }, killed: s.flags.killed, ddHalt: s.flags.dd_halt, dayHalt: s.flags.day_halt, acct: { day: s.acct.day, start: s.acct.start }, riskMult: s.risk_mult, lessons: s.lessons || [], journal: s.journal || [] });
+  const names = new Set(s.team.map(t => t.name));
+  s.team.forEach(t => { if (!agentByName(t.name)) spawn(t.name, !booted); const a = agentByName(t.name); if (a) { a.done = t.done; a.server = t.state; } });
+  agents.filter(a => !a.leaving && !names.has(a.name)).forEach(a => leave(a.name));
+  booted = true;
+  if (s.logs) { logEl.innerHTML = ''; s.logs.forEach(addLog); }
+  ensureTabs(); rev.data++;
+}
+let booted = false;
+function onEvent(ev) {
+  if (ev.type === 'state') return applySnapshot(ev);
+  if (ev.type === 'log') return addLog(ev.entry);
+  if (ev.type === 'team') { if (ev.action === 'join') spawn(ev.name); else leave(ev.name); return; }
+  if (ev.type === 'task') {
+    const a = agentByName(ev.agent); if (!a) return;
+    if (ev.phase === 'start') {
+      a.task = { type: ev.task, data: { k: ev.k } };
+      const list = spotsFor(a, ev.task), here = a.spot && list.includes(a.spot) && a.state !== 'walk';
+      a.say(TASK[ev.task].label + (ev.k ? ' ' + ev.k : ''), 'work');
+      if (here) { a.goal = 'task'; a.state = 'work'; } else a.goTo(freeSpot(list, a) || list[0], 'task');
+    } else { a.task = null; if (a.state === 'work') { a.state = 'idle'; a.idleT = 0; } }
+    return;
+  }
+  if (ev.type === 'fx') {
+    const a = agentByName(ev.agent) || agentByName('KHN');
+    if (ev.kind === 'win' || ev.kind === 'loss') { burst(ev.kind === 'win'); if (a) { a.mood = ev.kind; a.moodT = 2.5; a.say(ev.kind === 'win' ? ev.text : 'AIE ' + ev.text, ev.kind === 'win' ? 'win' : 'err'); } }
+    else if (a) { a.say(ev.text, ev.kind === 'fix' ? 'win' : 'work'); if (ev.kind === 'fix') sparkle(a.x, a.y - 20); }
+  }
+}
+async function api(path, body) {
+  try {
+    const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), credentials: 'same-origin' });
+    if (r.status === 401) { location.href = '/login'; return null; }
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) addLog({ ts: Date.now(), who: 'KHN', type: 'error', text: j.error || ('Erreur ' + r.status) });
+    return j;
+  } catch (e) { addLog({ ts: Date.now(), who: 'KHN', type: 'error', text: 'Serveur injoignable : la commande n\'est pas partie.' }); return null; }
+}
+const command = text => api('/api/command', { text });
+let ws = null, wsDelay = 1000, online = false;
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(proto + '//' + location.host + '/ws');
+  ws.onopen = () => { wsDelay = 1000; online = true; };
+  ws.onmessage = m => { try { onEvent(JSON.parse(m.data)); } catch (e) { console.error(e); } };
+  ws.onclose = e => { online = false; if (e.code === 1008) { location.href = '/login'; return; } setTimeout(connect, wsDelay); wsDelay = Math.min(15000, wsDelay * 2); };
+}
+
+/* ===== Graphique ===== */
+const ch = $('#chart'), eqc = $('#eq'); let hoverX = null;
+ch.addEventListener('mousemove', e => { const b = ch.getBoundingClientRect(); hoverX = e.clientX - b.left; });
+ch.addEventListener('mouseleave', () => hoverX = null);
+function setupCanvas(c) { const b = c.getBoundingClientRect(), d = devicePixelRatio || 1, w = Math.max(160, Math.round(b.width)), h = Math.round(b.height); if (c.width !== w * d || c.height !== h * d) { c.width = w * d; c.height = h * d; } const x = c.getContext('2d'); x.setTransform(d, 0, 0, d, 0, 0); x.clearRect(0, 0, w, h); return { x, w, h }; }
+function niceTicks(lo, hi, n) { const span = hi - lo, raw = span / n, mag = Math.pow(10, Math.floor(Math.log10(raw))), st = [1, 2, 2.5, 5, 10].map(f => f * mag).find(s => span / s <= n) || 10 * mag; const out = []; for (let v = Math.ceil(lo / st) * st; v <= hi; v += st) out.push(v); return out; }
+function drawChart() {
+  const m = M[S.focus]; if (!m) return;
+  const { x: c, w, h } = setupCanvas(ch);
+  const N = w < 420 ? 48 : 72, closed = m.candles.slice(-(N - 1)), cs = closed.concat([m.cur]);
+  const padR = 64, padL = 6, padT = 8, padB = 20, pw = w - padR - padL, ph = h - padT - padB;
+  let lo = Infinity, hi = -Infinity; cs.forEach(k => { lo = Math.min(lo, k.l); hi = Math.max(hi, k.h); });
+  const pos = S.positions.filter(p => p.k === S.focus); pos.forEach(p => { lo = Math.min(lo, p.stop, p.tp); hi = Math.max(hi, p.stop, p.tp); });
+  const pad = (hi - lo) * 0.06 || 1; lo -= pad; hi += pad;
+  const Y = v => padT + (hi - v) / (hi - lo) * ph, step = pw / cs.length, X = i => padL + i * step + step / 2;
+  c.font = '11px "JetBrains Mono", monospace'; c.textBaseline = 'middle';
+  niceTicks(lo, hi, 5).forEach(v => { const y = Math.round(Y(v)) + .5; c.strokeStyle = '#1b2742'; c.lineWidth = 1; c.beginPath(); c.moveTo(padL, y); c.lineTo(padL + pw, y); c.stroke(); c.fillStyle = '#62759a'; c.fillText(fP(v), padL + pw + 8, y); });
+  c.fillStyle = '#62759a'; c.textBaseline = 'alphabetic';
+  cs.forEach((k, i) => { if (Math.floor(k.t / 300000) % 16 === 0) c.fillText(hm(k.t), X(i) - 15, h - 5); });
+  [[m.ema21, '#8ab4ff'], [m.ema50, '#f5c862']].forEach(([s, col]) => { if (!s) return; const off = s.length - closed.length; c.strokeStyle = col; c.lineWidth = 1.5; c.beginPath(); let st = false; closed.forEach((_, i) => { const v = s[off + i]; if (v == null) return; st ? c.lineTo(X(i), Y(v)) : c.moveTo(X(i), Y(v)); st = true; }); c.stroke(); });
+  const bw = Math.max(1, Math.floor(step * 0.62));
+  cs.forEach((k, i) => { const up = k.c >= k.o, col = up ? '#3ddc97' : '#ff6b6b', xx = Math.round(X(i)); c.fillStyle = col; c.fillRect(xx, Math.round(Y(k.h)), 1, Math.max(1, Math.round(Y(k.l) - Y(k.h)))); const y0 = Math.round(Y(Math.max(k.o, k.c))), y1 = Math.round(Y(Math.min(k.o, k.c))), bh = Math.max(1, y1 - y0); if (up && bw > 2) { c.fillStyle = '#111a2e'; c.fillRect(xx - (bw >> 1), y0, bw, bh); c.strokeStyle = col; c.lineWidth = 1; c.strokeRect(xx - (bw >> 1) + .5, y0 + .5, bw - 1, Math.max(0, bh - 1)); } else { c.fillStyle = col; c.fillRect(xx - (bw >> 1), y0, bw, bh); } });
+  const idx = t => cs.findIndex(k => k.t === t);
+  S.journal.filter(t => t.k === S.focus).slice(0, 20).forEach(t => { const i0 = idx(t.t0), i1 = idx(t.t1); c.fillStyle = t.side === 'long' ? '#3ddc97' : '#ff6b6b'; if (i0 >= 0) { const xx = X(i0), yy = Y(t.entry); c.beginPath(); if (t.side === 'long') { c.moveTo(xx, yy + 4); c.lineTo(xx - 5, yy + 12); c.lineTo(xx + 5, yy + 12); } else { c.moveTo(xx, yy - 4); c.lineTo(xx - 5, yy - 12); c.lineTo(xx + 5, yy - 12); } c.fill(); } if (i1 >= 0) { c.beginPath(); c.arc(X(i1), Y(t.exit), 4, 0, Math.PI * 2); c.fillStyle = '#111a2e'; c.fill(); c.lineWidth = 2; c.strokeStyle = t.pnl >= 0 ? '#3ddc97' : '#ff6b6b'; c.stroke(); } });
+  c.setLineDash([4, 3]); c.lineWidth = 1;
+  const lab = (v, col, t) => { const y = Y(v); c.strokeStyle = col; c.beginPath(); c.moveTo(padL, y); c.lineTo(padL + pw, y); c.stroke(); c.setLineDash([]); c.fillStyle = col; c.fillRect(padL + pw + 2, y - 8, padR - 4, 16); c.fillStyle = '#0a1020'; c.textBaseline = 'middle'; c.fillText(t, padL + pw + 6, y); c.setLineDash([4, 3]); };
+  pos.forEach(p => { lab(p.tp, '#3ddc97', 'TP'); lab(p.stop, '#ff6b6b', 'SL'); const ye = Y(p.entry); c.strokeStyle = '#97a8c7'; c.beginPath(); c.moveTo(padL, ye); c.lineTo(padL + pw, ye); c.stroke(); });
+  c.setLineDash([]);
+  const py = Y(m.price), upNow = m.cur.c >= m.cur.o; c.fillStyle = upNow ? '#3ddc97' : '#ff6b6b'; c.fillRect(padL + pw + 2, py - 9, padR - 4, 18); c.fillStyle = '#0a1020'; c.textBaseline = 'middle'; c.font = '600 11px "JetBrains Mono", monospace'; c.fillText(fP(m.price), padL + pw + 5, py);
+  if (hoverX != null && hoverX > padL && hoverX < padL + pw) {
+    const i = clamp(Math.floor((hoverX - padL) / step), 0, cs.length - 1), k = cs[i], xx = Math.round(X(i)) + .5;
+    c.strokeStyle = '#2e4166'; c.beginPath(); c.moveTo(xx, padT); c.lineTo(xx, padT + ph); c.stroke();
+    const lines = [hm(k.t) + '  ' + S.focus, 'O ' + fP(k.o) + '  H ' + fP(k.h), 'B ' + fP(k.l) + '  F ' + fP(k.c), 'Variation ' + pct((k.c - k.o) / k.o * 100)];
+    c.font = '11px "JetBrains Mono", monospace'; const tw = Math.max(...lines.map(l => c.measureText(l).width)) + 16, th = lines.length * 15 + 10;
+    const tx = xx + 10 + tw > padL + pw ? xx - 10 - tw : xx + 10;
+    c.fillStyle = 'rgba(10,16,32,.95)'; c.strokeStyle = '#2e4166'; c.fillRect(tx, padT + 4, tw, th); c.strokeRect(tx + .5, padT + 4.5, tw - 1, th - 1);
+    c.fillStyle = '#e7eef9'; c.textBaseline = 'top'; lines.forEach((l, j) => c.fillText(l, tx + 8, padT + 10 + j * 15));
+  }
+  $('#regime').textContent = 'Régime détecté : ' + (m.regime || '—');
+}
+function drawEq() {
+  const { x: c, w, h } = setupCanvas(eqc), e = S.eqHist.slice(-400); if (e.length < 2 || !SNAP) return;
+  const base = SNAP.acct.start; let lo = Math.min(base, ...e), hi = Math.max(base, ...e); const pd = (hi - lo) * 0.15 || base * 0.01 || 1; lo -= pd; hi += pd;
+  const X = i => 2 + i / (e.length - 1) * (w - 60), Y = v => 4 + (hi - v) / (hi - lo) * (h - 8);
+  c.strokeStyle = '#2e4166'; c.setLineDash([3, 3]); c.beginPath(); c.moveTo(2, Y(base)); c.lineTo(w - 58, Y(base)); c.stroke(); c.setLineDash([]);
+  const last = e[e.length - 1], col = last >= base ? '#3ddc97' : '#ff6b6b';
+  const gr = c.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, last >= base ? 'rgba(61,220,151,.22)' : 'rgba(255,107,107,.22)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  c.beginPath(); e.forEach((v, i) => i ? c.lineTo(X(i), Y(v)) : c.moveTo(X(i), Y(v))); c.lineTo(X(e.length - 1), h); c.lineTo(X(0), h); c.closePath(); c.fillStyle = gr; c.fill();
+  c.beginPath(); e.forEach((v, i) => i ? c.lineTo(X(i), Y(v)) : c.moveTo(X(i), Y(v))); c.strokeStyle = col; c.lineWidth = 2; c.stroke();
+  c.beginPath(); c.arc(X(e.length - 1), Y(last), 3.5, 0, Math.PI * 2); c.fillStyle = col; c.fill();
+  c.fillStyle = '#97a8c7'; c.font = '11px "JetBrains Mono", monospace'; c.textBaseline = 'middle'; c.fillText('départ', w - 52, Y(base));
+}
+
+/* ===== Console ===== */
+const ICON = { info: ['·', '#62759a'], signal: ['◆', '#8ab4ff'], order: ['▶', '#f5c862'], win: ['▲', '#3ddc97'], loss: ['▼', '#ff6b6b'], error: ['✗', '#ff6b6b'], fix: ['★', '#f5c862'], risk: ['⚠', '#ffb547'], team: ['+', '#3fe0c5'], learn: ['▣', '#ff8fab'], ai: ['✦', '#b48cff'], you: ['›', '#e7eef9'] };
+const logEl = $('#log');
+function addLog(e) {
+  const li = document.createElement('li'), [ic, col] = ICON[e.type] || ICON.info, wc = e.who === 'TOI' ? '#e7eef9' : (ROLES[e.who] || ROLES.KHN).color;
+  li.innerHTML = `<time>${esc(hm(e.ts))}</time><span class="ic" style="color:${col}" aria-hidden="true">${ic}</span><span><span class="who" style="color:${wc}">${esc(e.who)}</span>${esc(e.text)}</span>`;
+  logEl.prepend(li); while (logEl.children.length > 200) logEl.lastChild.remove();
+}
+const hist = []; let hi = -1;
+$('#cmdForm').addEventListener('submit', e => { e.preventDefault(); const v = $('#cmdIn').value.trim(); if (!v) return; hist.unshift(v); hi = -1; $('#cmdIn').value = ''; command(v); });
+$('#cmdIn').addEventListener('keydown', e => { if (e.key === 'ArrowUp' && hist.length) { hi = Math.min(hist.length - 1, hi + 1); e.target.value = hist[hi]; e.preventDefault(); } else if (e.key === 'ArrowDown') { hi = Math.max(-1, hi - 1); e.target.value = hi >= 0 ? hist[hi] : ''; e.preventDefault(); } });
+$('#cmdChips').addEventListener('click', e => { const b = e.target.closest('button'); if (b) command(b.textContent); });
+$('#learnForm').addEventListener('submit', async e => { e.preventDefault(); const u = $('#learnUrl').value.trim(), n = $('#learnNotes').value.trim(); const r = await api('/api/learn', { url: u, notes: n }); if (r && r.ok) { $('#learnUrl').value = ''; $('#learnNotes').value = ''; $('#learnInfo').textContent = n ? 'Reçu. LEARN étudie ton texte, puis QUANT teste la stratégie.' : 'Reçu. LEARN récupère la transcription YouTube, puis QUANT teste la stratégie.'; } });
+$('#killBtn').addEventListener('click', () => command(S.killed ? 'reprendre' : 'stop'));
+
+/* ===== Onglets & panneaux ===== */
+const tabs = [...document.querySelectorAll('[role=tab]')];
+function selectTab(t) { tabs.forEach(x => { const on = x === t; x.setAttribute('aria-selected', String(on)); x.tabIndex = on ? 0 : -1; $('#' + x.getAttribute('aria-controls')).hidden = !on; }); seen.k = ''; renderPanels(); }
+tabs.forEach((t, i) => { t.addEventListener('click', () => selectTab(t)); t.addEventListener('keydown', e => { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { const n = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]; n.focus(); selectTab(n); } }); });
+function ensureTabs() { const el = $('#mktTabs'); const keys = Object.keys(M); if (el.dataset.k === keys.join()) return; el.dataset.k = keys.join(); el.innerHTML = keys.map(k => `<button type="button" class="mkt" data-k="${k}" aria-pressed="${k === S.focus}"><b>${esc(M[k].sym.replace('USDT', '/USDT'))}</b><span id="px-${k}">—</span></button>`).join(''); }
+$('#mktTabs').addEventListener('click', e => { const b = e.target.closest('.mkt'); if (!b) return; S.focus = b.dataset.k; document.querySelectorAll('.mkt').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.k === S.focus))); });
+const rev = { data: 0 }, seen = { k: '' };
+function condTxt(c) { const o = x => ({ close: 'prix', ema: 'EMA ' + x.n, sma: 'MM ' + x.n, rsi: 'RSI ' + x.n, atr: 'ATR ' + x.n, bb_up: 'Bollinger haute', bb_lo: 'Bollinger basse', bb_mid: 'Bollinger milieu', don_hi: 'plus haut ' + x.n + ' bougies', don_lo: 'plus bas ' + x.n + ' bougies', macd: 'MACD', macd_sig: 'signal MACD', num: String(x.v).replace('.', ',') }[x.k]); return o(c.a) + ' ' + ({ '>': 'au-dessus de', '<': 'sous', cross_above: 'croise au-dessus de', cross_below: 'croise sous' }[c.op]) + ' ' + o(c.b); }
+function filtTags(s) { const f = s.filters || {}, t = []; if (f.htfAlign) t.push('sens EMA 100'); if (f.minTrend != null) t.push('tendance ≥ ' + nf2.format(f.minTrend)); if (f.maxTrend != null) t.push('tendance ≤ ' + nf2.format(f.maxTrend)); if (f.maxVolPct != null) t.push('volatilité ≤ ' + Math.round(f.maxVolPct * 100) + 'e centile'); return t; }
+const ST_FR = { active: 'en démo', test: 'en test', analyse: 'analyse', suspendue: 'suspendue', rejetee: 'rejetée', off: 'coupée' };
+function renderStrats() {
+  $('#stratList').innerHTML = SNAP.strategies.slice().reverse().map(s => {
+    const L = s.live, b = s.bt, has = (s.long || []).length || (s.short || []).length;
+    const rules = s.status === 'analyse' ? '<span>LEARN étudie la vidéo…</span>' : ((s.long || []).length ? `<div><b>Achat :</b> ${s.long.map(c => '<code>' + esc(condTxt(c)) + '</code>').join(' et ')}</div>` : '') + ((s.short || []).length ? `<div><b>Vente :</b> ${s.short.map(c => '<code>' + esc(condTxt(c)) + '</code>').join(' et ')}</div>` : '') + (has ? `<div><b>Stop :</b> ${s.stop.type === 'atr' ? nf1.format(s.stop.mult) + ' × ATR' : nf2.format(s.stop.value) + ' %'} · <b>Objectif :</b> ${nf1.format(s.tp.rr)} R</div>` : '');
+    const tags = filtTags(s);
+    return `<article class="strat"><div class="strat-top"><b>n° ${s.num} · ${esc(s.name)}</b><span class="pill ${esc(s.status)}">${ST_FR[s.status] || esc(s.status)}</span></div>
+      <div class="small muted">${esc(s.source || '')}${s.url ? ` · <a href="${esc(s.url)}" target="_blank" rel="noopener">voir la source</a>` : ''}${s.version > 1 ? ' · version ' + s.version : ''}</div>
+      ${s.summary ? `<p class="small">${esc(s.summary)}</p>` : ''}<div class="rules">${rules}</div>
+      ${tags.length ? `<div class="tags">${tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
+      ${s.notes && s.notes.length ? `<div class="small muted">${s.notes.map(esc).join('<br>')}</div>` : ''}
+      <div class="stats"><span>Démo : ${L.n} trades · ${L.n ? Math.round(L.w / L.n * 100) : 0} % gagnants · ${fR(L.n ? L.sumR / L.n : 0)}/trade</span>${b ? `<span>Test hors échantillon : ${b.oos.n} trades · ${fR(b.oos.expR)}/trade · facteur ${nf2.format(b.oos.pf)}</span>` : ''}</div>
+      ${s.status !== 'analyse' && has ? `<div class="row"><button class="btn small" data-cmd="strat ${s.status === 'active' ? 'off' : 'on'} ${s.num}">${s.status === 'active' ? 'Couper' : 'Activer'}</button><button class="btn small" data-cmd="backtest ${s.num}">Backtest</button><button class="btn small" data-cmd="corriger ${s.num}">Auto-correction</button></div>` : ''}
+    </article>`;
+  }).join('');
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-cmd]'); if (b) command(b.dataset.cmd); });
+function renderPos() {
+  $('#posTable').innerHTML = S.positions.length ? `<table><thead><tr><th>Marché</th><th>Sens</th><th>Entrée</th><th>Actuel</th><th>Résultat</th><th>Stop</th><th>Objectif</th><th>Stratégie</th><th></th></tr></thead><tbody>${S.positions.map(p => `<tr><td>${esc(p.k)}</td><td>${p.side === 'long' ? 'Achat' : 'Vente'}</td><td>${fP(p.entry)}</td><td>${M[p.k] ? fP(M[p.k].price) : '—'}</td><td class="${p.unreal >= 0 ? 'pos' : 'neg'}">${fxs(p.unreal)}</td><td>${fP(p.stop)}</td><td>${fP(p.tp)}</td><td>${esc(p.sname)}</td><td><button class="btn small" data-cmd="fermer ${esc(p.k.toLowerCase())}">Fermer</button></td></tr>`).join('')}</tbody></table>` : '<p class="small muted">Aucune position. KHN attend un signal validé par le contrôle du risque.</p>';
+  $('#lessons').innerHTML = S.lessons.length ? S.lessons.slice(0, 10).map(l => `<li><b>${esc(l.sname)}</b> : ${esc(l.text)} <span class="muted small">(${esc(new Date(l.ts).toLocaleDateString('fr-FR'))} · test ${fR(l.before)} → ${fR(l.after)})</span></li>`).join('') : '<li class="muted">Pas encore de correction adoptée. KHN corrige une stratégie après 6 trades ou 3 pertes de suite, si la correction tient sur des données jamais vues.</li>';
+  $('#journal').innerHTML = S.journal.length ? `<table><thead><tr><th>#</th><th>Marché</th><th>Sens</th><th>Résultat</th><th>R</th><th>Sortie</th><th>Stratégie</th><th>Diagnostic</th></tr></thead><tbody>${S.journal.slice(0, 30).map(t => `<tr><td>${t.id}</td><td>${esc(t.k)}</td><td>${t.side === 'long' ? 'Achat' : 'Vente'}</td><td class="${t.pnl >= 0 ? 'pos' : 'neg'}">${fxs(t.pnl)}</td><td>${fR(t.r)}</td><td>${({ tp: 'objectif', stop: 'stop', signal: 'signal', temps: 'durée', manuel: 'manuel', urgence: 'urgence' })[t.reason] || esc(t.reason)}</td><td>${esc(t.sname)}</td><td class="diag">${t.diag ? esc(t.diag.text) : (t.manual ? 'Ordre manuel' : '<span class="muted">analyse en attente…</span>')}</td></tr>`).join('')}</tbody></table>` : '<p class="small muted">Aucun trade clôturé pour l\'instant.</p>';
+}
+function avatar(name) { const c = document.createElement('canvas'); c.width = 26; c.height = 30; drawRobot(c.getContext('2d'), { R: ROLES[name], name, anim: 0, state: 'idle', face: 'down', blinkT: 1, mood: null }, 13, 29); return c; }
+const STATE_FR = { idle: 'disponible', work: 'au travail', rest: 'en recharge' };
+function renderTeam() {
+  const el = $('#team'); el.innerHTML = '';
+  SNAP.team.forEach(t => { const d = document.createElement('div'); d.className = 'mate'; d.appendChild(avatar(t.name)); const info = document.createElement('div'); info.innerHTML = `<b style="color:${ROLES[t.name].color}">${esc(t.name)}</b><div class="small">${esc(t.role)}</div><div class="st">${t.task ? esc(TASK_FR[t.task.type] + (t.task.k ? ' ' + t.task.k : '')) : STATE_FR[t.state] || t.state} · ${t.done} tâches</div>${t.name !== 'KHN' ? `<button class="btn small" data-cmd="renvoyer ${t.name.toLowerCase()}" style="margin-top:4px">Renvoyer</button>` : ''}`; d.appendChild(info); el.appendChild(d); });
+  const q = SNAP.queue || {}; $('#queue').innerHTML = Object.keys(q).length ? Object.entries(q).map(([k, v]) => `<span class="tag">${TASK_FR[k]} × ${v}</span>`).join('') : '<span class="small muted">Rien en attente.</span>';
+  const miss = Object.keys(ROLES).filter(n => n !== 'KHN' && !SNAP.team.some(t => t.name === n));
+  $('#recruitRow').innerHTML = miss.length ? '<span class="small muted">Appeler :</span>' + miss.map(n => `<button class="btn small" data-cmd="recruter ${n.toLowerCase()}">${n} · ${esc(ROLES[n].role.toLowerCase())}</button>`).join('') : '<span class="small muted">Équipe complète.</span>';
+}
+const RK = [['rTrade', 'per_trade', 'oTrade', v => nf2.format(v) + ' %'], ['rDaily', 'max_daily', 'oDaily', v => nf1.format(v) + ' %'], ['rDD', 'max_dd', 'oDD', v => nf0.format(v) + ' %'], ['rPos', 'max_pos', 'oPos', v => String(v)], ['rLev', 'lev', 'oLev', v => v + '×']];
+let riskTouched = 0, riskTimer = null;
+function syncRisk() { if (Date.now() - riskTouched < 3000) return; const r = SNAP.risk; RK.forEach(([id, key, out, f]) => { $('#' + id).value = r[key]; $('#' + out).textContent = f(r[key]); }); $('#rShort').value = r.shorts ? '1' : '0'; $('#rShort').disabled = !SNAP.can_short; $('#rLev').disabled = !SNAP.can_short || !r.shorts; }
+function pushRisk() { riskTouched = Date.now(); clearTimeout(riskTimer); riskTimer = setTimeout(() => { const d = {}; RK.forEach(([id, key]) => d[key] = +$('#' + id).value); d.shorts = $('#rShort').value === '1'; api('/api/risk', d); }, 400); }
+RK.forEach(([id, key, out, f]) => $('#' + id).addEventListener('input', e => { $('#' + out).textContent = f(+e.target.value); pushRisk(); }));
+$('#rShort').addEventListener('change', pushRisk);
+function renderRiskNote() {
+  const e = equity(), rx = e * SNAP.risk.per_trade / 100 * SNAP.risk_mult, mn = SNAP.min_notional, small = e < mn * 2;
+  const n = $('#riskNote'); n.className = 'note' + (small ? ' warn' : '');
+  n.innerHTML = `Risque par trade : <b>${fx(rx)}</b> (${fe(rx)})${SNAP.risk_mult < 1 ? ' — mode prudent ×0,5' : ''}. Ordre minimum de l'exchange : <b>≈ ${fx(mn)}</b> (${nf2.format(mn)} USDT).${SNAP.can_short ? '' : ' <br>Testnet spot : achat seulement, pas de vente à découvert ni de levier.'}${small ? ' <br>Avec ce capital, une seule position tient au minimum d\'ordre : KHN refuse les trades dont le risque dépasserait 1,5 fois la limite.' : ''}`;
+}
+let resetArm = 0;
+$('#resetBtn').addEventListener('click', () => { const v = Math.max(1000, Math.round(+$('#resetCap').value || 1000)); if (Date.now() - resetArm < 4000) { resetArm = 0; $('#resetBtn').textContent = 'Réinitialiser'; command('capital ' + v); } else { resetArm = Date.now(); $('#resetBtn').textContent = 'Confirmer'; $('#resetInfo').textContent = 'Clique encore pour confirmer (4 s).'; setTimeout(() => { if (resetArm) { resetArm = 0; $('#resetBtn').textContent = 'Réinitialiser'; $('#resetInfo').textContent = 'Remet le compte à zéro. Les stratégies et les leçons sont conservées.'; } }, 4000); } });
+function calc() { const cap = Math.max(0, +$('#cCap').value || 0), ret = +$('#cRet').value; $('#oRet').textContent = nf1.format(ret) + ' %'; const g = cap * ret / 100; $('#cGain').textContent = nf0.format(Math.round(g)) + ' XPF · ' + nf2.format(g / XPF_PER_EUR) + ' €'; const need = e => e * XPF_PER_EUR / (ret / 100); $('#cNeed').textContent = nf0.format(Math.round(need(300))) + ' / ' + nf0.format(Math.round(need(500))) + ' XPF'; }
+['cCap', 'cRet'].forEach(id => $('#' + id).addEventListener('input', calc)); calc();
+const MODE = { sim: ['Simulation', 'Marché synthétique pour tester sans réseau. Aucun prix réel.'], paper: ['Papier · prix réels', 'Prix réels Binance, ordres simulés par KHN. Aucun compte nécessaire.'], testnet: ['Testnet Binance', 'Ordres réels envoyés au testnet Binance, en argent fictif.'] };
+function renderPanels() {
+  if (!SNAP) return;
+  const vis = id => !$('#' + id).hidden, key = rev.data + $('[role=tab][aria-selected=true]').id;
+  if (key === seen.k) return; seen.k = key;
+  if (vis('p-strat')) renderStrats();
+  if (vis('p-pos')) renderPos();
+  if (vis('p-team')) renderTeam();
+  if (vis('p-risk')) { syncRisk(); renderRiskNote(); }
+  if (vis('p-broker')) $('#brokerNote').innerHTML = `<b>Mode actuel : ${esc(MODE[SNAP.mode][0])}.</b> ${esc(MODE[SNAP.mode][1])} Le trading réel est désactivé en phase 2 : KHN ne sait envoyer des ordres qu'au testnet.`;
+}
+// les boutons d'un panneau ne doivent pas être recréés sous la souris
+document.addEventListener('pointerdown', e => { if (e.target.closest('.panel button')) seen.hold = Date.now(); });
+function renderKPI() {
+  if (!SNAP) return;
+  const a = SNAP.acct, e = a.equity, d0 = a.start, day = e - (a.day_start || e), tot = e - d0, st = SNAP.stats;
+  $('#kEq').textContent = fx(e); $('#kEqE').textContent = fe(e) + ' · départ ' + fx(d0);
+  const kd = $('#kDay'); kd.textContent = fxs(day); kd.className = 'val ' + (day > 0 ? 'pos' : day < 0 ? 'neg' : ''); $('#kDayS').textContent = pct(day / (a.day_start || 1) * 100) + ' · limite −' + nf1.format(SNAP.risk.max_daily) + ' %';
+  const kt = $('#kTot'); kt.textContent = fxs(tot); kt.className = 'val ' + (tot > 0 ? 'pos' : tot < 0 ? 'neg' : ''); $('#kTotS').textContent = pct(tot / (d0 || 1) * 100) + ' · ' + nf2.format(tot) + ' USDT';
+  $('#kWin').textContent = st.n ? Math.round(st.w / st.n * 100) + ' %' : '—'; $('#kWinS').textContent = st.n + ' trades clôturés';
+  $('#kDD').textContent = nf1.format(a.dd * 100) + ' %'; $('#kDDbar').style.width = Math.min(100, a.dd / (SNAP.risk.max_dd / 100) * 100) + '%'; $('#kDDbar').style.background = a.dd > SNAP.risk.max_dd / 200 ? 'var(--down)' : 'var(--warn)';
+  const f = SNAP.flags; $('#kPos').textContent = SNAP.positions.length + ' / ' + SNAP.risk.max_pos; $('#kPosS').textContent = f.killed ? 'arrêt d\'urgence' : f.paused ? 'en pause' : f.dd_halt ? 'bloqué (baisse max)' : f.day_halt === a.day ? 'stop du jour' : 'trading actif';
+  for (const k in M) { const el = $('#px-' + k); if (el) { el.textContent = fP(M[k].price) + ' ' + pct(M[k].chg); el.style.color = M[k].chg >= 0 ? 'var(--up)' : 'var(--down)'; } }
+  $('#clock').textContent = 'Tahiti ' + hm(Date.now());
+  $('#eqLab').textContent = fx(e) + (st.n ? ' · ' + fxs(st.pnl) + ' réalisés' : '');
+  const cm = $('#chipMode'); cm.textContent = MODE[SNAP.mode][0]; cm.className = 'chip' + (SNAP.mode === 'testnet' ? ' live' : '');
+  const cc = $('#chipConn'); const ok = online && SNAP.connected; cc.textContent = online ? (SNAP.connected ? 'Marché connecté' : SNAP.status) : 'Serveur hors ligne'; cc.className = 'chip ' + (ok ? 'ok' : 'bad');
+  const ai = $('#chipAI'); ai.textContent = SNAP.ai ? 'IA Claude active' : 'IA : mots-clés'; ai.className = 'chip ' + (SNAP.ai ? 'ok' : 'warn');
+  const kb = $('#killBtn'); kb.setAttribute('aria-pressed', String(f.killed)); kb.textContent = f.killed ? 'RÉACTIVER KHN' : 'ARRÊT D\'URGENCE';
+  $('#offline').hidden = online && SNAP.ready; $('#offline').textContent = !online ? 'Connexion au serveur de KHN perdue. Nouvel essai…' : 'KHN démarre : ' + SNAP.status + '…';
+  $('#foot').textContent = `Phase 2 · ${MODE[SNAP.mode][0]} · aucun ordre en argent réel. Le trading comporte un risque de perte en capital.`;
+}
+
+/* ===== Clic robot ===== */
+cv.addEventListener('click', e => {
+  const b = cv.getBoundingClientRect(), x = (e.clientX - b.left) / b.width * W, y = (e.clientY - b.top) / b.height * H;
+  const a = agents.slice().sort((p, q) => q.y - p.y).find(a => x > a.x - 8 && x < a.x + 8 && y > a.y - 34 && y < a.y + 1);
+  const card = $('#robotCard'); if (!a) { card.hidden = true; return; }
+  card.dataset.name = a.name; fillCard(a); const wb = $('#worldWrap').getBoundingClientRect();
+  card.style.left = clamp(e.clientX - wb.left + 12, 8, wb.width - 250) + 'px'; card.style.top = clamp(e.clientY - wb.top - 20, 8, wb.height - 170) + 'px'; card.hidden = false;
+});
+cv.addEventListener('mousemove', e => { const b = cv.getBoundingClientRect(), x = (e.clientX - b.left) / b.width * W, y = (e.clientY - b.top) / b.height * H; cv.style.cursor = agents.some(a => x > a.x - 8 && x < a.x + 8 && y > a.y - 34 && y < a.y + 1) ? 'pointer' : 'default'; });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#robotCard').hidden = true; });
+function fillCard(a) { const st = a.leaving ? 'quitte le bureau' : a.task ? TASK_FR[a.task.type] + (a.task.data.k ? ' ' + a.task.data.k : '') : a.state === 'rest' ? 'en recharge' : a.state === 'walk' ? 'se déplace' : 'disponible'; $('#robotCard').innerHTML = `<h3 style="color:${a.R.color}">${esc(a.name)}</h3><div class="small muted">${esc(a.R.role)}</div><dl><dt>Statut</dt><dd>${esc(st)}</dd><dt>Tâches faites</dt><dd>${a.done}</dd><dt>Spécialité</dt><dd>${a.R.spec.length ? a.R.spec.map(s => TASK_FR[s]).join(', ') + ' (×1,6)' : 'polyvalent'}</dd></dl><p class="small muted" style="margin:6px 0 0">${esc(a.R.desc)}</p>`; }
+
+/* ===== Boucle d'affichage ===== */
+let last = performance.now(), uiT = 0, chartT = 0;
+function frame(now) {
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  idleBehaviour(); agents.slice().forEach(a => a.update(dt));
+  for (const a of agents) if (a.bubble && (a.bubble.t -= dt) <= 0) a.bubble = null;
+  elev.t -= dt; elev.open = clamp(elev.open + (elev.t > 0 ? dt * 3 : -dt * 3), 0, 1);
+  for (let i = parts.length - 1; i >= 0; i--) { const p = parts[i]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 30 * dt; if ((p.life -= dt) <= 0) parts.splice(i, 1); }
+  if (SNAP) renderWorld(now);
+  if ((chartT += dt) > 0.25) { chartT = 0; if (SNAP) { drawChart(); drawEq(); } }
+  if ((uiT += dt) > 0.4) { uiT = 0; renderKPI(); if (!seen.hold || Date.now() - seen.hold > 600) renderPanels(); const card = $('#robotCard'); if (!card.hidden) { const a = agentByName(card.dataset.name); if (a) fillCard(a); else card.hidden = true; } }
+  requestAnimationFrame(frame);
+}
+buildBG();
+fetch('/api/state', { credentials: 'same-origin' }).then(r => { if (r.status === 401) { location.href = '/login'; return null; } return r.json(); }).then(s => { if (s) applySnapshot(s); connect(); }).catch(() => connect());
+requestAnimationFrame(frame);
+})();
+</script>
