@@ -7,6 +7,10 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.material.icons.rounded.DeleteForever
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -89,12 +93,16 @@ fun TrackRow(
     modifier: Modifier = Modifier,
     extraActions: List<MenuAction> = emptyList(),
     leading: (@Composable () -> Unit)? = null,
+    selectionMode: Boolean = false,
+    selected: Boolean = false,
+    onLongClick: (() -> Unit)? = null,
 ) {
     var menu by remember { mutableStateOf(false) }
     Row(
         modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .background(if (selected) KhnColors.Violet.copy(alpha = 0.16f) else Color.Transparent)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -128,6 +136,15 @@ fun TrackRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
+        if (selectionMode) {
+            Checkbox(
+                checked = selected,
+                onCheckedChange = { onClick() },
+                colors = CheckboxDefaults.colors(checkedColor = KhnColors.Violet),
+                modifier = Modifier.padding(end = 8.dp),
+            )
+            return@Row
+        }
         IconButton(onClick = onToggleFavorite) {
             Icon(
                 if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
@@ -155,6 +172,35 @@ private fun MenuItem(label: String, icon: ImageVector, onClick: () -> Unit) {
         text = { Text(label, style = MaterialTheme.typography.bodyMedium) },
         leadingIcon = { Icon(icon, null, tint = KhnColors.Violet) },
         onClick = onClick,
+    )
+}
+
+/** Confirmation avant suppression définitive. */
+@Composable
+fun DeleteConfirmDialog(tracks: List<Track>, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    val n = tracks.size
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = KhnColors.SurfaceHigh,
+        icon = { Icon(Icons.Rounded.DeleteForever, null, tint = KhnColors.Error) },
+        title = { Text(if (n == 1) "Supprimer cette musique ?" else "Supprimer $n musiques ?") },
+        text = {
+            Column {
+                Text(
+                    if (n == 1) "« ${tracks.first().title} » sera effacée définitivement du téléphone."
+                    else "Ces $n musiques seront effacées définitivement du téléphone.",
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Cette action est irréversible." +
+                        if (android.os.Build.VERSION.SDK_INT >= 29) " Android va ensuite te demander de confirmer." else "",
+                    color = KhnColors.TextMuted,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("Supprimer", color = KhnColors.Error) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Annuler", color = KhnColors.TextMuted) } },
     )
 }
 

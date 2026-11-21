@@ -106,6 +106,15 @@ class UserDataRepository(context: Context, private val scope: CoroutineScope) {
         })
     }
 
+    /** Après suppression de fichiers : on les retire des favoris, playlists et fichiers importés. */
+    fun forgetTracks(trackIds: Set<String>) = mutate { d ->
+        d.copy(
+            favorites = d.favorites.filterNot { it in trackIds },
+            playlists = d.playlists.map { p -> p.copy(trackIds = p.trackIds.filterNot { it in trackIds }) },
+            imported = d.imported.filterNot { "doc:${it.uri}" in trackIds },
+        )
+    }
+
     // ---- Fichiers importés ----
     fun addImported(tracks: List<ImportedTrack>) = mutate { d ->
         val known = d.imported.map { it.uri }.toSet()

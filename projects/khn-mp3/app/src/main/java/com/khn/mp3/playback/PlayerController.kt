@@ -181,6 +181,13 @@ class PlayerController(private val context: Context) {
     fun seekTo(ms: Long) = withController { it.seekTo(ms); _position.value = ms }
     fun skipTo(index: Int) = withController { if (index in 0 until it.mediaItemCount) it.seekToDefaultPosition(index) }
     fun removeFromQueue(index: Int) = withController { if (index in 0 until it.mediaItemCount) it.removeMediaItem(index) }
+    /** Retire de la file d'attente les titres supprimés du téléphone. */
+    fun removeIds(ids: Set<String>) = withController { c ->
+        for (i in c.mediaItemCount - 1 downTo 0) {
+            if (c.getMediaItemAt(i).mediaId in ids) c.removeMediaItem(i)
+        }
+    }
+
     fun toggleShuffle() = withController { it.shuffleModeEnabled = !it.shuffleModeEnabled }
     fun cycleRepeat() = withController {
         it.repeatMode = when (it.repeatMode) {

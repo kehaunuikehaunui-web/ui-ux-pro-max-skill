@@ -5,7 +5,9 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.media.ExifInterface
+import android.content.IntentSender
 import android.net.Uri
+import android.os.Build
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -210,6 +212,103 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             val known = tracks.value.firstOrNull { it.uri == uri }
             player.play(listOf(known ?: library.externalTrack(uri)), 0)
         }
+    }
+
+    // ---------------- Suppression définitive ----------------
+
+    private val _deleteConfirm = MutableStateFlow<List<Track>?>(null)
+    /** Titres en attente de confirmation (« Supprimer définitivement ? »). */
+    val deleteConfirm: StateFlow<List<Track>?> = _deleteConfirm.asStateFlow()
+    fun askDelete(tracks: List<Track>) { if (tracks.isNotEmpty()) _deleteConfirm.value = tracks }
+    fun dismissDelete() { _deleteConfirm.value = null }
+
+    private val _deleteApprovals = Channel<IntentSender>(Channel.BUFFERED)
+    /** Demandes d'autorisation système à afficher (Android 10+). */
+    val deleteApprovals = _deleteApprovals.receiveAsFlow()
+    private var pendingBatch: List<Track> = emptyList()
+    private val pendingSingles = ArrayDeque<Pair<Track, IntentSender>>()
+    private var deletedTotal = 0
+    private var failedTotal = 0
+
+    fun confirmDelete() {
+        val tracks = _deleteConfirm.value ?: return
+        _deleteConfirm.value = null
+        deletedTotal = 0
+        failedTotal = 0
+        val deleter = c.deleter
+        viewModelScope.launch {
+            if (Build.VERSION.SDK_INT >= 30) {
+                val withUri = withContext(Dispatchers.IO) { tracks.map { it to deleter.mediaStoreUri(it) } }
+                val viaStore = withUri.filter { it.second != null }
+                val viaDocs = withUri.filter { it.second == null }.map { it.first }
+                if (viaDocs.isNotEmpty()) {
+                    val r = withContext(Dispatchers.IO) { deleter.deleteNow(viaDocs) }
+                    onDeleted(r.deleted)
+                    failedTotal += r.failed.size + r.needsApproval.size
+                }
+                if (viaStore.isNotEmpty()) {
+                    pendingBatch = viaStore.map { it.first }
+                    _deleteApprovals.send(deleter.batchRequest(viaStore.mapNotNull { it.second }))
+                    return@launch
+                }
+                finishDelete()
+            } else {
+                val r = withContext(Dispatchers.IO) { deleter.deleteNow(tracks) }
+                onDeleted(r.deleted)
+                failedTotal += r.failed.size
+                pendingSingles.addAll(r.needsApproval)
+                val first = pendingSingles.firstOrNull()
+                if (first != null) _deleteApprovals.send(first.second) else finishDelete()
+            }
+        }
+    }
+
+    /** Réponse à la fenêtre système d'autorisation de suppression. */
+    fun onDeleteApproval(approved: Boolean) {
+        viewModelScope.launch {
+            if (pendingBatch.isNotEmpty()) {
+                val batch = pendingBatch
+                pendingBatch = emptyList()
+                if (approved) onDeleted(batch) // Android a déjà effacé les fichiers
+                finishDelete(cancelled = !approved)
+                return@launch
+            }
+            val current = pendingSingles.removeFirstOrNull() ?: return@launch
+            if (approved) {
+                val r = withContext(Dispatchers.IO) { c.deleter.deleteNow(listOf(current.first)) }
+                onDeleted(r.deleted)
+                failedTotal += r.failed.size + r.needsApproval.size
+                val next = pendingSingles.firstOrNull()
+                if (next != null) {
+                    _deleteApprovals.send(next.second)
+                    return@launch
+                }
+            } else {
+                pendingSingles.clear()
+            }
+            finishDelete(cancelled = !approved)
+        }
+    }
+
+    private fun onDeleted(list: List<Track>) {
+        if (list.isEmpty()) return
+        deletedTotal += list.size
+        val ids = list.mapTo(HashSet()) { it.id }
+        c.userData.forgetTracks(ids)
+        player.removeIds(ids)
+    }
+
+    private fun finishDelete(cancelled: Boolean = false) {
+        library.refresh()
+        toast(
+            when {
+                deletedTotal > 0 && failedTotal > 0 -> "$deletedTotal supprimée(s) · $failedTotal impossible(s) à supprimer"
+                deletedTotal == 1 -> "1 musique supprimée du téléphone"
+                deletedTotal > 1 -> "$deletedTotal musiques supprimées du téléphone"
+                cancelled -> "Suppression annulée"
+                else -> "Impossible de supprimer ce fichier"
+            },
+        )
     }
 
     // ---------------- Favoris & playlists ----------------

@@ -57,7 +57,10 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import coil.compose.AsyncImage
+import android.app.Activity
+import androidx.activity.result.IntentSenderRequest
 import com.khn.mp3.ui.components.AddToPlaylistSheet
+import com.khn.mp3.ui.components.DeleteConfirmDialog
 import com.khn.mp3.ui.screens.BoostSheet
 import com.khn.mp3.ui.screens.DownloadScreen
 import com.khn.mp3.ui.screens.LibraryScreen
@@ -116,6 +119,17 @@ fun KhnAppRoot(openPlayerEvents: Flow<Unit>, vm: MainViewModel = viewModel()) {
         if (!vm.library.hasAudioPermission()) requestPermission()
     }
     LaunchedEffect(Unit) { vm.messages.collect { snackbar.showSnackbar(it) } }
+
+    // Suppression définitive : fenêtre d'autorisation d'Android (10+).
+    val deleteLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
+        vm.onDeleteApproval(it.resultCode == Activity.RESULT_OK)
+    }
+    LaunchedEffect(Unit) {
+        vm.deleteApprovals.collect { sender ->
+            deleteLauncher.launch(IntentSenderRequest.Builder(sender).build())
+        }
+    }
+    val deleteConfirm by vm.deleteConfirm.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) {
         vm.navigation.collect { route ->
             nowPlayingOpen = false
@@ -209,6 +223,10 @@ fun KhnAppRoot(openPlayerEvents: Flow<Unit>, vm: MainViewModel = viewModel()) {
             },
             onDismiss = { showBoost = false },
         )
+    }
+
+    deleteConfirm?.let { tracks ->
+        DeleteConfirmDialog(tracks, onConfirm = vm::confirmDelete, onDismiss = vm::dismissDelete)
     }
 
     addToPlaylistIds?.let { ids ->

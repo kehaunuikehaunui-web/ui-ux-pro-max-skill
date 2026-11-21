@@ -1,6 +1,18 @@
 package com.khn.mp3.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.DeleteForever
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -71,6 +83,19 @@ fun LibraryScreen(
     val hasPermission by vm.hasPermission.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
 
+    // Sélection multiple (appui long) pour supprimer plusieurs musiques.
+    var selected by remember { mutableStateOf(emptySet<String>()) }
+    val selectionMode = selected.isNotEmpty()
+    BackHandler(enabled = selectionMode) { selected = emptySet() }
+    LaunchedEffect(tracks) {
+        if (selectionMode) {
+            val visible = tracks.mapTo(HashSet()) { it.id }
+            selected = selected.filterTo(HashSet()) { it in visible }
+        }
+    }
+    fun toggle(id: String) { selected = if (id in selected) selected - id else selected + id }
+
+    Box(Modifier.fillMaxSize()) {
     PullToRefreshBox(
         isRefreshing = scanning,
         onRefresh = vm::refreshLibrary,
@@ -179,18 +204,69 @@ fun LibraryScreen(
                         isCurrent = player.currentId == track.id,
                         isPlaying = player.isPlaying,
                         isFavorite = track.id in favorites,
-                        onClick = { vm.play(tracks, index) },
+                        selectionMode = selectionMode,
+                        selected = track.id in selected,
+                        onLongClick = { toggle(track.id) },
+                        onClick = { if (selectionMode) toggle(track.id) else vm.play(tracks, index) },
                         onToggleFavorite = { vm.toggleFavorite(track.id) },
                         onPlayNext = { vm.playNext(track) },
                         onAddToQueue = { vm.addToQueue(track) },
                         onAddToPlaylist = { onAddToPlaylist(listOf(track.id)) },
-                        extraActions = if (track.source == Track.Source.IMPORTED)
-                            listOf(MenuAction("Retirer de la bibliothèque", Icons.Rounded.Delete) { vm.removeImported(track) })
-                        else emptyList(),
+                        extraActions = buildList {
+                            if (track.source == Track.Source.IMPORTED) {
+                                add(MenuAction("Retirer de la bibliothèque", Icons.Rounded.Delete) { vm.removeImported(track) })
+                            }
+                            add(MenuAction("Sélectionner", Icons.Rounded.CheckCircle) { toggle(track.id) })
+                            add(MenuAction("Supprimer du téléphone", Icons.Rounded.DeleteForever) { vm.askDelete(listOf(track)) })
+                        },
                         modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null),
                     )
                 }
             }
+        }
+    }
+
+    AnimatedVisibility(
+        visible = selectionMode,
+        enter = slideInVertically { -it } + fadeIn(),
+        exit = slideOutVertically { -it } + fadeOut(),
+        modifier = Modifier.align(Alignment.TopCenter),
+    ) {
+        SelectionBar(
+            count = selected.size,
+            total = tracks.size,
+            onClose = { selected = emptySet() },
+            onSelectAll = { selected = if (selected.size == tracks.size) emptySet() else tracks.mapTo(HashSet()) { it.id } },
+            onDelete = {
+                vm.askDelete(tracks.filter { it.id in selected })
+                selected = emptySet()
+            },
+        )
+    }
+    }
+}
+
+@Composable
+private fun SelectionBar(count: Int, total: Int, onClose: () -> Unit, onSelectAll: () -> Unit, onDelete: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(KhnColors.SurfaceHigh)
+            .statusBarsPadding()
+            .padding(horizontal = 4.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(onClick = onClose) { Icon(Icons.Rounded.Close, contentDescription = "Annuler la sélection") }
+        Text(
+            if (count == 1) "1 sélectionnée" else "$count sélectionnées",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(onClick = onSelectAll) {
+            Text(if (count == total) "Aucune" else "Tout", color = KhnColors.Violet)
+        }
+        IconButton(onClick = onDelete) {
+            Icon(Icons.Rounded.DeleteForever, contentDescription = "Supprimer du téléphone", tint = KhnColors.Error)
         }
     }
 }

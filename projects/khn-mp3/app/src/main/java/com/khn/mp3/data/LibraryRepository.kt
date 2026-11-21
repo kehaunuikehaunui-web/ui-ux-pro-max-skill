@@ -267,7 +267,12 @@ class LibraryRepository(
     /** Importe des fichiers choisis via le sélecteur de documents (accès conservé après redémarrage). */
     suspend fun importDocuments(uris: List<Uri>): Int = withContext(Dispatchers.IO) {
         val imported = uris.mapNotNull { uri ->
+            // Lecture + écriture si le dossier l'autorise (nécessaire pour pouvoir supprimer le fichier plus tard).
             runCatching {
+                context.contentResolver.takePersistableUriPermission(
+                    uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+                )
+            }.recoverCatching {
                 context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
             readMetadata(uri)?.let { meta ->

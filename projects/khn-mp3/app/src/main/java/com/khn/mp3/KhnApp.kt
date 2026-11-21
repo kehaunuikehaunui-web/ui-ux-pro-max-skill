@@ -9,6 +9,7 @@ import com.khn.mp3.data.ArchiveRepository
 import com.khn.mp3.data.CcMixterRepository
 import com.khn.mp3.data.JamendoRepository
 import com.khn.mp3.data.SharedAudioImporter
+import com.khn.mp3.data.TrackDeleter
 import com.khn.mp3.data.DownloadRepository
 import com.khn.mp3.data.LibraryRepository
 import com.khn.mp3.data.SettingsRepository
@@ -51,6 +52,7 @@ class AppContainer(app: Application) {
     val ccMixter = CcMixterRepository()
     val jamendo = JamendoRepository()
     val sharedImporter = SharedAudioImporter(app)
+    val deleter = TrackDeleter(app)
     val downloads = DownloadRepository(app, userData)
     val audioEffects = AudioEffects(settings, scope)
     val player = PlayerController(app)
