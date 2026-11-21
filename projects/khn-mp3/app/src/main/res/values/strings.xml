@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">KHN MP3</string>
+    <!-- Remplace le libellé du canal de notification Media3 -->
+    <string name="default_notification_channel_name">Lecture en cours</string>
+</resources>
