@@ -6,6 +6,9 @@ import coil.ImageLoader
 import coil.ImageLoaderFactory
 import coil.memory.MemoryCache
 import com.khn.mp3.data.ArchiveRepository
+import com.khn.mp3.data.CcMixterRepository
+import com.khn.mp3.data.JamendoRepository
+import com.khn.mp3.data.SharedAudioImporter
 import com.khn.mp3.data.DownloadRepository
 import com.khn.mp3.data.LibraryRepository
 import com.khn.mp3.data.SettingsRepository
@@ -45,6 +48,9 @@ class AppContainer(app: Application) {
     val userData = UserDataRepository(app, scope)
     val library = LibraryRepository(app, userData, settings, scope)
     val archive = ArchiveRepository()
+    val ccMixter = CcMixterRepository()
+    val jamendo = JamendoRepository()
+    val sharedImporter = SharedAudioImporter(app)
     val downloads = DownloadRepository(app, userData)
     val audioEffects = AudioEffects(settings, scope)
     val player = PlayerController(app)

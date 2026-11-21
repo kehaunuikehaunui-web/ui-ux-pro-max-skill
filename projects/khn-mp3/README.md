@@ -11,7 +11,9 @@ Lecteur de musique Android personnel : Kotlin, Jetpack Compose et Media3/ExoPlay
 | Favoris | ♥ sur chaque titre ; filtre **Favoris** et playlist « Favoris » |
 | Playlists | Onglet **Playlists** : créer, renommer, supprimer, ajouter plusieurs titres, réordonner |
 | Recherche | Onglet **Recherche** : titre, artiste, album, playlist (accents ignorés) |
-| Téléchargement | Onglet **Télécharger** : lien direct `.mp3`, ou catalogue libre Internet Archive (CC / domaine public), extrait avant téléchargement ; fichiers enregistrés dans `Musique/KHN MP3` |
+| Téléchargement | Onglet **Télécharger** : lien direct `.mp3` ; catalogues libres **Internet Archive**, **ccMixter** et **Jamendo** (clé gratuite à saisir) avec extrait avant téléchargement ; fichiers enregistrés dans `Musique/KHN MP3` |
+| Bibliothèque audio YouTube | Bouton dans **Télécharger** : ouvre la bibliothèque de musique gratuite de YouTube dans le navigateur ; les fichiers téléchargés apparaissent dans le filtre **Téléchargés**. Les liens de vidéos YouTube sont refusés (conditions d'utilisation de YouTube et droits d'auteur). |
+| Partager vers KHN MP3 | Depuis WhatsApp, Telegram, Drive, e-mail… : un fichier audio partagé est copié dans `Musique/KHN MP3` ; un lien partagé pré-remplit le champ de téléchargement |
 | Paramètres du son | Égaliseur (bandes de l'appareil + 10 préréglages), basses, spatialisation 3D, vitesse et tonalité |
 | Augmenter le son | Amplification jusqu'à +15 dB, bouton **Amplifier** dans le lecteur |
 | Qualité sonore | **Anti-saturation** : limiteur en fin de chaîne (Android 9+), le son reste propre même amplifié |
@@ -39,7 +41,7 @@ Pendant un appel, seul l'utilisateur entend la musique : Android ne permet pas �
 
 ## Installer l'APK
 
-1. Copier `KHN-MP3-v1.1.0.apk` sur le téléphone (une nouvelle version s'installe par-dessus l'ancienne, sans perte de données).
+1. Copier `KHN-MP3-v1.2.0.apk` sur le téléphone (une nouvelle version s'installe par-dessus l'ancienne, sans perte de données).
 2. L'ouvrir, puis autoriser « Installer des applis inconnues » pour l'app qui l'ouvre (Fichiers, Chrome…).
 3. Au premier lancement, autoriser l'accès à la musique.
 

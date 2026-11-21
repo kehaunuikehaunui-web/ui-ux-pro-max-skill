@@ -31,6 +31,19 @@ import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.LibraryMusic
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.Color
+import android.widget.Toast
+import com.khn.mp3.data.FreeTrack
+import com.khn.mp3.ui.CatalogSource
+import com.khn.mp3.ui.openInBrowser
 import androidx.compose.material.icons.rounded.PlayCircle
 import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.Search
@@ -76,6 +89,11 @@ fun DownloadScreen(vm: MainViewModel, contentPadding: PaddingValues) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     var url by rememberSaveable { mutableStateOf("") }
+    val sharedUrl by vm.sharedUrl.collectAsStateWithLifecycle()
+    LaunchedEffect(sharedUrl) {
+        sharedUrl?.let { url = it; vm.consumeSharedUrl() }
+    }
+    val settings by vm.settings.collectAsStateWithLifecycle()
 
     // Android 8/9 : l'écriture dans Musique/ demande une permission.
     val pendingDownload = remember { mutableStateOf<(() -> Unit)?>(null) }
@@ -141,6 +159,41 @@ fun DownloadScreen(vm: MainViewModel, contentPadding: PaddingValues) {
             }
         }
 
+        // ---- Bibliothèque audio YouTube (musique gratuite et légale) ----
+        item(key = "yt-audio") {
+            Card {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.LibraryMusic, null, tint = KhnColors.Magenta)
+                    Spacer(Modifier.width(10.dp))
+                    Column {
+                        Text("Bibliothèque audio YouTube", style = MaterialTheme.typography.titleMedium)
+                        Text("Des milliers de musiques gratuites et libres de droits", style = MaterialTheme.typography.bodySmall, color = KhnColors.TextMuted)
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                listOf(
+                    "Connecte-toi avec ton compte Google (une chaîne YouTube gratuite est nécessaire).",
+                    "Si la page ne s'affiche pas, active « Version pour ordinateur » dans le menu ⋮ du navigateur.",
+                    "Appuie sur « Télécharger » à côté d'un titre : il apparaît tout seul dans KHN MP3 (filtre Téléchargés).",
+                ).forEachIndexed { i, step ->
+                    Row(Modifier.padding(vertical = 3.dp)) {
+                        Text("${i + 1}.", style = MaterialTheme.typography.bodySmall, color = KhnColors.Violet, modifier = Modifier.width(18.dp))
+                        Text(step, style = MaterialTheme.typography.bodySmall, color = KhnColors.Text)
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                GradientButton(
+                    "Ouvrir la bibliothèque audio", Icons.AutoMirrored.Rounded.OpenInNew,
+                    onClick = {
+                        if (!openInBrowser(context, YOUTUBE_AUDIO_LIBRARY)) {
+                            Toast.makeText(context, "Aucun navigateur trouvé", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+
         // ---- Téléchargements en cours / récents ----
         if (statuses.isNotEmpty()) {
             item(key = "dl-title") {
@@ -160,8 +213,39 @@ fun DownloadScreen(vm: MainViewModel, contentPadding: PaddingValues) {
                     Spacer(Modifier.width(10.dp))
                     Column {
                         Text("Musique libre", style = MaterialTheme.typography.titleMedium)
-                        Text("Catalogue Internet Archive · Creative Commons & domaine public", style = MaterialTheme.typography.bodySmall, color = KhnColors.TextMuted)
+                        Text(
+                            when (archive.source) {
+                                CatalogSource.ARCHIVE -> "Internet Archive · Creative Commons & domaine public"
+                                CatalogSource.CCMIXTER -> "ccMixter · remix, électro, chill · Creative Commons"
+                                CatalogSource.JAMENDO -> "Jamendo · 500 000+ titres Creative Commons"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = KhnColors.TextMuted,
+                        )
                     }
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    CatalogSource.entries.forEach { src ->
+                        FilterChip(
+                            selected = archive.source == src,
+                            onClick = { vm.setCatalogSource(src) },
+                            label = { Text(src.label) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = KhnColors.Violet,
+                                selectedLabelColor = Color.White,
+                                containerColor = KhnColors.SurfaceHigh,
+                            ),
+                            border = null,
+                        )
+                    }
+                }
+                if (archive.source == CatalogSource.JAMENDO) {
+                    JamendoKeyField(
+                        saved = settings.jamendoClientId,
+                        onSave = vm::setJamendoClientId,
+                        onGetKey = { openInBrowser(context, JAMENDO_DEVPORTAL) },
+                    )
                 }
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
@@ -183,7 +267,7 @@ fun DownloadScreen(vm: MainViewModel, contentPadding: PaddingValues) {
                     Spacer(Modifier.height(8.dp))
                     Text(it, color = KhnColors.Error, style = MaterialTheme.typography.bodySmall)
                 }
-                if (archive.searched && !archive.loading && archive.error == null && archive.items.isEmpty()) {
+                if (archive.searched && !archive.loading && archive.error == null && archive.items.isEmpty() && archive.tracks.isEmpty()) {
                     Spacer(Modifier.height(8.dp))
                     Text("Aucun résultat. Essaie un autre mot-clé (ex. « jazz », « lofi », « piano »).", color = KhnColors.TextMuted, style = MaterialTheme.typography.bodySmall)
                 }
@@ -199,6 +283,14 @@ fun DownloadScreen(vm: MainViewModel, contentPadding: PaddingValues) {
                 onToggle = { vm.toggleArchiveItem(item) },
                 onPreview = vm::previewStream,
                 onDownload = { f -> withWriteAccess { vm.download(f.url, f.title, f.fileName) } },
+            )
+        }
+
+        items(archive.tracks, key = { "free-${it.id}" }) { t ->
+            FreeTrackRow(
+                track = t,
+                onPreview = { vm.previewFree(t) },
+                onDownload = { withWriteAccess { vm.downloadFree(t) } },
             )
         }
 
@@ -316,5 +408,70 @@ private fun ArchiveItemRow(
                 }
             }
         }
+    }
+}
+
+private const val YOUTUBE_AUDIO_LIBRARY = "https://www.youtube.com/audiolibrary"
+private const val JAMENDO_DEVPORTAL = "https://devportal.jamendo.com/"
+
+@Composable
+private fun JamendoKeyField(saved: String, onSave: (String) -> Unit, onGetKey: () -> Unit) {
+    var key by rememberSaveable(saved) { mutableStateOf(saved) }
+    Column(Modifier.padding(top = 10.dp)) {
+        if (saved.isBlank()) {
+            Text(
+                "Jamendo demande une clé gratuite : crée un compte sur le portail développeur, puis une application (« client_id »), et colle la clé ici.",
+                style = MaterialTheme.typography.bodySmall,
+                color = KhnColors.TextMuted,
+            )
+            Spacer(Modifier.height(8.dp))
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedTextField(
+                value = key,
+                onValueChange = { key = it.trim() },
+                singleLine = true,
+                placeholder = { Text("Clé Jamendo (client_id)") },
+                colors = neonFieldColors(),
+                shape = Khn.shapes.pill,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = { onSave(key) }, enabled = key != saved) {
+                Text("Enregistrer", color = if (key != saved) KhnColors.Violet else KhnColors.TextMuted)
+            }
+        }
+        if (saved.isBlank()) {
+            TextButton(onClick = onGetKey) { Text("Obtenir une clé gratuite", color = KhnColors.Cyan) }
+        }
+    }
+}
+
+@Composable
+private fun FreeTrackRow(track: FreeTrack, onPreview: () -> Unit, onDownload: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 3.dp)
+            .clip(Khn.shapes.card)
+            .background(KhnColors.Surface.copy(alpha = 0.6f))
+            .padding(start = 4.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(onClick = onPreview) { Icon(Icons.Rounded.PlayCircle, "Écouter un extrait", tint = KhnColors.Cyan) }
+        Column(Modifier.weight(1f)) {
+            Text(track.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                listOfNotNull(
+                    track.artist,
+                    track.durationMs.takeIf { it > 0 }?.let { formatDuration(it) },
+                    track.license.takeIf { it.isNotBlank() },
+                ).joinToString(" · "),
+                style = MaterialTheme.typography.bodySmall,
+                color = KhnColors.TextMuted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        IconButton(onClick = onDownload) { Icon(Icons.Rounded.Download, "Télécharger", tint = KhnColors.Violet) }
     }
 }

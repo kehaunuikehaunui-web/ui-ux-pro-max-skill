@@ -42,6 +42,7 @@ data class Settings(
     val backgroundBlur: Int = 6,
     val minDurationSec: Int = 30,
     val sort: SortOrder = SortOrder.TITLE,
+    val jamendoClientId: String = "",
 )
 
 /** Amplification maximale : +15 dB. */
@@ -66,6 +67,7 @@ class SettingsRepository(private val context: Context, private val scope: Corout
         val bgBlur = intPreferencesKey("bg_blur")
         val minDur = intPreferencesKey("min_duration")
         val sort = stringPreferencesKey("sort")
+        val jamendo = stringPreferencesKey("jamendo_client_id")
     }
 
     val settings: StateFlow<Settings> = context.dataStore.data
@@ -93,6 +95,7 @@ class SettingsRepository(private val context: Context, private val scope: Corout
             backgroundBlur = this[K.bgBlur] ?: d.backgroundBlur,
             minDurationSec = this[K.minDur] ?: d.minDurationSec,
             sort = this[K.sort]?.let { runCatching { SortOrder.valueOf(it) }.getOrNull() } ?: d.sort,
+            jamendoClientId = this[K.jamendo] ?: "",
         )
     }
 
@@ -122,4 +125,5 @@ class SettingsRepository(private val context: Context, private val scope: Corout
     fun setBackgroundBlur(v: Int) = edit { it[K.bgBlur] = v.coerceIn(0, 25) }
     fun setMinDuration(sec: Int) = edit { it[K.minDur] = sec.coerceIn(0, 180) }
     fun setSort(order: SortOrder) = edit { it[K.sort] = order.name }
+    fun setJamendoClientId(v: String) = edit { it[K.jamendo] = v.trim() }
 }

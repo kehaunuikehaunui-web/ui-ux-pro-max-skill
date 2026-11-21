@@ -5,9 +5,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
-import java.net.URLEncoder
 
 /**
  * Catalogue de musique libre de droits d'Internet Archive (archive.org).
@@ -72,13 +69,7 @@ class ArchiveRepository {
         }
     }
 
-    private fun parseLength(raw: String): Long {
-        if (raw.isBlank()) return 0L
-        raw.toDoubleOrNull()?.let { return (it * 1000).toLong() }
-        val parts = raw.split(':').mapNotNull { it.toDoubleOrNull() }
-        if (parts.isEmpty()) return 0L
-        return (parts.fold(0.0) { acc, v -> acc * 60 + v } * 1000).toLong()
-    }
+    private fun parseLength(raw: String): Long = parseClock(raw)
 
     private fun JSONObject.text(key: String): String? = when (val v = opt(key)) {
         is String -> v.takeIf { it.isNotBlank() }
@@ -86,23 +77,7 @@ class ArchiveRepository {
         else -> null
     }
 
-    private fun enc(s: String) = URLEncoder.encode(s, "UTF-8").replace("+", "%20")
+    private fun enc(s: String) = urlEncode(s)
 
-    private fun get(url: String): String {
-        val conn = URL(url).openConnection() as HttpURLConnection
-        conn.connectTimeout = 15_000
-        conn.readTimeout = 20_000
-        conn.setRequestProperty("User-Agent", USER_AGENT)
-        conn.setRequestProperty("Accept", "application/json")
-        try {
-            if (conn.responseCode !in 200..299) error("HTTP ${conn.responseCode}")
-            return conn.inputStream.bufferedReader().use { it.readText() }
-        } finally {
-            conn.disconnect()
-        }
-    }
-
-    companion object {
-        const val USER_AGENT = "KHN-MP3/1.0 (Android)"
-    }
+    private fun get(url: String): String = httpGet(url)
 }

@@ -23,12 +23,15 @@ data class Track(
     /** Clé de recherche pré-calculée : minuscules, sans accents. */
     val searchKey: String by lazy(LazyThreadSafetyMode.NONE) { normalize("$title $artist $album") }
 
-    val isDownloaded: Boolean get() = folder.contains(DOWNLOAD_FOLDER, ignoreCase = true)
+    /** Téléchargé par KHN MP3 (Musique/KHN MP3) ou depuis le navigateur (dossier Download). */
+    val isDownloaded: Boolean
+        get() = folder.contains(DOWNLOAD_FOLDER, ignoreCase = true) || DOWNLOAD_DIR.containsMatchIn(folder)
 
     companion object {
         const val DOWNLOAD_FOLDER = "KHN MP3"
         const val UNKNOWN_ARTIST = "Artiste inconnu"
         const val UNKNOWN_ALBUM = "Album inconnu"
+        private val DOWNLOAD_DIR = Regex("(^|/)Download/", RegexOption.IGNORE_CASE)
     }
 }
 

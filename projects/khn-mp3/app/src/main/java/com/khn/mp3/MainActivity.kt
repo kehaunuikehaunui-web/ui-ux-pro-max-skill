@@ -2,7 +2,9 @@ package com.khn.mp3
 
 import android.content.Intent
 import android.graphics.Color
+import android.net.Uri
 import android.os.Bundle
+import androidx.core.content.IntentCompat
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -57,6 +59,18 @@ class MainActivity : ComponentActivity() {
                 openPlayer.trySend(Unit)
             }
             ACTION_OPEN_PLAYER -> openPlayer.trySend(Unit)
+            Intent.ACTION_SEND -> {
+                if (intent.type?.startsWith("audio/") == true) {
+                    IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
+                        ?.let { vm.importShared(listOf(it)) }
+                } else {
+                    intent.getStringExtra(Intent.EXTRA_TEXT)?.let(vm::handleSharedText)
+                }
+            }
+            Intent.ACTION_SEND_MULTIPLE -> {
+                IntentCompat.getParcelableArrayListExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
+                    ?.let { vm.importShared(it) }
+            }
         }
     }
 

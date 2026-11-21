@@ -115,6 +115,15 @@ fun KhnAppRoot(openPlayerEvents: Flow<Unit>, vm: MainViewModel = viewModel()) {
         if (vm.library.hasAudioPermission()) vm.refreshLibrary() else requestPermission()
     }
     LaunchedEffect(Unit) { vm.messages.collect { snackbar.showSnackbar(it) } }
+    LaunchedEffect(Unit) {
+        vm.navigation.collect { route ->
+            nowPlayingOpen = false
+            nav.navigate(route) {
+                popUpTo(nav.graph.findStartDestination().id) { saveState = true }
+                launchSingleTop = true
+            }
+        }
+    }
     LaunchedEffect(Unit) { openPlayerEvents.collect { if (vm.playerState.value.hasMedia) nowPlayingOpen = true } }
 
     val currentTrack = player.currentId?.let { byId[it] }

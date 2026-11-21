@@ -45,7 +45,7 @@ class DownloadRepository(context: Context, private val userData: UserDataReposit
             .setTitle(displayTitle)
             .setDescription("KHN MP3")
             .setMimeType(if (mime.startsWith("audio/")) mime else "audio/mpeg")
-            .addRequestHeader("User-Agent", ArchiveRepository.USER_AGENT)
+            .addRequestHeader("User-Agent", USER_AGENT)
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
             .setDestinationInExternalPublicDir(Environment.DIRECTORY_MUSIC, "${Track.DOWNLOAD_FOLDER}/$safeName")
             .setAllowedOverMetered(true)

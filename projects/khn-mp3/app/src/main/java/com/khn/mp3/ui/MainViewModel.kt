@@ -13,6 +13,12 @@ import com.khn.mp3.container
 import com.khn.mp3.data.ArchiveRepository
 import com.khn.mp3.data.DownloadRepository
 import com.khn.mp3.data.FAVORITES_PLAYLIST_ID
+import com.khn.mp3.data.FreeTrack
+import com.khn.mp3.data.JamendoRepository
+import com.khn.mp3.data.isYoutubeUrl
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
 import com.khn.mp3.data.Playlist
 import com.khn.mp3.data.SortOrder
 import com.khn.mp3.data.Track
@@ -51,8 +57,14 @@ data class SearchResults(
     val playlists: List<Playlist> = emptyList(),
 )
 
+enum class CatalogSource(val label: String) {
+    ARCHIVE("Internet Archive"), CCMIXTER("ccMixter"), JAMENDO("Jamendo")
+}
+
 @Immutable
 data class ArchiveUi(
+    val source: CatalogSource = CatalogSource.ARCHIVE,
+    val tracks: List<FreeTrack> = emptyList(),
     val query: String = "",
     val loading: Boolean = false,
     val error: String? = null,
@@ -94,6 +106,43 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val playlists: StateFlow<List<Playlist>> = c.userData.data
         .map { it.playlists }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    // ---------------- Navigation & partage entrant ----------------
+
+    private val _navigation = Channel<String>(Channel.BUFFERED)
+    /** Routes à ouvrir (ex. après un partage vers KHN MP3). */
+    val navigation = _navigation.receiveAsFlow()
+
+    private val _sharedUrl = MutableStateFlow<String?>(null)
+    val sharedUrl: StateFlow<String?> = _sharedUrl.asStateFlow()
+    fun consumeSharedUrl() { _sharedUrl.value = null }
+
+    /** Fichiers audio partagés depuis une autre app : copiés dans Musique/KHN MP3. */
+    fun importShared(uris: List<Uri>) {
+        if (uris.isEmpty()) return
+        viewModelScope.launch {
+            val n = c.sharedImporter.import(uris)
+            toast(
+                if (n > 0) "$n musique${if (n > 1) "s" else ""} ajoutée${if (n > 1) "s" else ""} dans Musique/KHN MP3"
+                else "Impossible d'enregistrer ce fichier audio",
+            )
+            if (n > 0) {
+                _filter.value = LibraryFilter.DOWNLOADED
+                _navigation.trySend("library")
+            }
+        }
+    }
+
+    /** Texte partagé : on récupère le premier lien et on prépare son téléchargement. */
+    fun handleSharedText(text: String) {
+        val url = Regex("https?://\\S+").find(text)?.value?.trimEnd('.', ',', ')', '"', '\'')
+        when {
+            url == null -> toast("Aucun lien trouvé dans le texte partagé")
+            isYoutubeUrl(url) -> toast(YOUTUBE_REFUSED)
+            else -> _sharedUrl.value = url
+        }
+        _navigation.trySend("downloads")
+    }
 
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 4, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     val messages: SharedFlow<String> = _messages.asSharedFlow()
@@ -215,17 +264,48 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setArchiveQuery(q: String) = _archive.update { it.copy(query = q) }
 
+    fun setCatalogSource(source: CatalogSource) {
+        if (_archive.value.source == source) return
+        archiveJob?.cancel()
+        _archive.update { it.copy(source = source, items = emptyList(), tracks = emptyList(), error = null, searched = false, loading = false, expanded = null) }
+        if (_archive.value.query.isNotBlank()) searchArchive()
+    }
+
     fun searchArchive() {
-        val q = _archive.value.query.trim()
+        val state = _archive.value
+        val q = state.query.trim()
         if (q.isEmpty()) return
         archiveJob?.cancel()
         archiveJob = viewModelScope.launch {
             _archive.update { it.copy(loading = true, error = null, expanded = null) }
-            runCatching { c.archive.search(q) }
-                .onSuccess { items -> _archive.update { it.copy(loading = false, items = items, searched = true) } }
-                .onFailure { _archive.update { it.copy(loading = false, error = "Recherche impossible. Vérifie ta connexion Internet.", searched = true) } }
+            try {
+                when (state.source) {
+                    CatalogSource.ARCHIVE -> {
+                        val items = c.archive.search(q)
+                        _archive.update { it.copy(loading = false, items = items, tracks = emptyList(), searched = true) }
+                    }
+                    CatalogSource.CCMIXTER -> {
+                        val tracks = c.ccMixter.search(q)
+                        _archive.update { it.copy(loading = false, tracks = tracks, items = emptyList(), searched = true) }
+                    }
+                    CatalogSource.JAMENDO -> {
+                        val tracks = c.jamendo.search(q, settings.value.jamendoClientId)
+                        _archive.update { it.copy(loading = false, tracks = tracks, items = emptyList(), searched = true) }
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: JamendoRepository.MissingKeyException) {
+                _archive.update { it.copy(loading = false, error = "Ajoute d'abord ta clé Jamendo gratuite ci-dessous.", searched = true) }
+            } catch (e: Exception) {
+                _archive.update { it.copy(loading = false, error = "Recherche impossible. Vérifie ta connexion Internet.", searched = true) }
+            }
         }
     }
+
+    fun previewFree(t: FreeTrack) = player.playStream(t.streamUrl, t.title, t.artist)
+    fun downloadFree(t: FreeTrack) = download(t.downloadUrl, t.title, t.fileName)
+    fun setJamendoClientId(v: String) = c.settings.setJamendoClientId(v)
 
     fun toggleArchiveItem(item: ArchiveRepository.Item) {
         val current = _archive.value
@@ -250,6 +330,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun previewStream(file: ArchiveRepository.AudioFile) = player.playStream(file.url, file.title, file.creator)
 
     fun download(url: String, title: String? = null, fileName: String? = null): Boolean {
+        if (isYoutubeUrl(url)) {
+            toast(YOUTUBE_REFUSED)
+            return false
+        }
         val id = c.downloads.enqueue(url, title, fileName)
         toast(if (id != null) "Téléchargement lancé : ${title ?: "fichier"}" else "Lien invalide : il doit commencer par http:// ou https://")
         return id != null
@@ -331,3 +415,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         out.absolutePath
     }.getOrNull()
 }
+
+private const val YOUTUBE_REFUSED =
+    "Les liens YouTube ne peuvent pas être téléchargés. Utilise la bibliothèque audio YouTube (onglet Télécharger)."
