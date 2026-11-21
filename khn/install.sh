@@ -10,7 +10,8 @@ DIR="${KHN_DIR:-/opt/khn}"
 say() { printf '\n\033[1;33m== %s\033[0m\n' "$*"; }
 
 if [ "$(id -u)" -ne 0 ]; then
-  echo "Lance ce script en tant que root (ou précède la commande de sudo)."
+  echo "Ce script doit tourner en administrateur. Relance-le avec sudo devant bash :"
+  echo "  curl -fsSL https://raw.githubusercontent.com/kehaunuikehaunui-web/ui-ux-pro-max-skill/ccr-61e597e0-kxc16c/khn/install.sh | sudo bash"
   exit 1
 fi
 

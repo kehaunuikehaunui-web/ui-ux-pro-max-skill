@@ -7,7 +7,7 @@ Durée : environ 30 minutes. Coût : un serveur à environ 4–6 € par mois, p
 
 | Élément | Où | Pourquoi |
 |---|---|---|
-| Un serveur Linux (Ubuntu 24.04, 2 Go de RAM) | Hetzner, OVH, Scaleway… **région Europe** | KHN tourne 24 h/24. Binance bloque les serveurs situés aux États-Unis. |
+| Un serveur Linux (Ubuntu 24.04, 2 Go de RAM) | OVHcloud VPS-1, Hetzner, Scaleway… **région Europe** | KHN tourne 24 h/24. Binance bloque les serveurs situés aux États-Unis. |
 | Des clés testnet Binance | https://testnet.binance.vision → *Log In with GitHub* → *Generate HMAC_SHA256 Key* | Ordres en argent fictif (mode `testnet`). Inutile en mode `paper`. |
 | Une clé API Claude | https://console.anthropic.com → *API Keys* | Analyse des vidéos et réponses aux questions. Fixe une limite de dépense mensuelle dans la console. |
 
@@ -20,6 +20,9 @@ Ne colle jamais ces clés dans un message ou un chat : elles vont uniquement dan
 ```bash
 curl -fsSL https://raw.githubusercontent.com/kehaunuikehaunui-web/ui-ux-pro-max-skill/ccr-61e597e0-kxc16c/khn/install.sh | bash
 ```
+
+Si tu es connecté avec un utilisateur qui n'est pas root (par exemple `ubuntu` chez OVHcloud), mets `sudo`
+devant `bash` : `… | sudo bash`.
 
 Le script installe Docker, télécharge KHN dans `/opt/khn`, crée le `.env` en mode papier avec un mot de passe
 aléatoire (affiché à la fin), démarre KHN et lance la vérification. Relancer la même commande met KHN à jour.
