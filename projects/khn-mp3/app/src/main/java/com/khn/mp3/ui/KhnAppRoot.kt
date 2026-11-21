@@ -58,6 +58,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import coil.compose.AsyncImage
 import com.khn.mp3.ui.components.AddToPlaylistSheet
+import com.khn.mp3.ui.screens.BoostSheet
 import com.khn.mp3.ui.screens.DownloadScreen
 import com.khn.mp3.ui.screens.LibraryScreen
 import com.khn.mp3.ui.screens.MiniPlayer
@@ -91,6 +92,7 @@ fun KhnAppRoot(openPlayerEvents: Flow<Unit>, vm: MainViewModel = viewModel()) {
 
     var nowPlayingOpen by rememberSaveable { mutableStateOf(false) }
     var addToPlaylistIds by remember { mutableStateOf<List<String>?>(null) }
+    var showBoost by remember { mutableStateOf(false) }
 
     // ---- Permissions & import de fichiers ----
     val audioPermissions = remember {
@@ -181,8 +183,22 @@ fun KhnAppRoot(openPlayerEvents: Flow<Unit>, vm: MainViewModel = viewModel()) {
                 },
                 onSkipTo = vm.player::skipTo,
                 onRemoveFromQueue = vm.player::removeFromQueue,
+                boostMb = settings.sound.loudnessGain,
+                onOpenBoost = { showBoost = true },
             )
         }
+    }
+
+    if (showBoost) {
+        BoostSheet(
+            vm = vm,
+            onMoreSettings = {
+                showBoost = false
+                nowPlayingOpen = false
+                nav.navigate("sound") { launchSingleTop = true }
+            },
+            onDismiss = { showBoost = false },
+        )
     }
 
     addToPlaylistIds?.let { ids ->

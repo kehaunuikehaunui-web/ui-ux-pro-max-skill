@@ -34,6 +34,7 @@ import kotlin.math.pow
 class PlaybackService : MediaSessionService() {
 
     private var session: MediaSession? = null
+    private var focus: CallAwareAudioFocus? = null
     private val scope = MainScope()
 
     override fun onCreate() {
@@ -47,7 +48,8 @@ class PlaybackService : MediaSessionService() {
                     .setUsage(C.USAGE_MEDIA)
                     .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
                     .build(),
-                /* handleAudioFocus = */ true,
+                // Focus géré par CallAwareAudioFocus : la musique continue pendant les appels.
+                /* handleAudioFocus = */ false,
             )
             .setHandleAudioBecomingNoisy(true) // pause quand le casque est débranché
             .setWakeMode(C.WAKE_MODE_NETWORK)
@@ -57,6 +59,17 @@ class PlaybackService : MediaSessionService() {
         player.addListener(object : Player.Listener {
             override fun onAudioSessionIdChanged(audioSessionId: Int) = effects.attach(audioSessionId)
         })
+
+        val callFocus = CallAwareAudioFocus(this, player).also { focus = it }
+        scope.launch {
+            settings.settings
+                .map { it.sound.continueInCalls to it.sound.callVolume }
+                .distinctUntilChanged()
+                .collect { (continueInCalls, callVolume) ->
+                    callFocus.continueInCalls = continueInCalls
+                    callFocus.callVolume = callVolume
+                }
+        }
 
         scope.launch {
             settings.settings
@@ -101,6 +114,8 @@ class PlaybackService : MediaSessionService() {
 
     override fun onDestroy() {
         scope.cancel()
+        focus?.release()
+        focus = null
         container.audioEffects.release()
         session?.run {
             player.release()

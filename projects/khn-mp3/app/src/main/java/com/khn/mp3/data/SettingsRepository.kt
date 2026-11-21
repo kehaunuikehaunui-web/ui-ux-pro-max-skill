@@ -26,9 +26,12 @@ data class SoundSettings(
     val preset: String = "Normal",
     val bassBoost: Int = 0,                  // 0..1000
     val virtualizer: Int = 0,                // 0..1000
-    val loudnessGain: Int = 0,               // millibels 0..1000 (= 0..10 dB)
+    val loudnessGain: Int = 0,               // millibels 0..1500 (= 0..+15 dB)
     val speed: Float = 1f,
     val pitchSemitones: Int = 0,
+    val antiSaturation: Boolean = true,      // limiteur : le son reste propre une fois amplifié
+    val continueInCalls: Boolean = true,     // la musique continue pendant les appels
+    val callVolume: Float = 0.3f,            // volume de la musique pendant un appel (0.1..1)
 )
 
 @Immutable
@@ -41,6 +44,9 @@ data class Settings(
     val sort: SortOrder = SortOrder.TITLE,
 )
 
+/** Amplification maximale : +15 dB. */
+const val MAX_BOOST_MB = 1500
+
 class SettingsRepository(private val context: Context, private val scope: CoroutineScope) {
 
     private object K {
@@ -52,6 +58,9 @@ class SettingsRepository(private val context: Context, private val scope: Corout
         val loud = intPreferencesKey("loudness")
         val speed = floatPreferencesKey("speed")
         val pitch = intPreferencesKey("pitch_semitones")
+        val antiSat = booleanPreferencesKey("anti_saturation")
+        val calls = booleanPreferencesKey("continue_in_calls")
+        val callVol = floatPreferencesKey("call_volume")
         val bgPath = stringPreferencesKey("bg_path")
         val bgDim = floatPreferencesKey("bg_dim")
         val bgBlur = intPreferencesKey("bg_blur")
@@ -75,6 +84,9 @@ class SettingsRepository(private val context: Context, private val scope: Corout
                 loudnessGain = this[K.loud] ?: 0,
                 speed = this[K.speed] ?: 1f,
                 pitchSemitones = this[K.pitch] ?: 0,
+                antiSaturation = this[K.antiSat] ?: d.sound.antiSaturation,
+                continueInCalls = this[K.calls] ?: d.sound.continueInCalls,
+                callVolume = this[K.callVol] ?: d.sound.callVolume,
             ),
             backgroundPath = this[K.bgPath],
             backgroundDim = this[K.bgDim] ?: d.backgroundDim,
@@ -95,11 +107,14 @@ class SettingsRepository(private val context: Context, private val scope: Corout
     }
     fun setBassBoost(v: Int) = edit { it[K.bass] = v.coerceIn(0, 1000) }
     fun setVirtualizer(v: Int) = edit { it[K.virt] = v.coerceIn(0, 1000) }
-    fun setLoudness(v: Int) = edit { it[K.loud] = v.coerceIn(0, 1000) }
+    fun setLoudness(v: Int) = edit { it[K.loud] = v.coerceIn(0, MAX_BOOST_MB) }
+    fun setAntiSaturation(v: Boolean) = edit { it[K.antiSat] = v }
+    fun setContinueInCalls(v: Boolean) = edit { it[K.calls] = v }
+    fun setCallVolume(v: Float) = edit { it[K.callVol] = v.coerceIn(0.1f, 1f) }
     fun setSpeed(v: Float) = edit { it[K.speed] = v.coerceIn(0.5f, 2f) }
     fun setPitch(semitones: Int) = edit { it[K.pitch] = semitones.coerceIn(-6, 6) }
     fun resetSound() = edit {
-        listOf(K.eqEnabled, K.bands, K.preset, K.bass, K.virt, K.loud, K.speed, K.pitch).forEach { k -> it.remove(k) }
+        listOf(K.eqEnabled, K.bands, K.preset, K.bass, K.virt, K.loud, K.speed, K.pitch, K.antiSat).forEach { k -> it.remove(k) }
     }
 
     fun setBackground(path: String?) = edit { if (path == null) it.remove(K.bgPath) else it[K.bgPath] = path }

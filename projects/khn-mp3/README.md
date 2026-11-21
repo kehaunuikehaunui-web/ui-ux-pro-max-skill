@@ -12,7 +12,10 @@ Lecteur de musique Android personnel : Kotlin, Jetpack Compose et Media3/ExoPlay
 | Playlists | Onglet **Playlists** : créer, renommer, supprimer, ajouter plusieurs titres, réordonner |
 | Recherche | Onglet **Recherche** : titre, artiste, album, playlist (accents ignorés) |
 | Téléchargement | Onglet **Télécharger** : lien direct `.mp3`, ou catalogue libre Internet Archive (CC / domaine public), extrait avant téléchargement ; fichiers enregistrés dans `Musique/KHN MP3` |
-| Paramètres du son | Égaliseur (bandes de l'appareil + 10 préréglages), basses, spatialisation 3D, amplification, vitesse et tonalité |
+| Paramètres du son | Égaliseur (bandes de l'appareil + 10 préréglages), basses, spatialisation 3D, vitesse et tonalité |
+| Augmenter le son | Amplification jusqu'à +15 dB, bouton **Amplifier** dans le lecteur |
+| Qualité sonore | **Anti-saturation** : limiteur en fin de chaîne (Android 9+), le son reste propre même amplifié |
+| Pendant les appels | La musique continue à volume réduit (réglable) pendant les appels vidéo/vocaux, retour au volume normal à la fin ; désactivable dans **Paramètres du son** |
 | Photo d'arrière-plan | **Réglages › Apparence** : photo de la galerie, assombrissement, flou (Android 12+) |
 | Fichiers personnels | Bouton 📂 : importer des fichiers depuis n'importe quel dossier (carte SD, Téléchargements…) ; « Ouvrir avec KHN MP3 » depuis le gestionnaire de fichiers |
 
@@ -27,9 +30,16 @@ Cible : Android 8.0+ (API 26), affichage portrait adaptatif conçu pour 1080×24
 - Analyse de la bibliothèque, recherche et filtrage hors du thread UI ; rescan automatique (anti-rebond 1,5 s) quand un fichier est ajouté.
 - Égaliseur en aperçu direct pendant le glissement, sauvegardé seulement au relâchement.
 
+## Son : chaîne d'effets
+
+`Égaliseur → Basses → Spatialisation → Amplification + Limiteur` (DynamicsProcessing : seuil -1 dBFS, ratio 10:1).
+Sur Android 8, l'amplification passe par `LoudnessEnhancer` (pas de limiteur dédié).
+
+Pendant un appel, seul l'utilisateur entend la musique : Android ne permet pas à une app d'injecter du son dans un appel.
+
 ## Installer l'APK
 
-1. Copier `KHN-MP3-v1.0.0.apk` sur le téléphone.
+1. Copier `KHN-MP3-v1.1.0.apk` sur le téléphone (une nouvelle version s'installe par-dessus l'ancienne, sans perte de données).
 2. L'ouvrir, puis autoriser « Installer des applis inconnues » pour l'app qui l'ouvre (Fichiers, Chrome…).
 3. Au premier lancement, autoriser l'accès à la musique.
 

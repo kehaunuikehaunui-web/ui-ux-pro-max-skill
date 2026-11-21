@@ -3,6 +3,8 @@
 package com.khn.mp3.playback
 
 import android.media.audiofx.BassBoost
+import androidx.annotation.RequiresApi
+import android.media.audiofx.DynamicsProcessing
 import android.media.audiofx.Equalizer
 import android.media.audiofx.LoudnessEnhancer
 import android.media.audiofx.Virtualizer
@@ -18,6 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import android.os.Build
 import kotlin.math.abs
 import kotlin.math.ln
 
@@ -60,8 +63,12 @@ object EqPresets {
 }
 
 /**
- * Applique égaliseur, renfort de basses, spatialisation et amplification à la session audio du lecteur.
- * Les réglages sont relus en continu depuis [SettingsRepository].
+ * Applique égaliseur, renfort de basses, spatialisation, amplification et anti-saturation
+ * à la session audio du lecteur. Les réglages sont relus en continu depuis [SettingsRepository].
+ *
+ * Chaîne : Égaliseur → Basses → Spatialisation → [Amplification + Limiteur] (DynamicsProcessing, Android 9+).
+ * Le limiteur est placé en dernier pour rattraper toute saturation créée par les effets précédents.
+ * Sans DynamicsProcessing (Android 8 ou appareil incompatible), l'amplification passe par LoudnessEnhancer.
  */
 class AudioEffects(private val settings: SettingsRepository, private val scope: CoroutineScope) {
 
@@ -73,7 +80,12 @@ class AudioEffects(private val settings: SettingsRepository, private val scope: 
     private var bass: BassBoost? = null
     private var virt: Virtualizer? = null
     private var loud: LoudnessEnhancer? = null
+    private var dynamics: DynamicsProcessing? = null
     private var job: Job? = null
+
+    private val _limiterAvailable = MutableStateFlow(Build.VERSION.SDK_INT >= 28)
+    /** Vrai si l'anti-saturation (limiteur) fonctionne sur cet appareil. */
+    val limiterAvailable: StateFlow<Boolean> = _limiterAvailable.asStateFlow()
 
     fun attach(audioSessionId: Int) {
         if (audioSessionId == 0 || audioSessionId == sessionId) return
@@ -82,7 +94,10 @@ class AudioEffects(private val settings: SettingsRepository, private val scope: 
         eq = runCatching { Equalizer(0, audioSessionId) }.getOrNull()
         bass = runCatching { BassBoost(0, audioSessionId) }.getOrNull()
         virt = runCatching { Virtualizer(0, audioSessionId) }.getOrNull()
-        loud = runCatching { LoudnessEnhancer(audioSessionId) }.getOrNull()
+        // Créé en dernier : le limiteur doit être le dernier maillon de la chaîne.
+        dynamics = if (Build.VERSION.SDK_INT >= 28) Limiter28.create(audioSessionId) else null
+        _limiterAvailable.value = dynamics != null
+        if (dynamics == null) loud = runCatching { LoudnessEnhancer(audioSessionId) }.getOrNull()
 
         eq?.let { e ->
             runCatching {
@@ -128,6 +143,7 @@ class AudioEffects(private val settings: SettingsRepository, private val scope: 
                 v.enabled = s.virtualizer > 0
             }
         }
+        if (Build.VERSION.SDK_INT >= 28) dynamics?.let { d -> runCatching { Limiter28.apply(d, s) } }
         loud?.let { l ->
             runCatching {
                 l.setTargetGain(s.loudnessGain)
@@ -139,8 +155,33 @@ class AudioEffects(private val settings: SettingsRepository, private val scope: 
     fun release() {
         job?.cancel()
         job = null
-        listOfNotNull(eq, bass, virt, loud).forEach { runCatching { it.release() } }
-        eq = null; bass = null; virt = null; loud = null
+        listOfNotNull(eq, bass, virt, loud, dynamics).forEach { runCatching { it.release() } }
+        eq = null; bass = null; virt = null; loud = null; dynamics = null
         sessionId = 0
+    }
+}
+
+/** Amplification + limiteur anti-saturation via DynamicsProcessing (Android 9+). */
+@RequiresApi(28)
+private object Limiter28 {
+    fun create(sessionId: Int): DynamicsProcessing? = runCatching {
+        val config = DynamicsProcessing.Config.Builder(
+            DynamicsProcessing.VARIANT_FAVOR_TIME_RESOLUTION,
+            2,         // stéréo
+            false, 0,  // pré-égaliseur : non (l'Equalizer s'en charge)
+            false, 0,  // compresseur multibande : non
+            false, 0,  // post-égaliseur : non
+            true,      // limiteur : oui
+        ).build()
+        DynamicsProcessing(0, sessionId, config)
+    }.getOrNull()
+
+    fun apply(d: DynamicsProcessing, s: SoundSettings) {
+        // Limiteur : seuil -1 dBFS, ratio 10:1, attaque 1 ms, relâchement 100 ms.
+        d.setLimiterAllChannelsTo(
+            DynamicsProcessing.Limiter(true, s.antiSaturation, 0, 1f, 100f, 10f, -1f, 0f),
+        )
+        d.setInputGainAllChannelsTo(s.loudnessGain / 100f)
+        d.enabled = s.loudnessGain > 0 || s.antiSaturation
     }
 }

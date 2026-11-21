@@ -35,6 +35,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Equalizer
 import androidx.compose.material.icons.rounded.Favorite
@@ -164,6 +166,8 @@ fun NowPlayingScreen(
     onOpenSound: () -> Unit,
     onSkipTo: (Int) -> Unit,
     onRemoveFromQueue: (Int) -> Unit,
+    boostMb: Int = 0,
+    onOpenBoost: () -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     val offsetY = remember { Animatable(0f) }
@@ -314,9 +318,31 @@ fun NowPlayingScreen(
 
             Spacer(Modifier.weight(0.4f))
 
-            Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+            Row(
+                Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 IconButton(onClick = onAddToPlaylist, enabled = track != null) {
                     Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = "Ajouter à une playlist")
+                }
+                // Accès rapide à l'amplification
+                val boosted = boostMb > 0
+                Row(
+                    Modifier
+                        .clip(Khn.shapes.pill)
+                        .background(if (boosted) KhnColors.NeonHorizontal else SolidColor(KhnColors.SurfaceHigh.copy(alpha = 0.8f)))
+                        .clickable(onClick = onOpenBoost)
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.AutoMirrored.Rounded.VolumeUp, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        if (boosted) "+${"%.1f".format(boostMb / 100f)} dB" else "Amplifier",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Color.White,
+                    )
                 }
                 IconButton(onClick = { showQueue = true }) {
                     Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = "File d'attente")

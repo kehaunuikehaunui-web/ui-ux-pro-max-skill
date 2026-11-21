@@ -58,7 +58,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.khn.mp3.BuildConfig
+import com.khn.mp3.data.MAX_BOOST_MB
 import com.khn.mp3.data.SoundSettings
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import com.khn.mp3.playback.EqPresets
 import com.khn.mp3.ui.MainViewModel
 import com.khn.mp3.ui.components.EqBandSlider
@@ -185,6 +190,7 @@ fun SettingsScreen(
 fun SoundScreen(vm: MainViewModel, contentPadding: PaddingValues, onBack: () -> Unit) {
     val settings by vm.settings.collectAsStateWithLifecycle()
     val spec by vm.audioEffects.spec.collectAsStateWithLifecycle()
+    val limiterOk by vm.audioEffects.limiterAvailable.collectAsStateWithLifecycle()
     val sound = settings.sound
 
     // État local pendant le glissement ; persistance au relâchement.
@@ -197,6 +203,7 @@ fun SoundScreen(vm: MainViewModel, contentPadding: PaddingValues, onBack: () -> 
     var loud by remember(sound.loudnessGain) { mutableFloatStateOf(sound.loudnessGain.toFloat()) }
     var speed by remember(sound.speed) { mutableFloatStateOf(sound.speed) }
     var pitch by remember(sound.pitchSemitones) { mutableFloatStateOf(sound.pitchSemitones.toFloat()) }
+    var callVol by remember(sound.callVolume) { mutableFloatStateOf(sound.callVolume) }
 
     fun live(): SoundSettings = sound.copy(
         bandLevels = bands, bassBoost = bass.roundToInt(), virtualizer = virt.roundToInt(), loudnessGain = loud.roundToInt(),
@@ -301,8 +308,16 @@ fun SoundScreen(vm: MainViewModel, contentPadding: PaddingValues, onBack: () -> 
                     NeonSlider(virt, { virt = it; vm.previewSound(live()) }, valueRange = 0f..1000f, onValueChangeFinished = { vm.setVirtualizer(virt.roundToInt()) })
                 }
                 LabeledSlider("Amplification du volume", "+${"%.1f".format(loud / 100f)} dB") {
-                    NeonSlider(loud, { loud = it; vm.previewSound(live()) }, valueRange = 0f..1000f, onValueChangeFinished = { vm.setLoudness(loud.roundToInt()) })
+                    NeonSlider(loud, { loud = it; vm.previewSound(live()) }, valueRange = 0f..MAX_BOOST_MB.toFloat(), onValueChangeFinished = { vm.setLoudness(loud.roundToInt()) })
                 }
+                SwitchRow(
+                    title = "Anti-saturation",
+                    subtitle = if (limiterOk) "Limiteur : le son reste propre, même amplifié ou avec beaucoup de basses"
+                    else "Nécessite Android 9 ou plus récent",
+                    checked = sound.antiSaturation && limiterOk,
+                    enabled = limiterOk,
+                    onChange = vm::setAntiSaturation,
+                )
                 Text(
                     "L'effet des basses et de la spatialisation dépend du téléphone et s'entend surtout au casque.",
                     style = MaterialTheme.typography.bodySmall,
@@ -322,6 +337,116 @@ fun SoundScreen(vm: MainViewModel, contentPadding: PaddingValues, onBack: () -> 
                     NeonSlider(pitch, { pitch = it }, valueRange = -6f..6f, steps = 11, onValueChangeFinished = { vm.setPitch(pitch.roundToInt()) })
                 }
             }
+        }
+
+        item {
+            SettingsCard {
+                Text("Pendant les appels", style = MaterialTheme.typography.titleMedium)
+                SwitchRow(
+                    title = "Continuer la musique",
+                    subtitle = "Appels vidéo et vocaux (WhatsApp, Messenger, Meet, téléphone…) : la musique continue en fond au lieu de s'arrêter",
+                    checked = sound.continueInCalls,
+                    onChange = vm::setContinueInCalls,
+                )
+                if (sound.continueInCalls) {
+                    LabeledSlider("Volume pendant l'appel", "${(callVol * 100).roundToInt()} %") {
+                        NeonSlider(callVol, { callVol = it }, valueRange = 0.1f..1f, onValueChangeFinished = { vm.setCallVolume(callVol) })
+                    }
+                }
+                Text(
+                    "Toi seul entends la musique : Android ne permet pas de la transmettre à ton correspondant.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = KhnColors.TextMuted,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SwitchRow(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onChange: (Boolean) -> Unit,
+    enabled: Boolean = true,
+) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+            Text(title, style = MaterialTheme.typography.bodyMedium, color = if (enabled) KhnColors.Text else KhnColors.TextMuted)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = KhnColors.TextMuted)
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onChange,
+            enabled = enabled,
+            colors = SwitchDefaults.colors(checkedTrackColor = KhnColors.Violet, checkedThumbColor = Color.White),
+        )
+    }
+}
+
+/** Feuille d'amplification rapide, ouverte depuis le lecteur. */
+@Composable
+fun BoostSheet(vm: MainViewModel, onMoreSettings: () -> Unit, onDismiss: () -> Unit) {
+    val settings by vm.settings.collectAsStateWithLifecycle()
+    val limiterOk by vm.audioEffects.limiterAvailable.collectAsStateWithLifecycle()
+    val sound = settings.sound
+    var loud by remember(sound.loudnessGain) { mutableFloatStateOf(sound.loudnessGain.toFloat()) }
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = KhnColors.Surface,
+    ) {
+        Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 28.dp).navigationBarsPadding()) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.AutoMirrored.Rounded.VolumeUp, null, tint = KhnColors.Violet)
+                Spacer(Modifier.width(10.dp))
+                Text("Amplification", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                Text("+${"%.1f".format(loud / 100f)} dB", style = MaterialTheme.typography.titleMedium, color = KhnColors.Violet)
+            }
+            Spacer(Modifier.height(8.dp))
+            NeonSlider(
+                loud,
+                { loud = it; vm.previewSound(sound.copy(loudnessGain = it.roundToInt())) },
+                valueRange = 0f..MAX_BOOST_MB.toFloat(),
+                onValueChangeFinished = { vm.setLoudness(loud.roundToInt()) },
+            )
+            Row(Modifier.fillMaxWidth()) {
+                Text("Normal", style = MaterialTheme.typography.labelSmall, color = KhnColors.TextMuted, modifier = Modifier.weight(1f))
+                Text("+15 dB", style = MaterialTheme.typography.labelSmall, color = KhnColors.TextMuted)
+            }
+            Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(0, 500, 1000, 1500).forEach { mb ->
+                    FilterChip(
+                        selected = (loud / 100f).roundToInt() == mb / 100,
+                        onClick = { loud = mb.toFloat(); vm.setLoudness(mb) },
+                        label = { Text(if (mb == 0) "Off" else "+${mb / 100} dB") },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = KhnColors.Violet,
+                            selectedLabelColor = Color.White,
+                            containerColor = KhnColors.SurfaceHigh,
+                        ),
+                        border = null,
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            SwitchRow(
+                title = "Anti-saturation",
+                subtitle = if (limiterOk) "Évite les grésillements quand le son est poussé" else "Nécessite Android 9 ou plus récent",
+                checked = sound.antiSaturation && limiterOk,
+                enabled = limiterOk,
+                onChange = vm::setAntiSaturation,
+            )
+            if (loud >= 1000) {
+                Text(
+                    "Au casque, baisse le volume du téléphone si le son devient inconfortable.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = KhnColors.Magenta,
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            OutlineButton("Égaliseur et plus de réglages", Icons.Rounded.Equalizer, onMoreSettings, Modifier.fillMaxWidth())
         }
     }
 }

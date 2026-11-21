@@ -274,6 +274,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setBassBoost(v: Int) = c.settings.setBassBoost(v)
     fun setVirtualizer(v: Int) = c.settings.setVirtualizer(v)
     fun setLoudness(v: Int) = c.settings.setLoudness(v)
+    fun setAntiSaturation(v: Boolean) = c.settings.setAntiSaturation(v)
+    fun setContinueInCalls(v: Boolean) = c.settings.setContinueInCalls(v)
+    fun setCallVolume(v: Float) = c.settings.setCallVolume(v)
     fun setSpeed(v: Float) = c.settings.setSpeed(v)
     fun setPitch(v: Int) = c.settings.setPitch(v)
     fun resetSound() { c.settings.resetSound(); toast("Paramètres du son réinitialisés") }
