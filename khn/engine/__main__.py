@@ -58,10 +58,13 @@ async def check(cfg: Config, video: str | None) -> int:
         finally:
             await kr.close()
     brain = Brain(cfg.model)
-    try:
-        line(True, "API Claude", f"modèle {await brain.check()}")
-    except BrainError as e:
-        line(cfg.mode == "sim", "API Claude", f"{e} (optionnel : sans clé, analyse des vidéos par mots-clés)")
+    if not brain.available:
+        print("  INFO   API Claude : non configurée (optionnel, analyse des vidéos par mots-clés en attendant)")
+    else:
+        try:
+            line(True, "API Claude", f"modèle {await brain.check()}")
+        except BrainError as e:
+            line(False, "API Claude", str(e))
     if video:
         from .youtube import transcript
         text, err = await transcript(video)

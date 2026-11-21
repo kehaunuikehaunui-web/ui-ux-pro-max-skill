@@ -15,7 +15,16 @@ Ne colle jamais ces clés dans un message ou un chat : elles vont uniquement dan
 
 ## 2. Installation
 
-Depuis ton ordinateur :
+**En une commande** (pratique depuis un téléphone), une fois connecté au serveur en root :
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/kehaunuikehaunui-web/ui-ux-pro-max-skill/ccr-61e597e0-kxc16c/khn/install.sh | bash
+```
+
+Le script installe Docker, télécharge KHN dans `/opt/khn`, crée le `.env` en mode papier avec un mot de passe
+aléatoire (affiché à la fin), démarre KHN et lance la vérification. Relancer la même commande met KHN à jour.
+
+**À la main**, depuis ton ordinateur :
 
 ```bash
 ssh root@ADRESSE_IP_DU_SERVEUR
@@ -24,6 +33,7 @@ git clone --branch ccr-61e597e0-kxc16c https://github.com/kehaunuikehaunui-web/u
 cd ui-ux-pro-max-skill/khn
 cp .env.example .env
 nano .env        # mot de passe, mode, clés (Ctrl+O pour enregistrer, Ctrl+X pour quitter)
+mkdir -p data && chown -R 1000:1000 data   # KHN écrit sa mémoire ici avec l'utilisateur 1000
 docker compose up -d --build
 docker compose run --rm khn python -m engine check
 ```
