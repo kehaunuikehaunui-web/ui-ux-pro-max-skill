@@ -53,8 +53,8 @@ L'interface est alors sur `https://ton-domaine`, en HTTPS automatique, protégé
 
 1. `KHN_MODE=paper` pendant au moins une semaine : prix réels, ordres simulés. Aucun compte requis.
 2. `KHN_MODE=testnet` ensuite : vrais ordres sur le testnet Binance (argent fictif, achat seulement).
-3. Réel : pas avant 2 à 3 mois de résultats positifs en démo et un capital suffisant (voir l'onglet Broker).
-   Le code de la phase 2 refuse d'envoyer un ordre ailleurs qu'au testnet.
+3. `KHN_MODE=live` : argent réel chez Kraken (voir section 7). Le réel reste verrouillé tant que les
+   conditions de l'onglet **Réel** ne sont pas toutes remplies ; en attendant, KHN tourne en essai à blanc.
 
 Chaque mode a sa propre mémoire (`data/khn-paper.sqlite`, `data/khn-testnet.sqlite`). Pour changer de mode :
 modifie `KHN_MODE` dans `.env`, puis `docker compose up -d`.
@@ -75,5 +75,32 @@ modifie `KHN_MODE` dans `.env`, puis `docker compose up -d`.
   Colle la transcription dans le formulaire (sous la vidéo : « … » → « Afficher la transcription »).
 - **Binance répond 451** : le serveur est dans un pays bloqué. Choisis une région européenne.
 - **Testnet remis à zéro** : Binance réinitialise régulièrement le testnet. Recrée des clés si `check` échoue.
-- **Stops en mode testnet** : ils sont surveillés par KHN (contrôle toutes les 10 s), pas posés chez Binance.
-  Si le serveur s'arrête, les positions ouvertes ne sont plus protégées : ce sera corrigé avant tout passage au réel.
+- **Protection des positions** : en testnet, stop et objectif sont posés chez Binance (ordre OCO). En réel,
+  le stop est posé chez Kraken dès l'achat ; si Kraken refuse le stop, KHN revend aussitôt. Les positions
+  restent donc protégées même si le serveur s'arrête.
+
+## 7. Passer en argent réel (phase 3)
+
+Le réel ne s'active que si **toutes** ces conditions sont vraies (l'onglet **Réel** les suit en direct) :
+
+| Condition | Seuil |
+|---|---|
+| Démo (papier ou testnet) | au moins 60 jours et 50 trades |
+| Résultat de la démo | au moins +0,05 R par trade et facteur de profit ≥ 1,10 |
+| Baisse max de la démo | sous la limite réglée |
+| Capital sur Kraken | au moins `KHN_LIVE_MIN_XPF` (60 000 XPF par défaut) en USDT |
+| Clé Kraken | valide, **sans** droit de retrait |
+| Ordre d'essai | validé par Kraken sans exécution |
+| Activation | tu tapes « JE RISQUE MON ARGENT » dans l'onglet Réel |
+
+Étapes :
+1. Kraken → Paramètres → API → créer une clé avec seulement : *Query Funds*, *Query Open Orders & Trades*,
+   *Query Closed Orders & Trades*, *Create & Modify Orders*, *Cancel/Close Orders*. Jamais *Withdraw Funds*.
+2. Dans `.env` : `KRAKEN_KEY`, `KRAKEN_SECRET`, puis `KHN_MODE=live`, et `docker compose up -d`.
+   La mémoire de la démo (`data/khn-paper.sqlite` ou `data/khn-testnet.sqlite`) doit rester dans `data/`.
+3. Optionnel : installe l'appli **ntfy** sur ton téléphone, abonne-toi à un sujet secret et mets son adresse
+   dans `KHN_NTFY_URL` pour être prévenu de chaque ordre à valider.
+
+Réglages imposés en réel : 0,5 % de risque par trade, une position à la fois, perte max 2 % par jour et 5 %
+par semaine, validation de chaque ordre par toi (10 minutes pour répondre, sinon l'ordre est annulé ; elle
+ne peut être coupée qu'après 20 trades réels). L'arrêt d'urgence ferme les positions et désarme le réel.

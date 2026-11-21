@@ -167,6 +167,32 @@ def create_app(cfg: Config | None = None, bot: Bot | None = None, start_bot: boo
         bot.set_risk(await body(request))
         return {"ok": True, "risk": bot.risk}
 
+    @app.post("/api/confirm")
+    async def confirm(request: Request):
+        if not valid(request.cookies.get(COOKIE)):
+            return denied()
+        d = await body(request)
+        try:
+            pid = int(d.get("id"))
+        except (TypeError, ValueError):
+            return JSONResponse({"error": "identifiant manquant"}, status_code=400)
+        await bot.confirm(pid, bool(d.get("accept")))
+        return {"ok": True}
+
+    @app.post("/api/live/arm")
+    async def arm(request: Request):
+        if not valid(request.cookies.get(COOKIE)):
+            return denied()
+        ok, msg = await bot.arm(str((await body(request)).get("phrase", "")))
+        return JSONResponse({"ok": ok, "message": msg}, status_code=200 if ok else 400)
+
+    @app.post("/api/live/disarm")
+    async def disarm(request: Request):
+        if not valid(request.cookies.get(COOKIE)):
+            return denied()
+        bot.disarm()
+        return {"ok": True}
+
     @app.websocket("/ws")
     async def ws(websocket: WebSocket):
         origin = websocket.headers.get("origin")

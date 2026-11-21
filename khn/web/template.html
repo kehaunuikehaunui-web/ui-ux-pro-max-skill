@@ -3,6 +3,16 @@
 .chip.live{color:var(--up);border-color:#1f6b4c}
 .chip.bad{color:var(--down);border-color:#6b2730}
 .top a.logout{font-size:12.5px;color:var(--muted)}
+.pending{display:grid;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);background:#1d170b}
+.prop{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;font-size:13.5px}
+.prop b{font:500 14px var(--f-pixel);color:var(--gold);letter-spacing:.04em}
+.prop .t{font:12px var(--f-mono);color:var(--warn)}
+.btn.ok{background:var(--up);border-color:var(--up);color:#06231f}
+.checks{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.checks li{display:grid;grid-template-columns:22px minmax(0,1fr);gap:8px;align-items:start;font-size:13.5px}
+.checks .m{font:700 13px var(--f-mono);text-align:center;border-radius:3px;padding:1px 0}
+.checks .y{color:#06231f;background:var(--up)} .checks .n{color:#2a070c;background:var(--down)} .checks .q{color:var(--muted);border:1px solid var(--line2)}
+.chip.real{background:var(--down);border-color:var(--down);color:#2a070c}
 .offline{position:absolute;inset:12px;display:grid;place-items:center;background:rgba(5,8,15,.72);border-radius:6px;font:500 15px var(--f-pixel);letter-spacing:.05em;text-align:center;padding:16px}
 </style>
 
@@ -13,7 +23,7 @@
       <div class="brand-sub">
         <b>Bureau de trading autonome</b>
         <div class="chips">
-          <span class="chip demo">Démo</span>
+          <span class="chip demo" id="chipDemo">Démo</span>
           <span class="chip" id="chipMode">Mode…</span>
           <span class="chip" id="chipConn">Connexion…</span>
           <span class="chip" id="chipAI">IA…</span>
@@ -69,6 +79,7 @@
   <section class="lower">
     <div class="card">
       <div class="card-h"><h2>Console de KHN</h2><span class="hint">Tape « aide » pour la liste des commandes</span></div>
+      <div class="pending" id="pending" hidden aria-live="assertive"></div>
       <ol class="log" id="log" aria-live="polite" aria-label="Journal d'activité des robots"></ol>
       <form class="cmd" id="cmdForm" autocomplete="off">
         <label for="cmdIn">khn&gt;</label>
@@ -83,6 +94,7 @@
         <button role="tab" id="t-pos" aria-controls="p-pos" aria-selected="false" tabindex="-1">Positions &amp; journal</button>
         <button role="tab" id="t-risk" aria-controls="p-risk" aria-selected="false" tabindex="-1">Risque</button>
         <button role="tab" id="t-team" aria-controls="p-team" aria-selected="false" tabindex="-1">Équipe</button>
+        <button role="tab" id="t-live" aria-controls="p-live" aria-selected="false" tabindex="-1">Réel</button>
         <button role="tab" id="t-broker" aria-controls="p-broker" aria-selected="false" tabindex="-1">Broker</button>
       </div>
       <div class="panel" role="tabpanel" id="p-strat" aria-labelledby="t-strat">
@@ -106,9 +118,11 @@
         <div class="risk-grid">
           <div class="ctl"><label for="rTrade">Risque par trade</label><input id="rTrade" type="range" min="0.25" max="2" step="0.25" value="1"><output id="oTrade">—</output></div>
           <div class="ctl"><label for="rDaily">Perte max par jour</label><input id="rDaily" type="range" min="1" max="10" step="0.5" value="3"><output id="oDaily">—</output></div>
+          <div class="ctl"><label for="rWeek">Perte max par semaine</label><input id="rWeek" type="range" min="2" max="20" step="1" value="6"><output id="oWeek">—</output></div>
           <div class="ctl"><label for="rDD">Baisse max avant blocage</label><input id="rDD" type="range" min="5" max="30" step="1" value="10"><output id="oDD">—</output></div>
           <div class="ctl"><label for="rPos">Positions simultanées max</label><input id="rPos" type="range" min="1" max="3" step="1" value="2"><output id="oPos">—</output></div>
           <div class="ctl"><label for="rLev">Levier (papier seulement)</label><input id="rLev" type="range" min="1" max="3" step="1" value="1"><output id="oLev">—</output></div>
+          <div class="ctl"><label for="rConfirm">Validation des ordres</label><select class="field" id="rConfirm"><option value="1">Me demander avant chaque ordre</option><option value="0">KHN décide seul</option></select></div>
           <div class="ctl"><label for="rShort">Sens</label><select class="field" id="rShort"><option value="1">Achat et vente à découvert</option><option value="0">Achat seulement</option></select></div>
         </div>
         <h3>Réinitialiser la démo</h3>
@@ -124,6 +138,24 @@
         <div class="team" id="team"></div>
         <h3>File d'attente</h3><div class="queue" id="queue"></div>
         <div class="row" id="recruitRow"></div>
+      </div>
+      <div class="panel" role="tabpanel" id="p-live" aria-labelledby="t-live" hidden>
+        <div class="note" id="liveNote">—</div>
+        <h3>Conditions pour trader en argent réel</h3>
+        <ul class="checks" id="checks"></ul>
+        <form class="form-grid" id="armForm" hidden>
+          <h3>Activer le mode réel</h3>
+          <label for="armPhrase" id="armLabel">Tape la phrase pour confirmer</label>
+          <input class="field" id="armPhrase" autocomplete="off">
+          <div class="row"><button class="btn kill" type="submit">Activer le réel</button><span class="small muted" id="armInfo">Chaque ordre te sera encore proposé avant d'être envoyé à Kraken.</span></div>
+        </form>
+        <div class="row" id="disarmRow" hidden><button class="btn" type="button" id="disarmBtn">Revenir à l'essai à blanc</button></div>
+        <h3>Préparer ta clé Kraken</h3>
+        <ol class="lessons small">
+          <li>Kraken → Paramètres → API → Créer une clé. Coche seulement : <b>Query Funds</b>, <b>Query Open Orders &amp; Trades</b>, <b>Query Closed Orders &amp; Trades</b>, <b>Create &amp; Modify Orders</b>, <b>Cancel/Close Orders</b>.</li>
+          <li>Ne coche jamais <b>Withdraw Funds</b> : KHN refuse de démarrer le réel si la clé peut retirer de l'argent.</li>
+          <li>Mets la clé dans le fichier <code>.env</code> du serveur (<code>KRAKEN_KEY</code>, <code>KRAKEN_SECRET</code>), puis <code>KHN_MODE=live</code>. Jamais dans un message.</li>
+        </ol>
       </div>
       <div class="panel" role="tabpanel" id="p-broker" aria-labelledby="t-broker" hidden>
         <div class="note" id="brokerNote">—</div>
@@ -409,12 +441,12 @@ function renderTeam() {
   const miss = Object.keys(ROLES).filter(n => n !== 'KHN' && !SNAP.team.some(t => t.name === n));
   $('#recruitRow').innerHTML = miss.length ? '<span class="small muted">Appeler :</span>' + miss.map(n => `<button class="btn small" data-cmd="recruter ${n.toLowerCase()}">${n} · ${esc(ROLES[n].role.toLowerCase())}</button>`).join('') : '<span class="small muted">Équipe complète.</span>';
 }
-const RK = [['rTrade', 'per_trade', 'oTrade', v => nf2.format(v) + ' %'], ['rDaily', 'max_daily', 'oDaily', v => nf1.format(v) + ' %'], ['rDD', 'max_dd', 'oDD', v => nf0.format(v) + ' %'], ['rPos', 'max_pos', 'oPos', v => String(v)], ['rLev', 'lev', 'oLev', v => v + '×']];
+const RK = [['rTrade', 'per_trade', 'oTrade', v => nf2.format(v) + ' %'], ['rDaily', 'max_daily', 'oDaily', v => nf1.format(v) + ' %'], ['rWeek', 'max_weekly', 'oWeek', v => nf0.format(v) + ' %'], ['rDD', 'max_dd', 'oDD', v => nf0.format(v) + ' %'], ['rPos', 'max_pos', 'oPos', v => String(v)], ['rLev', 'lev', 'oLev', v => v + '×']];
 let riskTouched = 0, riskTimer = null;
-function syncRisk() { if (Date.now() - riskTouched < 3000) return; const r = SNAP.risk; RK.forEach(([id, key, out, f]) => { $('#' + id).value = r[key]; $('#' + out).textContent = f(r[key]); }); $('#rShort').value = r.shorts ? '1' : '0'; $('#rShort').disabled = !SNAP.can_short; $('#rLev').disabled = !SNAP.can_short || !r.shorts; }
-function pushRisk() { riskTouched = Date.now(); clearTimeout(riskTimer); riskTimer = setTimeout(() => { const d = {}; RK.forEach(([id, key]) => d[key] = +$('#' + id).value); d.shorts = $('#rShort').value === '1'; api('/api/risk', d); }, 400); }
+function syncRisk() { if (Date.now() - riskTouched < 3000) return; const r = SNAP.risk; RK.forEach(([id, key, out, f]) => { $('#' + id).value = r[key]; $('#' + out).textContent = f(r[key]); }); $('#rShort').value = r.shorts ? '1' : '0'; $('#rConfirm').value = r.confirm ? '1' : '0'; $('#rShort').disabled = !SNAP.can_short; $('#rLev').disabled = !SNAP.can_short || !r.shorts; }
+function pushRisk() { riskTouched = Date.now(); clearTimeout(riskTimer); riskTimer = setTimeout(() => { const d = {}; RK.forEach(([id, key]) => d[key] = +$('#' + id).value); d.shorts = $('#rShort').value === '1'; d.confirm = $('#rConfirm').value === '1'; api('/api/risk', d); }, 400); }
 RK.forEach(([id, key, out, f]) => $('#' + id).addEventListener('input', e => { $('#' + out).textContent = f(+e.target.value); pushRisk(); }));
-$('#rShort').addEventListener('change', pushRisk);
+$('#rShort').addEventListener('change', pushRisk); $('#rConfirm').addEventListener('change', pushRisk);
 function renderRiskNote() {
   const e = equity(), rx = e * SNAP.risk.per_trade / 100 * SNAP.risk_mult, mn = SNAP.min_notional, small = e < mn * 2;
   const n = $('#riskNote'); n.className = 'note' + (small ? ' warn' : '');
@@ -424,7 +456,7 @@ let resetArm = 0;
 $('#resetBtn').addEventListener('click', () => { const v = Math.max(1000, Math.round(+$('#resetCap').value || 1000)); if (Date.now() - resetArm < 4000) { resetArm = 0; $('#resetBtn').textContent = 'Réinitialiser'; command('capital ' + v); } else { resetArm = Date.now(); $('#resetBtn').textContent = 'Confirmer'; $('#resetInfo').textContent = 'Clique encore pour confirmer (4 s).'; setTimeout(() => { if (resetArm) { resetArm = 0; $('#resetBtn').textContent = 'Réinitialiser'; $('#resetInfo').textContent = 'Remet le compte à zéro. Les stratégies et les leçons sont conservées.'; } }, 4000); } });
 function calc() { const cap = Math.max(0, +$('#cCap').value || 0), ret = +$('#cRet').value; $('#oRet').textContent = nf1.format(ret) + ' %'; const g = cap * ret / 100; $('#cGain').textContent = nf0.format(Math.round(g)) + ' XPF · ' + nf2.format(g / XPF_PER_EUR) + ' €'; const need = e => e * XPF_PER_EUR / (ret / 100); $('#cNeed').textContent = nf0.format(Math.round(need(300))) + ' / ' + nf0.format(Math.round(need(500))) + ' XPF'; }
 ['cCap', 'cRet'].forEach(id => $('#' + id).addEventListener('input', calc)); calc();
-const MODE = { sim: ['Simulation', 'Marché synthétique pour tester sans réseau. Aucun prix réel.'], paper: ['Papier · prix réels', 'Prix réels Binance, ordres simulés par KHN. Aucun compte nécessaire.'], testnet: ['Testnet Binance', 'Ordres réels envoyés au testnet Binance, en argent fictif.'] };
+const MODE = { sim: ['Simulation', 'Marché synthétique pour tester sans réseau. Aucun prix réel.'], paper: ['Papier · prix réels', 'Prix réels Binance, ordres simulés par KHN. Aucun compte nécessaire.'], testnet: ['Testnet Binance', 'Ordres réels envoyés au testnet Binance, en argent fictif.'], live: ['Réel Kraken', 'Signaux sur les prix Binance, ordres chez Kraken. Tant que le réel n\'est pas armé, chaque ordre est seulement validé par Kraken, sans exécution.'] };
 function renderPanels() {
   if (!SNAP) return;
   const vis = id => !$('#' + id).hidden, key = rev.data + $('[role=tab][aria-selected=true]').id;
@@ -433,7 +465,8 @@ function renderPanels() {
   if (vis('p-pos')) renderPos();
   if (vis('p-team')) renderTeam();
   if (vis('p-risk')) { syncRisk(); renderRiskNote(); }
-  if (vis('p-broker')) $('#brokerNote').innerHTML = `<b>Mode actuel : ${esc(MODE[SNAP.mode][0])}.</b> ${esc(MODE[SNAP.mode][1])} Le trading réel est désactivé en phase 2 : KHN ne sait envoyer des ordres qu'au testnet.`;
+  if (vis('p-live')) renderLive();
+  if (vis('p-broker')) $('#brokerNote').innerHTML = `<b>Mode actuel : ${esc(MODE[SNAP.mode][0])}.</b> ${esc(MODE[SNAP.mode][1])} ${SNAP.live_armed ? '<b class="neg">Le mode réel est armé : les ordres validés partent chez Kraken avec ton argent.</b>' : 'Aucun ordre en argent réel n\'est envoyé tant que toutes les conditions de l\'onglet Réel ne sont pas remplies.'}`;
 }
 // les boutons d'un panneau ne doivent pas être recréés sous la souris
 document.addEventListener('pointerdown', e => { if (e.target.closest('.panel button')) seen.hold = Date.now(); });
@@ -445,17 +478,47 @@ function renderKPI() {
   const kt = $('#kTot'); kt.textContent = fxs(tot); kt.className = 'val ' + (tot > 0 ? 'pos' : tot < 0 ? 'neg' : ''); $('#kTotS').textContent = pct(tot / (d0 || 1) * 100) + ' · ' + nf2.format(tot) + ' USDT';
   $('#kWin').textContent = st.n ? Math.round(st.w / st.n * 100) + ' %' : '—'; $('#kWinS').textContent = st.n + ' trades clôturés';
   $('#kDD').textContent = nf1.format(a.dd * 100) + ' %'; $('#kDDbar').style.width = Math.min(100, a.dd / (SNAP.risk.max_dd / 100) * 100) + '%'; $('#kDDbar').style.background = a.dd > SNAP.risk.max_dd / 200 ? 'var(--down)' : 'var(--warn)';
-  const f = SNAP.flags; $('#kPos').textContent = SNAP.positions.length + ' / ' + SNAP.risk.max_pos; $('#kPosS').textContent = f.killed ? 'arrêt d\'urgence' : f.paused ? 'en pause' : f.dd_halt ? 'bloqué (baisse max)' : f.day_halt === a.day ? 'stop du jour' : 'trading actif';
+  const f = SNAP.flags; $('#kPos').textContent = SNAP.positions.length + ' / ' + SNAP.risk.max_pos; $('#kPosS').textContent = f.killed ? 'arrêt d\'urgence' : f.paused ? 'en pause' : f.dd_halt ? 'bloqué (baisse max)' : f.day_halt === a.day ? 'stop du jour' : f.week_halt && f.week_halt === a.week ? 'stop de la semaine' : SNAP.risk.confirm ? 'actif · validation par toi' : 'trading actif';
   for (const k in M) { const el = $('#px-' + k); if (el) { el.textContent = fP(M[k].price) + ' ' + pct(M[k].chg); el.style.color = M[k].chg >= 0 ? 'var(--up)' : 'var(--down)'; } }
   $('#clock').textContent = 'Tahiti ' + hm(Date.now());
   $('#eqLab').textContent = fx(e) + (st.n ? ' · ' + fxs(st.pnl) + ' réalisés' : '');
-  const cm = $('#chipMode'); cm.textContent = MODE[SNAP.mode][0]; cm.className = 'chip' + (SNAP.mode === 'testnet' ? ' live' : '');
+  const cm = $('#chipMode'); cm.textContent = MODE[SNAP.mode][0] + (SNAP.mode === 'live' && !SNAP.live_armed ? ' · essai à blanc' : ''); cm.className = 'chip' + (SNAP.mode === 'testnet' ? ' live' : '');
+  const cd = $('#chipDemo'); cd.textContent = SNAP.live_armed ? 'Argent réel' : 'Démo'; cd.className = 'chip ' + (SNAP.live_armed ? 'real' : 'demo');
+  renderPending();
   const cc = $('#chipConn'); const ok = online && SNAP.connected; cc.textContent = online ? (SNAP.connected ? 'Marché connecté' : SNAP.status) : 'Serveur hors ligne'; cc.className = 'chip ' + (ok ? 'ok' : 'bad');
   const ai = $('#chipAI'); ai.textContent = SNAP.ai ? 'IA Claude active' : 'IA : mots-clés'; ai.className = 'chip ' + (SNAP.ai ? 'ok' : 'warn');
   const kb = $('#killBtn'); kb.setAttribute('aria-pressed', String(f.killed)); kb.textContent = f.killed ? 'RÉACTIVER KHN' : 'ARRÊT D\'URGENCE';
   $('#offline').hidden = online && SNAP.ready; $('#offline').textContent = !online ? 'Connexion au serveur de KHN perdue. Nouvel essai…' : 'KHN démarre : ' + SNAP.status + '…';
-  $('#foot').textContent = `Phase 2 · ${MODE[SNAP.mode][0]} · aucun ordre en argent réel. Le trading comporte un risque de perte en capital.`;
+  $('#foot').textContent = `${MODE[SNAP.mode][0]} · ${SNAP.live_armed ? 'ARGENT RÉEL' : 'aucun ordre en argent réel'}. Le trading comporte un risque de perte en capital.`;
 }
+
+/* ===== Ordres à valider ===== */
+function renderPending() {
+  const el = $('#pending'), list = (SNAP && SNAP.pending) || [];
+  el.hidden = !list.length; if (!list.length) { el.innerHTML = ''; el.dataset.k = ''; return; }
+  const k = list.map(p => p.id).join();
+  if (el.dataset.k !== k) {
+    el.dataset.k = k;
+    el.innerHTML = list.map(p => `<div class="prop" data-id="${p.id}"><b>Ordre #${p.id} à valider</b><span>${p.side === 'long' ? 'Achat' : 'Vente'} ${esc(p.k)} à ~${fP(p.price)} · stop ${fP(p.stop)} · objectif ${fP(p.tp)} · risque ${fx(p.risk)} · « ${esc(p.sname)} »</span><span class="t" data-left="${p.id}"></span><button class="btn small ok" data-confirm="${p.id}" data-accept="1">Valider</button><button class="btn small" data-confirm="${p.id}" data-accept="0">Refuser</button></div>`).join('');
+  }
+  const now = Date.now();
+  list.forEach(p => { const t = el.querySelector(`[data-left="${p.id}"]`), left = Math.max(0, Math.round((p.expires - now) / 1000)); if (t) t.textContent = Math.floor(left / 60) + ' min ' + String(left % 60).padStart(2, '0') + ' s restantes'; });
+}
+$('#pending').addEventListener('click', e => { const b = e.target.closest('[data-confirm]'); if (!b) return; b.disabled = true; api('/api/confirm', { id: +b.dataset.confirm, accept: b.dataset.accept === '1' }); });
+function renderLive() {
+  const g = SNAP.gate || [], live = SNAP.mode === 'live';
+  $('#checks').innerHTML = g.map(c => `<li><span class="m ${c.ok === true ? 'y' : c.ok === false ? 'n' : 'q'}" aria-label="${c.ok === true ? 'rempli' : c.ok === false ? 'non rempli' : 'à vérifier'}">${c.ok === true ? '✓' : c.ok === false ? '✗' : '?'}</span><span><b>${esc(c.label)}</b><br><span class="muted small">${esc(c.detail)}</span></span></li>`).join('');
+  const n = $('#liveNote'), done = g.filter(c => c.ok === true).length;
+  n.className = 'note' + (SNAP.live_armed ? ' bad' : '');
+  n.innerHTML = SNAP.live_armed ? '<b>Mode réel armé.</b> Les ordres que tu valides partent chez Kraken avec ton argent. L\'arrêt d\'urgence désarme le réel et ferme les positions.'
+    : live ? `<b>Essai à blanc.</b> KHN tourne en conditions réelles chez Kraken, mais chaque ordre est seulement validé, jamais exécuté. ${done} condition(s) remplie(s) sur ${g.length}.`
+    : `<b>Le réel est verrouillé.</b> ${done} condition(s) remplie(s) sur ${g.length}. Ce suivi se met à jour pendant la démo ; le passage au réel se fait ensuite avec <code>KHN_MODE=live</code>.`;
+  $('#armForm').hidden = !(live && SNAP.can_arm && !SNAP.armed);
+  $('#armLabel').textContent = 'Tape exactement : ' + SNAP.phrase;
+  $('#disarmRow').hidden = !SNAP.armed;
+}
+$('#armForm').addEventListener('submit', async e => { e.preventDefault(); const r = await fetch('/api/live/arm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phrase: $('#armPhrase').value }), credentials: 'same-origin' }).then(x => x.json()).catch(() => null); $('#armInfo').textContent = r ? r.message : 'Serveur injoignable.'; $('#armPhrase').value = ''; });
+$('#disarmBtn').addEventListener('click', () => api('/api/live/disarm', {}));
 
 /* ===== Clic robot ===== */
 cv.addEventListener('click', e => {

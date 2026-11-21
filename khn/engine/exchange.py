@@ -34,6 +34,13 @@ class SymbolFilters:
         st = Decimal(str(self.step))
         return float((Decimal(str(q)) / st).to_integral_value(rounding=ROUND_DOWN) * st)
 
+    def fmt_qty(self, q: float) -> str:
+        return format(Decimal(str(self.floor_qty(q))).normalize(), "f")
+
+    def fmt_price(self, p: float) -> str:
+        t = Decimal(str(self.tick))
+        return format(((Decimal(str(p)) / t).to_integral_value() * t).normalize(), "f")
+
 
 def sign(secret: str, query: str) -> str:
     return hmac.new(secret.encode(), query.encode(), hashlib.sha256).hexdigest()
@@ -120,6 +127,22 @@ class BinanceSpot:
 
     async def account(self) -> dict:
         return await self._signed("GET", "/api/v3/account", {"omitZeroBalances": "true"})
+
+    async def oco_sell(self, f: "SymbolFilters", qty: float, tp: float, stop: float) -> dict:
+        """Vend en OCO : objectif (LIMIT_MAKER au-dessus) et stop (STOP_LOSS au marché en dessous). L'un annule l'autre."""
+        return await self._signed("POST", "/api/v3/orderList/oco", {
+            "symbol": f.symbol, "side": "SELL", "quantity": f.fmt_qty(qty),
+            "aboveType": "LIMIT_MAKER", "abovePrice": f.fmt_price(tp),
+            "belowType": "STOP_LOSS", "belowStopPrice": f.fmt_price(stop), "newOrderRespType": "FULL"})
+
+    async def order_list(self, list_id: int) -> dict:
+        return await self._signed("GET", "/api/v3/orderList", {"orderListId": list_id})
+
+    async def cancel_order_list(self, symbol: str, list_id: int) -> dict:
+        return await self._signed("DELETE", "/api/v3/orderList", {"symbol": symbol, "orderListId": list_id})
+
+    async def get_order(self, symbol: str, order_id: int) -> dict:
+        return await self._signed("GET", "/api/v3/order", {"symbol": symbol, "orderId": order_id})
 
     async def market_order(self, symbol: str, side: str, quote_qty: float | None = None, qty: float | None = None) -> dict:
         p = {"symbol": symbol, "side": side, "type": "MARKET", "newOrderRespType": "FULL"}

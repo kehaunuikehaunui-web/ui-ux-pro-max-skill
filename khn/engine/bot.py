@@ -9,11 +9,15 @@ import time
 from collections import deque
 from datetime import datetime, timedelta, timezone
 
+import httpx
+
+from . import gate as gatemod
 from . import learning
 from .backtest import adapt, eval_spec, robust
-from .broker import PaperBroker, TestnetBroker
+from .broker import KrakenBroker, PaperBroker, TestnetBroker
 from .config import Config
 from .exchange import DATA_API, TESTNET_API, BinanceSpot, ExchangeError
+from .kraken import KrakenSpot
 from .llm import Brain, BrainError
 from .market import BinanceFeed, SimFeed
 from .store import Store
@@ -51,6 +55,8 @@ class Bot:
             self.broker = broker
         elif cfg.mode == "testnet":
             self.broker = TestnetBroker(self.feed.client)
+        elif cfg.mode == "live":  # signaux sur les prix Binance, exécution chez Kraken
+            self.broker = KrakenBroker(KrakenSpot(cfg.kraken_key, cfg.kraken_secret), dry=lambda: not self.live_armed())
         else:
             self.broker = PaperBroker()
         self.brain = brain or Brain(cfg.model)
@@ -58,14 +64,22 @@ class Bot:
         self.logs: deque = deque(maxlen=200)
         self._log_id = 0
         self.team = Team(self._handle, self.emit, self.log, speed=cfg.team_speed)
-        self.risk = {"per_trade": 1.0, "max_daily": 3.0, "max_dd": 10.0, "max_pos": 2, "shorts": self.broker.can_short, "lev": 1}
-        self.acct = {"start": 0.0, "balance": 0.0, "peak": 0.0, "day_start": 0.0, "day": ""}
+        self.risk = {"per_trade": 1.0, "max_daily": 3.0, "max_weekly": 6.0, "max_dd": 10.0, "max_pos": 2, "shorts": self.broker.can_short, "lev": 1, "confirm": False}
+        if cfg.mode == "live":  # réglages prudents pour l'argent réel
+            self.risk.update(per_trade=0.5, max_daily=2.0, max_weekly=5.0, max_pos=1, confirm=True)
+        self.acct = {"start": 0.0, "balance": 0.0, "peak": 0.0, "day_start": 0.0, "day": "", "week": "", "week_start": 0.0, "created": 0}
         self.positions: list[dict] = []
         self.journal: list[dict] = []
         self.lessons: list[dict] = []
         self.strategies: list[dict] = []
         self.eq_hist: list[float] = []
-        self.flags = {"paused": False, "killed": False, "dd_halt": False, "day_halt": ""}
+        self.flags = {"paused": False, "killed": False, "dd_halt": False, "day_halt": "", "week_halt": ""}
+        self.pending: list[dict] = []  # ordres proposés, en attente de ta validation
+        self.pseq = 0
+        self.live: dict | None = None  # état des vérifications Kraken (mode réel)
+        self.armed = False
+        self._gate: list[dict] | None = None
+        self._gate_t = 0.0
         self.risk_mult = 1.0
         self.snum = self.seq = 0
         self.status = "démarrage"
@@ -134,6 +148,8 @@ class Bot:
         return datetime.now(TAHITI).date().isoformat()
 
     def min_notional(self, sym: str) -> float:
+        if getattr(self.broker, "pairs", None):
+            return self.broker.min_notional(sym, self.markets[sym].price)
         f = self.feed.filters.get(sym)
         return f.min_notional if f else 5.0
 
@@ -150,6 +166,7 @@ class Bot:
         self.eq_hist = g("eq", []) or []
         self.snum, self.seq = g("snum", 0), g("seq", 0)
         self.flags["killed"] = bool(g("killed", False))
+        self.armed = bool(g("armed", False)) and self.cfg.mode == "live"
         pos = g("positions", []) or []
         if self.cfg.mode == "sim" and pos:
             self.acct["balance"] += sum(p.get("fee_in", 0) for p in pos)
@@ -163,7 +180,7 @@ class Bot:
     def save(self) -> None:
         self.store.put_many({"risk": self.risk, "acct": self.acct, "strategies": self.strategies, "journal": self.journal[:300],
                              "lessons": self.lessons[:60], "eq": self.eq_hist[-1500:], "snum": self.snum, "seq": self.seq,
-                             "positions": self.positions, "killed": self.flags["killed"], "team": [a.name for a in self.team.agents]})
+                             "positions": self.positions, "killed": self.flags["killed"], "armed": self.armed, "team": [a.name for a in self.team.agents]})
         self.dirty = False
 
     # --- démarrage ------------------------------------------------------------
@@ -183,10 +200,15 @@ class Bot:
                 await asyncio.sleep(delay)
                 delay = min(300, delay * 2)
         self.load()
+        if self.cfg.mode == "live":
+            await self.live_setup()
         if not self.acct["start"]:
-            start = self.cfg.capital_xpf / self.rate()
-            self.acct.update(start=start, balance=start, peak=start, day_start=start, day=self.today())
-            self.log("KHN", "info", f"Nouveau compte démo : {self.xpf(start)} ({fr2(start)} USDT).")
+            real = (self.live or {}).get("capital_usdt") or 0.0
+            start = real if real > 0 else self.cfg.capital_xpf / self.rate()
+            self.acct.update(start=start, balance=start, peak=start, day_start=start, day=self.today(), week=self.week(), week_start=start, created=int(time.time()))
+            self.log("KHN", "info", f"Nouveau compte {'réel (essai à blanc tant que le réel n’est pas armé)' if self.cfg.mode == 'live' else 'démo'} : {self.xpf(start)} ({fr2(start)} USDT).")
+        if not self.acct.get("created"):
+            self.acct["created"] = int(time.time())
         if not self.strategies:
             for sp in builtins():
                 self.snum += 1
@@ -198,7 +220,8 @@ class Bot:
         n = min(len(m.candles) for m in self.mlist())
         self.log("QUANT", "info", f"Stratégies testées sur {n} bougies de 5 min par marché : "
                  + ", ".join(f"« {s['name']} » {fR(s['bt']['oos']['expR'])}/trade hors échantillon" for s in act if s.get("bt")) + ".")
-        mode_txt = {"sim": "marché synthétique", "paper": "prix réels Binance, ordres simulés", "testnet": "testnet Binance, ordres réels en argent fictif"}[self.cfg.mode]
+        mode_txt = {"sim": "marché synthétique", "paper": "prix réels Binance, ordres simulés", "testnet": "testnet Binance, ordres réels en argent fictif",
+                    "live": "argent réel Kraken, " + ("ARMÉ" if self.live_armed() else "essai à blanc")}[self.cfg.mode]
         self.log("KHN", "info", f"Surveillance lancée ({mode_txt}) sur {', '.join(m.key for m in self.mlist())}. "
                  f"Capital {self.xpf(self.equity())}, risque {fr2(self.risk['per_trade'])} % par trade."
                  + ("" if self.brain.available else " Pas de clé Claude : analyse des vidéos par mots-clés seulement."))
@@ -255,6 +278,9 @@ class Bot:
                     hit = ("stop", min(p["stop"], c.o)) if c.l <= p["stop"] else ("tp", p["tp"]) if c.h >= p["tp"] else None
                 else:
                     hit = ("stop", max(p["stop"], c.o)) if c.h >= p["stop"] else ("tp", p["tp"]) if c.l <= p["tp"] else None
+            ref = p.get("ref") or {}
+            if hit and not ref.get("dry") and ((hit[0] == "stop" and (ref.get("stop") or ref.get("list") is not None)) or (hit[0] == "tp" and ref.get("list") is not None)):
+                hit = None  # l'exchange exécute lui-même cet ordre ; sync() le récupère
             sp = self.strat(p["sid"])
             if hit:
                 await self.close_position(p, hit[1], hit[0])
@@ -279,10 +305,33 @@ class Bot:
             if day != self.acct["day"]:
                 self.acct.update(day=day, day_start=self.equity())
                 self.log("KHN", "info", "Nouvelle journée (heure de Tahiti) : compteur du jour remis à zéro.")
+            if self.week() != self.acct.get("week"):
+                self.acct.update(week=self.week(), week_start=self.equity())
             self.dirty = True
 
     async def check_prices(self) -> None:
+        now = time.time()
+        for pr in list(self.pending):
+            if now * 1000 > pr["expires"]:
+                self.pending.remove(pr)
+                self.log("EXEC", "info", f"Proposition #{pr['id']} ({pr['k']}) expirée : aucun ordre passé.")
         for p in list(self.positions):
+            ref = p.get("ref") or {}
+            if self.broker.protects and ref and not ref.get("dry") and now - p.get("_sync", 0) >= (1 if self.cfg.mode == "sim" else 20):
+                p["_sync"] = now
+                try:
+                    res = await self.broker.sync(self.feed.filters[p["sym"]], p)
+                except ExchangeError as e:
+                    res = None
+                    self.log("EXEC", "error", f"Contrôle de la protection {p['k']} impossible : {e}.")
+                if res:
+                    fill, reason = res
+                    if fill is None:
+                        p["ref"] = None
+                        self.log("RISK", "risk", f"Protection {p['k']} disparue chez l'exchange : KHN surveille lui-même le stop.")
+                    else:
+                        await self.close_position(p, fill.price, reason, fill=fill)
+                        continue
             px = self.markets[p["sym"]].price
             fav = (px - p["entry"]) if p["side"] == "long" else (p["entry"] - px)
             p["mfeR"] = max(p.get("mfeR", 0.0), fav / p["dist"])
@@ -312,6 +361,13 @@ class Bot:
             self.log("RISK", "risk", f"Baisse de {d * 100:.1f} % : limite atteinte, plus aucune nouvelle position. Tape « reprendre » pour relancer.".replace(".", ",", 1))
             self.team.recruit("RISK", "la baisse maximale est atteinte")
         ds = self.acct["day_start"] or e
+        ws = self.acct.get("week_start") or e
+        if self.flags.get("week_halt") != self.acct.get("week") and (e - ws) / ws <= -self.risk.get("max_weekly", 6) / 100:
+            self.flags["week_halt"] = self.acct.get("week")
+            self.log("RISK", "risk", f"Perte de la semaine {(e - ws) / ws * 100:.1f} % : plus de nouvelle position avant lundi (heure de Tahiti).".replace(".", ",", 1))
+            self.notify("KHN - perte max de la semaine", "Trading bloqué jusqu'à lundi.")
+        if self.armed and not gatemod.ready(self.gate_checks(), ignore=("armed",)):
+            self.disarm("une condition du mode réel n'est plus remplie")
         if self.flags["day_halt"] != self.acct["day"] and (e - ds) / ds <= -self.risk["max_daily"] / 100:
             self.flags["day_halt"] = self.acct["day"]
             self.log("RISK", "risk", f"Perte du jour {(e - ds) / ds * 100:.1f} % : plus de nouvelle position avant demain (heure de Tahiti).".replace(".", ",", 1))
@@ -333,6 +389,8 @@ class Bot:
             return "baisse maximale atteinte"
         if f["day_halt"] == self.acct["day"]:
             return "perte max du jour atteinte"
+        if f.get("week_halt") and f.get("week_halt") == self.acct.get("week"):
+            return "perte max de la semaine atteinte"
         if len(self.positions) >= self.risk["max_pos"]:
             return "nombre max de positions atteint"
         if any(p["sym"] == sym for p in self.positions):
@@ -369,34 +427,44 @@ class Bot:
             return None
         m = self.markets[sym]
         i = len(m.candles) - 1
-        dist, _, _ = levels(sp, m, i, side, m.price)
+        dist, stop, tp = levels(sp, m, i, side, m.price)
         notional, note = self.size(sym, m.price, dist)
         if notional is None:
             self.log("RISK", "risk", f"Trade {m.key} refusé : {note}.")
             return None
         try:
-            fill = await self.broker.open(self.feed.filters[sym], side, notional, m.price)
+            fill = await self.broker.open(self.feed.filters[sym], side, notional, m.price, stop, tp)
         except ExchangeError as e:
             self.log(who, "error", f"Ordre {m.key} rejeté par l'exchange : {e}.")
+            self.notify("KHN - ordre rejete", f"{m.key} : {e}")
             return None
-        dist, stop, tp = levels(sp, m, i, side, fill.price)
+        if fill.warn:
+            self.log("RISK", "risk", fill.warn + ".")
+        dist = abs(fill.price - stop) or dist
+        if fill.dry:
+            note += " · essai à blanc, aucun ordre réel"
+        elif fill.ref:
+            note += f" · stop posé chez {self.broker.name}"
         self.seq += 1
         self.acct["balance"] -= fill.fee
         p = {"id": self.seq, "sym": sym, "k": m.key, "side": side, "qty": fill.qty, "entry": fill.price, "stop": stop, "tp": tp, "dist": dist,
              "sid": sp["id"], "sname": sp["name"], "t0": m.cur.t if m.cur else m.candles[-1].t, "opened": int(time.time() * 1000), "fee_in": fill.fee,
-             "risk": fill.qty * dist, "mfeR": 0.0, "bars": 0, "feat": features(m, i, side, fill.price, dist), "manual": manual}
+             "risk": fill.qty * dist, "mfeR": 0.0, "bars": 0, "feat": features(m, i, side, fill.price, dist), "manual": manual, "ref": fill.ref}
         self.positions.append(p)
         self.dirty = True
         self.log(who, "order", f"{'Achat' if side == 'long' else 'Vente à découvert'} {m.key} à {fr2(fill.price)} · stop {fr2(stop)} · objectif {fr2(tp)} · "
                  f"risque {self.xpf(p['risk'])}{note}{' · ' + self.broker.name if self.cfg.mode == 'testnet' else ''}")
         self.emit({"type": "fx", "kind": "order", "agent": who, "text": f"{'LONG' if side == 'long' else 'SHORT'} {m.key}!"})
+        if self.cfg.mode == "live" and not fill.dry:
+            self.notify("KHN - ordre reel passe", f"Achat {m.key} à {fr2(fill.price)}, stop {fr2(stop)}, risque {self.xpf(p['risk'])}")
         return p
 
-    async def close_position(self, p: dict, price: float, reason: str) -> None:
+    async def close_position(self, p: dict, price: float, reason: str, fill=None) -> None:
         if p not in self.positions:
             return
         try:
-            fill = await self.broker.close(self.feed.filters[p["sym"]], p["side"], p["qty"], price)
+            if fill is None:
+                fill = await self.broker.close(self.feed.filters[p["sym"]], p["side"], p["qty"], price, p.get("ref"))
         except ExchangeError as e:
             self.log("EXEC", "error", f"Clôture {p['k']} impossible : {e}. Nouvel essai au prochain contrôle.")
             return
@@ -426,6 +494,150 @@ class Bot:
             self.team.push("post", {"tid": tr["id"]})
         if self.equity() > self.acct["peak"]:
             self.acct["peak"] = self.equity()
+        if self.cfg.mode == "live" and not fill.dry:
+            self.notify("KHN - position fermee", f"{p['k']} : {self.sxpf(pnl)} ({RS_FR.get(reason, reason)})")
+
+    # --- validation des ordres ------------------------------------------------
+    def propose(self, sp: dict, sym: str, side: str, who: str) -> dict | None:
+        why = self.gate(sym)
+        if not why and side == "short" and not (self.risk["shorts"] and self.broker.can_short):
+            why = "vente à découvert impossible dans ce mode"
+        if why or any(x["sym"] == sym for x in self.pending):
+            return None
+        m = self.markets[sym]
+        dist, stop, tp = levels(sp, m, len(m.candles) - 1, side, m.price)
+        notional, note = self.size(sym, m.price, dist)
+        if notional is None:
+            self.log("RISK", "risk", f"Trade {m.key} refusé : {note}.")
+            return None
+        self.pseq += 1
+        now = int(time.time() * 1000)
+        pr = {"id": self.pseq, "sid": sp["id"], "sname": sp["name"], "sym": sym, "k": m.key, "side": side, "price": m.price, "stop": stop, "tp": tp,
+              "dist": dist, "notional": notional, "risk": notional / m.price * dist, "created": now, "expires": now + 600_000, "who": who}
+        self.pending.append(pr)
+        txt = (f"{'Achat' if side == 'long' else 'Vente'} {m.key} à ~{fr2(m.price)}, stop {fr2(stop)}, objectif {fr2(tp)}, "
+               f"risque {self.xpf(pr['risk'])} (« {sp['name']} »)")
+        self.log(who, "order", f"Proposition #{pr['id']} : {txt}. Valide-la dans les 10 minutes (bouton ou « valider {pr['id']} »).")
+        self.emit({"type": "fx", "kind": "order", "agent": who, "text": "A VALIDER"})
+        self.notify(f"KHN - ordre #{pr['id']} a valider", txt)
+        return pr
+
+    async def confirm(self, pid: int, accept: bool) -> None:
+        pr = next((x for x in self.pending if x["id"] == pid), None)
+        if not pr:
+            self.log("KHN", "error", f"Proposition #{pid} introuvable ou expirée.")
+            return
+        self.pending.remove(pr)
+        if not accept:
+            self.log("KHN", "info", f"Proposition #{pid} refusée : aucun ordre passé.")
+            return
+        if time.time() * 1000 > pr["expires"]:
+            self.log("KHN", "info", f"Proposition #{pid} expirée : aucun ordre passé.")
+            return
+        m = self.markets[pr["sym"]]
+        crossed = m.price <= pr["stop"] if pr["side"] == "long" else m.price >= pr["stop"]
+        if crossed or abs(m.price - pr["price"]) > 0.5 * pr["dist"]:
+            self.log("RISK", "risk", f"Proposition #{pid} annulée : le prix a trop bougé ({fr2(pr['price'])} → {fr2(m.price)}).")
+            return
+        await self.open_position(self.strat(pr["sid"]) or MANUAL, pr["sym"], pr["side"], pr["who"])
+
+    # --- mode réel ------------------------------------------------------------
+    @staticmethod
+    def week() -> str:
+        return datetime.now(TAHITI).strftime("%G-S%V")
+
+    async def live_setup(self) -> None:
+        st = {"keys": False, "keys_detail": "", "withdraw": None, "dryrun": False, "dryrun_detail": "non testé", "capital_usdt": 0.0}
+        k = self.broker.client
+        try:
+            await self.broker.prepare(self.cfg.symbols)
+            bal = await k.balance()
+            st["capital_usdt"] = bal.get("USDT", 0.0)
+            st.update(keys=True, keys_detail=f"solde {fr2(st['capital_usdt'])} USDT ({self.xpf(st['capital_usdt'])})")
+        except ExchangeError as e:
+            st["keys_detail"] = str(e)
+        if st["keys"]:
+            try:
+                st["withdraw"] = await k.can_withdraw()
+            except ExchangeError:
+                st["withdraw"] = None
+            try:
+                p = next(iter(self.broker.pairs.values()))
+                price = self.markets[p.symbol].price
+                vol = max(p.ordermin, p.floor_volume(max(p.costmin, p.ordermin * price) * 1.1 / price))
+                await k.add_order(p, "buy", "market", vol, validate=True)
+                st.update(dryrun=True, dryrun_detail=f"achat {p.name} de {vol} validé par Kraken, sans exécution")
+            except (ExchangeError, StopIteration) as e:
+                st["dryrun_detail"] = str(e)
+        self.live = st
+        self._gate = None
+        self.log("RISK", "risk", "Vérifications Kraken : clés " + ("OK" if st["keys"] else "en échec") + ", retrait "
+                 + ("interdit (OK)" if st["withdraw"] is False else "AUTORISÉ ou inconnu") + ", ordre d'essai " + ("validé" if st["dryrun"] else "en échec") + ".")
+
+    def gate_checks(self, force: bool = False) -> list[dict]:
+        if not force and self._gate is not None and time.monotonic() - self._gate_t < 30:
+            return self._gate
+        if self.cfg.mode == "live":
+            st = gatemod.best_demo_store(self.cfg.data_dir)
+            demo = gatemod.demo_stats(st) if st else {"days": 0, "n": 0, "expR": 0.0, "pf": 0.0, "dd": 0.0, "max_dd": 10.0}
+            if st:
+                st.close()
+            cap = (self.live or {}).get("capital_usdt", 0.0) * self.rate()
+        else:
+            if self.dirty:
+                self.save()
+            demo = gatemod.demo_stats(self.store)
+            cap = self.cfg.capital_xpf
+        self._gate = gatemod.evaluate(demo, cap, self.cfg.live_min_xpf, self.live if self.cfg.mode == "live" else None, self.armed)
+        self._gate_t = time.monotonic()
+        return self._gate
+
+    def live_armed(self) -> bool:
+        return self.cfg.mode == "live" and self.armed and gatemod.ready(self.gate_checks())
+
+    async def arm(self, phrase: str) -> tuple[bool, str]:
+        if self.cfg.mode != "live":
+            return False, "Le mode réel s'active avec KHN_MODE=live dans le fichier .env."
+        if (phrase or "").strip().upper() != gatemod.LIVE_PHRASE:
+            return False, f"Phrase incorrecte. Tape exactement : {gatemod.LIVE_PHRASE}"
+        await self.live_setup()
+        missing = [c["label"] for c in self.gate_checks(force=True) if c["key"] != "armed" and c["ok"] is not True]
+        if missing:
+            return False, "Conditions non remplies : " + ", ".join(missing) + "."
+        self.armed = True
+        self._gate = None
+        real = self.live["capital_usdt"]
+        self.acct.update(start=real, balance=real, peak=real, day_start=real, week_start=real)
+        self.log("RISK", "risk", f"MODE RÉEL ARMÉ. Capital réel {self.xpf(real)}. Chaque ordre te sera proposé avant envoi à Kraken.")
+        self.notify("KHN - mode reel arme", f"Capital {self.xpf(real)}")
+        self.save()
+        return True, "Mode réel armé."
+
+    def disarm(self, why: str = "à ta demande") -> None:
+        if not self.armed:
+            return
+        self.armed = False
+        self._gate = None
+        self.pending.clear()
+        self.log("RISK", "risk", f"Mode réel désarmé ({why}) : retour à l'essai à blanc. Les positions réelles ouvertes gardent leur stop chez Kraken.")
+        self.notify("KHN - mode reel desarme", why)
+        self.save()
+
+    def notify(self, title: str, msg: str) -> None:
+        """Notification sur téléphone via ntfy (optionnel, KHN_NTFY_URL)."""
+        if not self.cfg.ntfy_url:
+            return
+
+        async def go():
+            try:
+                async with httpx.AsyncClient(timeout=10) as c:
+                    await c.post(self.cfg.ntfy_url, content=msg.encode(), headers={"Title": title.encode("ascii", "ignore").decode()})
+            except httpx.HTTPError:
+                pass
+        try:
+            self.spawn(go())
+        except RuntimeError:
+            pass
 
     # --- tâches de l'équipe ---------------------------------------------------
     async def _handle(self, t, a) -> None:
@@ -448,6 +660,8 @@ class Bot:
             m = self.markets[d["sym"]]
             if m.candles[-1].t != d["t"] and len(m.candles) >= 2 and m.candles[-2].t != d["t"]:
                 self.log(a.name, "error", f"Ordre {d['k']} annulé : signal trop ancien.")
+            elif s and self.risk.get("confirm"):
+                self.propose(s, d["sym"], d["side"], a.name)
             elif s:
                 await self.open_position(s, d["sym"], d["side"], a.name)
         elif t.type == "post":
@@ -692,6 +906,21 @@ class Bot:
         elif c == "renvoyer":
             if not self.team.dismiss(a1.upper()):
                 L("error", "Ce robot n'est pas là, est au travail, ou c'est KHN (qui reste toujours).")
+        elif c in ("valider", "refuser"):
+            try:
+                await self.confirm(int(a1), c == "valider")
+            except ValueError:
+                L("error", f"Ex. : {c} 3")
+        elif c == "confirmation":
+            if a1 in ("on", "off"):
+                self.set_risk({"confirm": a1 == "on"})
+                L("risk", "Confirmation avant chaque ordre : " + ("activée." if self.risk["confirm"] else "désactivée."), "RISK")
+            else:
+                L("error", "Ex. : confirmation on")
+        elif c == "desarmer":
+            self.disarm() if self.armed else L("info", "Le mode réel n'est pas armé.")
+        elif c == "capital" and self.cfg.mode == "live":
+            L("error", "En mode réel, le capital est celui de ton compte Kraken.")
         elif c == "capital":
             try:
                 v = float(a1.replace(" ", ""))
@@ -725,6 +954,8 @@ class Bot:
 
     async def kill(self) -> None:
         self.flags["killed"] = True
+        self.pending.clear()
+        self.disarm("arrêt d'urgence")
         for p in list(self.positions):
             await self.close_position(p, self.markets[p["sym"]].price, "urgence")
         self.team.queue = [t for t in self.team.queue if t.type != "order" or t.agent]
@@ -745,7 +976,14 @@ class Bot:
         self.save()
 
     def set_risk(self, data: dict) -> None:
-        lim = {"per_trade": (0.25, 2), "max_daily": (1, 10), "max_dd": (5, 30), "max_pos": (1, 3), "lev": (1, 3)}
+        lim = {"per_trade": (0.25, 2), "max_daily": (1, 10), "max_weekly": (2, 20), "max_dd": (5, 30), "max_pos": (1, 3), "lev": (1, 3)}
+        if "confirm" in data:
+            want = bool(data["confirm"])
+            live_n = sum(1 for t in self.journal if not t.get("manual")) if self.cfg.mode == "live" and self.armed else 99
+            if not want and self.cfg.mode == "live" and live_n < 20:
+                self.log("RISK", "risk", f"Confirmation maintenue : en réel, elle ne se coupe qu'après 20 trades ({live_n} pour l'instant).")
+            else:
+                self.risk["confirm"] = want
         for k, (lo, hi) in lim.items():
             if k in data:
                 try:
@@ -780,6 +1018,9 @@ class Bot:
             "positions": [{**{k: p[k] for k in ("id", "k", "side", "qty", "entry", "stop", "tp", "sname", "risk", "t0")}, "unreal": self.unreal(p)} for p in self.positions],
             "journal": [{k: t.get(k) for k in ("id", "k", "side", "entry", "exit", "pnl", "r", "reason", "sname", "t0", "t1", "diag", "manual")} for t in self.journal[:40]],
             "lessons": self.lessons[:12], "strategies": self.strategies,
+            "pending": [{**x, "left": max(0, int((x["expires"] - time.time() * 1000) / 1000))} for x in self.pending],
+            "gate": self.gate_checks(), "armed": self.armed, "live_armed": self.live_armed(), "phrase": gatemod.LIVE_PHRASE,
+            "can_arm": self.cfg.mode == "live" and gatemod.ready(self.gate_checks(), ignore=("armed",)),
             "team": self.team.snapshot(), "queue": self.team.queue_counts(), "eq": self.eq_hist[-400:],
             "stats": {"n": len(self.journal), "w": sum(1 for t in self.journal if t["pnl"] > 0), "pnl": sum(t["pnl"] for t in self.journal)},
         }

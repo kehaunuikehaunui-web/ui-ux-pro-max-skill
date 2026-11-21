@@ -11,7 +11,7 @@ def _env(name: str, default: str = "") -> str:
 
 @dataclass
 class Config:
-    mode: str = "sim"                      # sim | paper | testnet
+    mode: str = "sim"                      # sim | paper | testnet | live
     symbols: list[str] = field(default_factory=lambda: ["BTCUSDT", "ETHUSDT", "SOLUSDT"])
     capital_xpf: float = 1000.0
     data_dir: str = "data"
@@ -19,6 +19,10 @@ class Config:
     secret: str = ""
     testnet_key: str = ""
     testnet_secret: str = ""
+    kraken_key: str = ""
+    kraken_secret: str = ""
+    live_min_xpf: float = 60000.0
+    ntfy_url: str = ""
     model: str = "claude-opus-5-5"
     poll_sec: float = 10.0
     sim_candle_sec: float = 3.0
@@ -30,8 +34,8 @@ class Config:
     @classmethod
     def from_env(cls) -> "Config":
         mode = _env("KHN_MODE", "sim").lower()
-        if mode not in ("sim", "paper", "testnet"):
-            raise SystemExit(f"KHN_MODE inconnu : {mode} (sim, paper ou testnet)")
+        if mode not in ("sim", "paper", "testnet", "live"):
+            raise SystemExit(f"KHN_MODE inconnu : {mode} (sim, paper, testnet ou live)")
         return cls(
             mode=mode,
             symbols=[s.strip().upper() for s in _env("KHN_SYMBOLS", "BTCUSDT,ETHUSDT,SOLUSDT").split(",") if s.strip()],
@@ -41,6 +45,10 @@ class Config:
             secret=_env("KHN_SECRET"),
             testnet_key=_env("BINANCE_TESTNET_KEY"),
             testnet_secret=_env("BINANCE_TESTNET_SECRET"),
+            kraken_key=_env("KRAKEN_KEY"),
+            kraken_secret=_env("KRAKEN_SECRET"),
+            live_min_xpf=float(_env("KHN_LIVE_MIN_XPF", "60000")),
+            ntfy_url=_env("KHN_NTFY_URL"),
             model=_env("KHN_MODEL", "claude-opus-5-5"),
             poll_sec=float(_env("KHN_POLL_SEC", "10")),
             sim_candle_sec=float(_env("KHN_SIM_CANDLE_SEC", "3")),

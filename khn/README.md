@@ -13,7 +13,7 @@
 | Fonction | Mise en œuvre |
 |---|---|
 | Données | Bougies 5 min réelles de Binance (`paper`) ou du testnet (`testnet`), marché synthétique (`sim`). |
-| Exécution | `paper` : ordres simulés sur prix réels, achat et vente à découvert. `testnet` : ordres au marché signés sur testnet.binance.vision (spot, achat seulement). Aucun ordre possible ailleurs. |
+| Exécution | `paper` : ordres simulés sur prix réels, achat et vente à découvert. `testnet` : ordres signés sur testnet.binance.vision avec OCO (spot, achat seulement). `live` : Kraken spot, stop-loss posé chez Kraken, essai à blanc tant que le réel n'est pas armé. |
 | Risque | 1 % par trade, perte max du jour 3 % (jour de Tahiti), baisse max 10 %, filtres Binance (minimum d'ordre, pas de quantité), arrêt d'urgence. |
 | Auto-correction | Diagnostic de chaque perte, correction adoptée seulement si elle tient sur les 30 % d'historique jamais vus. |
 | Équipe | Tâches réelles (scan, ordre, analyse, correction, backtest, vidéo, risque) exécutées par des robots ; recrutement quand une tâche attend ou est ratée. |
@@ -46,11 +46,14 @@ Opérandes : `close, ema, sma, rsi, atr, bb_up, bb_lo, bb_mid, don_hi, don_lo, m
 
 1. **Phase 1 (fait)** : prototype visuel.
 2. **Phase 2 (fait)** : moteur serveur, prix réels, testnet, Claude, transcription YouTube.
-3. **Phase 3** : stops posés chez l'exchange (ordres OCO), puis passage en réel seulement après 2–3 mois
-   de démo positive et un capital suffisant. Broker visé : Kraken (licence MiCA).
+3. **Phase 3 (fait)** : stops posés chez l'exchange (OCO sur le testnet, stop-loss chez Kraken), mode réel
+   Kraken verrouillé par 9 conditions (`engine/gate.py`), essai à blanc, validation de chaque ordre,
+   plafond de perte hebdomadaire, notifications ntfy.
 
 ## Limites connues
 
 - Les résultats en démo ne garantissent rien en réel.
 - YouTube bloque souvent les adresses de serveurs loués : coller la transcription reste possible.
-- En testnet, les stops sont surveillés par KHN, pas posés chez Binance.
+- Kraken spot n'accepte qu'un ordre de protection par position : le stop est chez Kraken, l'objectif est géré par KHN.
+- Le client Kraken n'a été testé que contre des réponses simulées : l'essai à blanc au démarrage du mode `live`
+  est la première vérification réelle.

@@ -39,6 +39,24 @@ async def check(cfg: Config, video: str | None) -> int:
             line(False, "Testnet Binance (clés)", str(e))
         finally:
             await tn.close()
+    if cfg.mode == "live" or cfg.kraken_key:
+        from .kraken import KrakenSpot
+
+        kr = KrakenSpot(cfg.kraken_key, cfg.kraken_secret)
+        try:
+            pairs = await kr.pairs(cfg.symbols)
+            line(True, "Paires Kraken", ", ".join(f"{p.name} (min {p.ordermin})" for p in pairs.values()))
+            bal = await kr.balance()
+            line(True, "Clés Kraken", f"solde {bal.get('USDT', 0.0):,.2f} USDT")
+            w = await kr.can_withdraw()
+            line(w is False, "Clé Kraken sans droit de retrait", "OK" if w is False else "la clé peut retirer des fonds ou la vérification a échoué : recrée-la sans « Withdraw Funds »")
+            p = next(iter(pairs.values()))
+            await kr.add_order(p, "buy", "market", p.ordermin, validate=True)
+            line(True, "Ordre d'essai Kraken", f"achat {p.ordermin} {p.name} validé sans exécution")
+        except ExchangeError as e:
+            line(False, "Kraken", str(e))
+        finally:
+            await kr.close()
     brain = Brain(cfg.model)
     try:
         line(True, "API Claude", f"modèle {await brain.check()}")
