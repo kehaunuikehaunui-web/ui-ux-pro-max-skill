@@ -107,6 +107,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         .map { it.playlists }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    init {
+        viewModelScope.launch {
+            library.newTracks.collect { n ->
+                toast(if (n == 1) "1 nouvelle musique dans ta bibliothèque" else "$n nouvelles musiques dans ta bibliothèque")
+            }
+        }
+    }
+
     // ---------------- Navigation & partage entrant ----------------
 
     private val _navigation = Channel<String>(Channel.BUFFERED)

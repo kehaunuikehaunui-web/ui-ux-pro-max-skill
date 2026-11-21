@@ -7,6 +7,16 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.database.ContentObserver
 import android.media.MediaMetadataRetriever
+import android.media.MediaScannerConnection
+import android.os.Environment
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
+import java.util.concurrent.atomic.AtomicInteger
 import android.net.Uri
 import android.os.Build
 import android.os.Handler
@@ -39,6 +49,8 @@ import java.util.Locale
  * Bibliothèque locale : fichiers audio du téléphone (MediaStore) + fichiers importés
  * depuis n'importe quel dossier via le sélecteur de documents.
  */
+private val AUDIO_EXTENSIONS = setOf("mp3", "m4a", "aac", "ogg", "opus", "flac", "wav", "wma", "amr", "3gp", "mka")
+
 @OptIn(FlowPreview::class)
 class LibraryRepository(
     private val context: Context,
@@ -88,12 +100,60 @@ class LibraryRepository(
     }
 
     /** À appeler après l'octroi de la permission, ou pour forcer une nouvelle analyse. */
+    private val scanMutex = Mutex()
+
+    private val _newTracks = MutableSharedFlow<Int>(extraBufferCapacity = 1)
+    /** Nombre de nouveaux titres trouvés lors d'une analyse (pour afficher un message). */
+    val newTracks: SharedFlow<Int> = _newTracks.asSharedFlow()
+
+    /** Nouvelle analyse complète : au lancement, à chaque retour dans l'app, ou sur demande. */
     fun refresh() {
         _hasPermission.value = hasAudioPermission()
         if (!_hasPermission.value) return
         startObserving()
-        scope.launch { scan() }
+        scope.launch {
+            indexDownloadFolder()
+            scan()
+        }
     }
+
+    /**
+     * Certains navigateurs n'enregistrent pas leurs téléchargements auprès d'Android :
+     * le fichier existe dans Download/ mais reste invisible pour les apps de musique.
+     * On demande à Android d'indexer les fichiers audio de ce dossier qu'il ne connaît pas encore.
+     */
+    private suspend fun indexDownloadFolder() = withContext(Dispatchers.IO) {
+        val known = knownDownloadPaths()
+        @Suppress("DEPRECATION")
+        val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        val missing = runCatching {
+            dir.walkTopDown().maxDepth(3)
+                .filter { it.isFile && it.extension.lowercase() in AUDIO_EXTENSIONS && it.absolutePath !in known }
+                .take(300)
+                .map { it.absolutePath }
+                .toList()
+        }.getOrDefault(emptyList())
+        if (missing.isEmpty()) return@withContext
+        val remaining = AtomicInteger(missing.size)
+        val done = CompletableDeferred<Unit>()
+        MediaScannerConnection.scanFile(context, missing.toTypedArray(), null) { _, _ ->
+            if (remaining.decrementAndGet() == 0) done.complete(Unit)
+        }
+        withTimeoutOrNull(8_000) { done.await() }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun knownDownloadPaths(): Set<String> = runCatching {
+        val paths = HashSet<String>()
+        context.contentResolver.query(
+            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+            arrayOf(MediaStore.Audio.Media.DATA),
+            "${MediaStore.Audio.Media.DATA} LIKE ?",
+            arrayOf("%/Download/%"),
+            null,
+        )?.use { c -> while (c.moveToNext()) c.getString(0)?.let(paths::add) }
+        paths
+    }.getOrDefault(emptySet())
 
     private fun startObserving() {
         if (observerJob != null) return
@@ -113,9 +173,19 @@ class LibraryRepository(
     }
 
     private suspend fun scan() = withContext(Dispatchers.IO) {
+        scanMutex.withLock { scanLocked() }
+    }
+
+    private fun scanLocked() {
         _scanning.value = true
         try {
-            deviceTracks.value = queryMediaStore(settings.settings.value.minDurationSec)
+            val before = deviceTracks.value.mapTo(HashSet()) { it.id }
+            val after = queryMediaStore(settings.settings.value.minDurationSec)
+            deviceTracks.value = after
+            if (before.isNotEmpty()) {
+                val added = after.count { it.id !in before }
+                if (added > 0) _newTracks.tryEmit(added)
+            }
         } catch (_: SecurityException) {
             _hasPermission.value = false
         } finally {
@@ -146,7 +216,8 @@ class LibraryRepository(
             append(" AND ${MediaStore.Audio.Media.IS_NOTIFICATION} = 0")
             append(" AND ${MediaStore.Audio.Media.IS_RINGTONE} = 0")
             append(" AND ${MediaStore.Audio.Media.IS_ALARM} = 0")
-            append(" AND ${MediaStore.Audio.Media.DURATION} >= ?")
+            // Durée inconnue (fichier mal indexé) : on garde le titre plutôt que de le masquer.
+            append(" AND (${MediaStore.Audio.Media.DURATION} >= ? OR ${MediaStore.Audio.Media.DURATION} IS NULL OR ${MediaStore.Audio.Media.DURATION} = 0)")
         }
         val args = arrayOf((minDurationSec * 1000L).toString())
         val out = ArrayList<Track>(512)

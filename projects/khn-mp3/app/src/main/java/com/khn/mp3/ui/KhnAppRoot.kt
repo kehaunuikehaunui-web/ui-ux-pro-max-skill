@@ -112,7 +112,8 @@ fun KhnAppRoot(openPlayerEvents: Flow<Unit>, vm: MainViewModel = viewModel()) {
     val importFiles = { importLauncher.launch(arrayOf("audio/*")) }
 
     LaunchedEffect(Unit) {
-        if (vm.library.hasAudioPermission()) vm.refreshLibrary() else requestPermission()
+        // L'analyse est lancée par MainActivity.onStart ; ici on demande seulement la permission.
+        if (!vm.library.hasAudioPermission()) requestPermission()
     }
     LaunchedEffect(Unit) { vm.messages.collect { snackbar.showSnackbar(it) } }
     LaunchedEffect(Unit) {

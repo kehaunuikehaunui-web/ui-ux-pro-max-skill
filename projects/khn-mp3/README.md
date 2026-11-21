@@ -41,7 +41,7 @@ Pendant un appel, seul l'utilisateur entend la musique : Android ne permet pas �
 
 ## Installer l'APK
 
-1. Copier `KHN-MP3-v1.2.0.apk` sur le téléphone (une nouvelle version s'installe par-dessus l'ancienne, sans perte de données).
+1. Copier `KHN-MP3-v1.2.1.apk` sur le téléphone (une nouvelle version s'installe par-dessus l'ancienne, sans perte de données).
 2. L'ouvrir, puis autoriser « Installer des applis inconnues » pour l'app qui l'ouvre (Fichiers, Chrome…).
 3. Au premier lancement, autoriser l'accès à la musique.
 

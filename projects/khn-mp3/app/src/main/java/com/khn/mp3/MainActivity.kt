@@ -44,6 +44,8 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         container.player.connect()
+        // Retour dans l'app (ex. après un téléchargement dans le navigateur) : nouvelle analyse.
+        container.library.refresh()
     }
 
     override fun onStop() {
