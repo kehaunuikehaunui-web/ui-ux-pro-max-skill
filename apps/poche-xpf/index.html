@@ -216,8 +216,8 @@ button:disabled{opacity:.42;cursor:default}
 .pchip span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .av{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#FFFFFF;font-family:var(--font-display);font-weight:700;font-size:14px;flex:none}
 .av.lg{width:64px;height:64px;font-size:28px}
-.pscreen{position:fixed;inset:0;z-index:40;background:var(--bg);overflow-y:auto;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-.pwrap{max-width:420px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 32px;display:flex;flex-direction:column;gap:16px}
+.pscreen{position:fixed;inset:0;z-index:40;background:var(--bg);overflow-y:auto;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.pwrap{width:100%;box-sizing:border-box;max-width:420px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 32px;display:flex;flex-direction:column;gap:16px}
 .pwrap h1{font-family:var(--font-display);font-size:26px;line-height:1.15;margin:0;letter-spacing:-.01em;text-wrap:balance;overflow-wrap:anywhere}
 .plead{margin:0;color:var(--muted);font-size:14px}
 .pgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
@@ -242,6 +242,16 @@ button:disabled{opacity:.42;cursor:default}
 .plist{display:grid;gap:8px}
 .plist .btn{justify-content:flex-start;padding:0 16px}
 .danger-text{color:var(--out)}
+/* Écran du code : occupe toute la hauteur, clavier en bas sous le pouce */
+.pwrap.pin-mode{flex:1 0 auto;gap:14px;padding-block:max(20px,4vh) max(16px,2.5vh)}
+.pin-top{flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px}
+.pin-mode .phead h1{font-size:28px}
+.pin-mode .pin-dots i{width:16px;height:16px}
+.pin-mode .keypad{width:100%;max-width:340px;margin:0 auto;gap:12px}
+.pin-mode .key{height:clamp(54px,8vh,66px);font-size:26px;border-radius:16px}
+.pin-mode .key.alt{font-size:15px}
+.pin-foot{display:grid;justify-items:center;gap:10px}
+.pin-foot .confirm{width:100%;box-sizing:border-box}
 
 /* Petits écrans : la saisie tient sans défiler */
 @media (max-height: 760px){
@@ -739,6 +749,7 @@ button:disabled{opacity:.42;cursor:default}
     const v = pView;
     if (!v) return;
     const body = $('#pBody');
+    body.className = 'pwrap' + (v.mode === 'pin' ? ' pin-mode' : '');
     const cur = getProfile(currentProfile);
     if (v.mode === 'choose'){
       const del = v.delId ? getProfile(v.delId) : null;
@@ -783,16 +794,17 @@ button:disabled{opacity:.42;cursor:default}
       const p = getProfile(v.id);
       if (!p){ showProfiles({mode: 'choose'}); return; }
       const n = v.forgot ? txCountFor(p.id) : 0;
-      body.innerHTML = `<div class="phead">${avatar(p, 'lg')}<h1>${esc(p.name)}</h1><p class="plead">Entre ton code pour ouvrir ton profil.</p></div>`
+      body.innerHTML = `<div class="pin-top"><div class="phead">${avatar(p, 'lg')}<h1>${esc(p.name)}</h1><p class="plead">Entre ton code pour ouvrir ton profil.</p></div>`
         + `<div class="pin-dots" id="pinDots">${Array.from({length: p.pinLen || 4}, (_, i) => `<i${i < pinBuf.length ? ' class="on"' : ''}></i>`).join('')}</div>`
-        + `<p class="form-err" id="pErr" role="alert"${v.err ? '' : ' hidden'}>${esc(v.err || '')}</p>`
+        + `<p class="form-err" id="pErr" role="alert"${v.err ? '' : ' hidden'}>${esc(v.err || '')}</p></div>`
         + '<div class="keypad">'
         + ['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(k => `<button class="key" type="button" data-pk="${k}">${k}</button>`).join('')
         + '<button class="key alt" type="button" data-p-choose>Profils</button><button class="key" type="button" data-pk="0">0</button>'
         + '<button class="key alt" type="button" data-pk="back" aria-label="Effacer le dernier chiffre">⌫</button></div>'
-        + '<button class="link" type="button" data-p-forgot>Code oublié ?</button>'
+        + '<div class="pin-foot"><button class="link" type="button" data-p-forgot>Code oublié ?</button>'
         + (v.forgot ? `<div class="confirm"><p>Sans le code, ce profil ne peut pas s'ouvrir. Tu peux le supprimer avec ses ${n} opération(s). C'est définitif.</p>`
-          + `<div class="row"><button class="btn-sm btn-solid-danger" type="button" data-p-del="${esc(p.id)}">Supprimer ce profil</button><button class="btn-sm btn-ghost" type="button" data-p-forgot-no>Annuler</button></div></div>` : '');
+          + `<div class="row"><button class="btn-sm btn-solid-danger" type="button" data-p-del="${esc(p.id)}">Supprimer ce profil</button><button class="btn-sm btn-ghost" type="button" data-p-forgot-no>Annuler</button></div></div>` : '')
+        + '</div>';
     } else if (v.mode === 'menu'){
       if (!cur){ showProfiles({mode: 'choose'}); return; }
       body.innerHTML = `<div class="phead">${avatar(cur, 'lg')}<h1>${esc(cur.name)}</h1><p class="plead">${cur.pin ? 'Profil protégé par un code.' : 'Profil sans code.'}</p></div>`
