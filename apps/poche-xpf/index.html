@@ -1,0 +1,783 @@
+<title>Poche XPF</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Manrope:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: one 480px column, three views switched by a fixed bottom tab bar; the keypad sits low, under the thumb. */
+:root{
+  --bg:#F1F5F6; --surface:#FFFFFF; --sunk:#E6ECEE; --ink:#0F1F26; --muted:#55686E; --line:#D6E0E3;
+  --accent:#17607D; --accent-soft:#DCEBF1; --bar:#93BCCC;
+  --hero-bg:#123F52; --hero-ink:#F1F8FA; --hero-muted:#A9C6D2;
+  --in:#1C7F52; --in-soft:#DDF0E6; --out:#B5381F; --out-soft:#F8E2DC;
+  --font-display:"Bricolage Grotesque","Manrope",system-ui,sans-serif;
+  --font-body:"Manrope",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --r:14px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0B1316; --surface:#131D21; --sunk:#1B272C; --ink:#E3ECEF; --muted:#8DA1A7; --line:#24343A;
+    --accent:#63B7D9; --accent-soft:#17323E; --bar:#36728A;
+    --hero-bg:#17394A; --hero-ink:#EAF4F8; --hero-muted:#8FB3C2;
+    --in:#56C793; --in-soft:#143128; --out:#F0806A; --out-soft:#3A1E19;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0B1316; --surface:#131D21; --sunk:#1B272C; --ink:#E3ECEF; --muted:#8DA1A7; --line:#24343A;
+  --accent:#63B7D9; --accent-soft:#17323E; --bar:#36728A;
+  --hero-bg:#17394A; --hero-ink:#EAF4F8; --hero-muted:#8FB3C2;
+  --in:#56C793; --in-soft:#143128; --out:#F0806A; --out-soft:#3A1E19;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.45;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button:disabled{opacity:.42;cursor:default}
+.num{font-variant-numeric:tabular-nums}
+
+.app{max-width:480px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px calc(92px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:12px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:36px}
+.brand{font-family:var(--font-display);font-weight:700;font-size:20px;letter-spacing:-.01em}
+.brand span{color:var(--accent)}
+.sync{font-size:12px;font-weight:600;color:var(--muted);display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--line);border-radius:999px;background:var(--surface)}
+.sync::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.sync[data-state="db"]::before{background:var(--in)}
+.sync[data-state="local"]::before{background:var(--out)}
+.banner{font-size:13px;padding:10px 12px;border-radius:10px;background:var(--accent-soft);color:var(--ink)}
+
+.view{display:flex;flex-direction:column;gap:12px}
+.label{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+
+/* Balance hero */
+.hero{background:var(--hero-bg);color:var(--hero-ink);border-radius:18px;padding:16px 18px 14px;display:grid;gap:2px;position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;inset:auto -40px -70px auto;width:200px;height:200px;border-radius:50%;border:28px solid currentColor;opacity:.06;pointer-events:none}
+.hero .label{color:var(--hero-muted)}
+.balance{font-family:var(--font-display);font-weight:700;font-size:clamp(34px,11vw,46px);line-height:1.05;letter-spacing:-.02em;overflow-wrap:anywhere}
+.balance small{font-size:.42em;font-weight:600;letter-spacing:0;margin-left:4px;opacity:.85}
+.hero-foot{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--hero-muted)}
+.hero.is-neg .balance{color:#FFB4A4}
+
+/* Entry */
+.entry{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px 12px;display:grid;gap:2px}
+.entry-top{display:flex;justify-content:space-between;align-items:center}
+.link{font-size:13px;font-weight:700;color:var(--accent);padding:6px 4px}
+.amount-row{display:flex;justify-content:flex-end;align-items:baseline;gap:6px;min-width:0}
+.amount{font-family:var(--font-display);font-weight:700;font-size:clamp(34px,10vw,42px);line-height:1.1;letter-spacing:-.02em;overflow-wrap:anywhere;text-align:right}
+.amount.is-empty{color:var(--muted)}
+.amount-unit{font-weight:700;color:var(--muted)}
+.preview{font-size:14px;color:var(--muted);text-align:right;min-height:1.45em}
+.preview.ok{color:var(--ink)}
+.preview.neg{color:var(--out);font-weight:600}
+.shake{animation:shake .3s}
+@keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+
+.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.key{height:54px;border-radius:12px;background:var(--surface);border:1px solid var(--line);font-size:22px;font-weight:700;display:grid;place-items:center;transition:background .12s,transform .08s;touch-action:manipulation;user-select:none}
+.key:active{background:var(--sunk);transform:scale(.97)}
+.key.alt{font-size:17px;color:var(--muted)}
+.key svg{width:24px;height:24px}
+
+.actions{display:grid;gap:8px}
+.actions .row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btn{height:52px;border-radius:12px;font-weight:800;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .08s,filter .12s;touch-action:manipulation}
+.btn:not(:disabled):active{transform:scale(.98)}
+.btn-out{background:var(--out);color:var(--surface);height:58px;font-size:18px}
+.btn-in{background:var(--in-soft);color:var(--in)}
+.btn-ghost{background:var(--sunk);color:var(--ink)}
+.btn-accent{background:var(--accent);color:var(--surface);height:58px;font-size:18px}
+.hint{font-size:13px;color:var(--muted);text-align:center;margin:0}
+
+/* Dashboard */
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;display:grid;gap:2px;min-width:0}
+.tile .val{font-family:var(--font-display);font-weight:700;font-size:22px;letter-spacing:-.01em;overflow-wrap:anywhere}
+.tile .val small{font-size:12px;font-weight:600;color:var(--muted);margin-left:3px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;gap:10px;min-width:0}
+.card h2{font-family:var(--font-display);font-size:17px;font-weight:700;margin:0;text-wrap:balance}
+.card-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.sub{font-size:12px;color:var(--muted)}
+.chart{position:relative;min-width:0}
+.chart svg{display:block;overflow:visible}
+.chart .grid{stroke:var(--line);stroke-width:1}
+.chart .grid.base{stroke:var(--muted);stroke-opacity:.5}
+.chart .axis{fill:var(--muted);font-size:11px;font-family:var(--font-body);font-variant-numeric:tabular-nums}
+.chart .axis.strong{fill:var(--ink);font-weight:700}
+.chart .bar{fill:var(--bar);transition:fill .12s}
+.chart .bar.today,.chart .bar.hl{fill:var(--accent)}
+.chart .hit{fill:transparent;cursor:pointer}
+.tip{position:absolute;transform:translate(-50%,calc(-100% - 8px));background:var(--ink);color:var(--bg);font-size:12px;line-height:1.3;padding:6px 9px;border-radius:8px;white-space:nowrap;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.18)}
+.tip b{display:block;font-size:14px;font-variant-numeric:tabular-nums}
+.meter{height:10px;border-radius:999px;background:var(--sunk);overflow:hidden}
+.meter i{display:block;height:100%;background:var(--out);border-radius:999px;transition:width .3s}
+.meter-text{font-size:14px;margin:0}
+.ledger{display:grid;grid-template-columns:1fr auto;gap:6px 12px;margin:0;font-size:14px}
+.ledger dt{color:var(--muted)}
+.ledger dd{margin:0;text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.ledger .total{border-top:1px solid var(--line);padding-top:8px;color:var(--ink);font-weight:800}
+.ledger dd.total{font-size:16px}
+.danger-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.danger-row p{margin:0;font-size:13px;color:var(--muted);flex:1 1 180px}
+.btn-sm{height:40px;padding:0 14px;border-radius:10px;font-weight:700;font-size:14px}
+.btn-danger{background:var(--out-soft);color:var(--out)}
+.confirm{display:grid;gap:8px;padding:12px;border-radius:10px;background:var(--out-soft)}
+.confirm p{margin:0;font-size:14px}
+.confirm .row{display:flex;gap:8px;flex-wrap:wrap}
+.btn-solid-danger{background:var(--out);color:var(--surface)}
+
+/* History */
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{height:34px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:13px;font-weight:700;color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.hist{list-style:none;margin:0;padding:0;display:grid}
+.day{display:flex;justify-content:space-between;gap:8px;padding:14px 2px 6px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.day span:last-child{text-transform:none;letter-spacing:0;font-variant-numeric:tabular-nums}
+.tx{background:var(--surface);border:1px solid var(--line);border-top-width:0}
+.day + .tx{border-top-width:1px;border-radius:var(--r) var(--r) 0 0}
+.tx.last{border-radius:0 0 var(--r) var(--r)}
+.day + .tx.last{border-radius:var(--r)}
+.tx-main{width:100%;display:flex;align-items:center;gap:12px;padding:11px 14px;text-align:left}
+.ico{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:17px;flex:none}
+.k-expense{background:var(--out-soft);color:var(--out)}
+.k-add{background:var(--in-soft);color:var(--in)}
+.k-capital{background:var(--accent-soft);color:var(--accent)}
+.k-remove{background:var(--sunk);color:var(--muted)}
+.tx-text{flex:1;min-width:0;display:grid}
+.tx-kind{font-weight:700}
+.tx-meta{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.tx-amt{font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tx-amt.neg{color:var(--out)}
+.tx-amt.pos{color:var(--in)}
+.tx-actions{display:flex;justify-content:flex-end;gap:8px;padding:0 14px 12px}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:var(--r);padding:22px 16px;text-align:center;color:var(--muted);font-size:14px}
+.empty b{display:block;color:var(--ink);font-size:15px;margin-bottom:4px}
+
+/* Tabs */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(8px,env(safe-area-inset-right,0px))}
+.tabs-in{max-width:480px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr)}
+.tab{height:62px;display:grid;place-items:center;align-content:center;gap:3px;font-size:12px;font-weight:700;color:var(--muted)}
+.tab svg{width:22px;height:22px}
+.tab[aria-current="page"]{color:var(--accent)}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);top:calc(10px + env(safe-area-inset-top,0px));z-index:30;width:min(448px,calc(100% - 32px));background:var(--ink);color:var(--bg);border-radius:12px;padding:10px 10px 10px 14px;display:flex;align-items:center;gap:10px;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.22)}
+.toast span{flex:1;min-width:0}
+.toast button{font-weight:800;color:var(--bg);text-decoration:underline;padding:6px 8px;flex:none}
+
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">Poche <span>XPF</span></div>
+    <div class="sync" id="sync" data-state="loading">Chargement…</div>
+  </header>
+  <div class="banner" id="banner" role="status" hidden></div>
+
+  <main>
+    <!-- SAISIE -->
+    <section class="view" id="view-saisie" aria-label="Saisie">
+      <div class="hero" id="hero">
+        <div class="label">Il te reste</div>
+        <div class="balance num" id="balance">… <small>XPF</small></div>
+        <div class="hero-foot"><span id="balanceEur">≈ 0,00 €</span><span id="spentToday">Dépensé aujourd'hui : 0 XPF</span></div>
+      </div>
+
+      <div class="entry">
+        <div class="entry-top">
+          <span class="label" id="entryLabel">Prix de l'achat</span>
+          <button class="link" id="clearBtn" type="button">Effacer</button>
+        </div>
+        <div class="amount-row"><output class="amount num is-empty" id="amount" aria-live="polite">0</output><span class="amount-unit">XPF</span></div>
+        <div class="preview" id="preview">&nbsp;</div>
+      </div>
+
+      <div class="keypad" id="keypad">
+        <button class="key" type="button" data-k="1">1</button>
+        <button class="key" type="button" data-k="2">2</button>
+        <button class="key" type="button" data-k="3">3</button>
+        <button class="key" type="button" data-k="4">4</button>
+        <button class="key" type="button" data-k="5">5</button>
+        <button class="key" type="button" data-k="6">6</button>
+        <button class="key" type="button" data-k="7">7</button>
+        <button class="key" type="button" data-k="8">8</button>
+        <button class="key" type="button" data-k="9">9</button>
+        <button class="key alt" type="button" data-k="000">000</button>
+        <button class="key" type="button" data-k="0">0</button>
+        <button class="key alt" type="button" data-k="back" aria-label="Effacer le dernier chiffre"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h11v14H9l-6-7z"/><path d="M13 9.5l5 5M18 9.5l-5 5"/></svg></button>
+      </div>
+
+      <div class="actions" id="actions">
+        <button class="btn btn-out" id="btnExpense" type="button">− Enregistrer la dépense</button>
+        <div class="row">
+          <button class="btn btn-in" id="btnAdd" type="button">+ Ajouter</button>
+          <button class="btn btn-ghost" id="btnRemove" type="button">− Retirer</button>
+        </div>
+      </div>
+      <div class="actions" id="actionsFirst" hidden>
+        <button class="btn btn-accent" id="btnCapital" type="button">Définir mon capital</button>
+        <p class="hint">Tape le montant de ton argent de poche, puis valide. Tu pourras ensuite ajouter, retirer et noter tes achats.</p>
+      </div>
+    </section>
+
+    <!-- TABLEAU DE BORD -->
+    <section class="view" id="view-tableau" aria-label="Tableau de bord" hidden>
+      <div class="stats">
+        <div class="tile"><span class="label">Aujourd'hui</span><span class="val num" id="stToday">0</span></div>
+        <div class="tile"><span class="label">7 derniers jours</span><span class="val num" id="stWeek">0</span></div>
+        <div class="tile"><span class="label" id="stMonthLabel">Ce mois</span><span class="val num" id="stMonth">0</span></div>
+        <div class="tile"><span class="label">Moyenne / jour</span><span class="val num" id="stAvg">0</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Dépenses par jour</h2><span class="sub">14 derniers jours · touche une barre</span></div>
+        <div class="chart" id="chart"></div>
+      </div>
+
+      <div class="card">
+        <h2>Où passe ton argent</h2>
+        <div class="meter" aria-hidden="true"><i id="meterFill" style="width:0%"></i></div>
+        <p class="meter-text" id="meterText">Aucun montant enregistré pour l'instant.</p>
+        <dl class="ledger">
+          <dt>Capital de départ</dt><dd id="lgCap">0 XPF</dd>
+          <dt>Ajouts</dt><dd id="lgAdd">0 XPF</dd>
+          <dt>Retraits</dt><dd id="lgRem">0 XPF</dd>
+          <dt>Dépenses</dt><dd id="lgExp">0 XPF</dd>
+          <dt class="total">Solde</dt><dd class="total" id="lgBal">0 XPF</dd>
+        </dl>
+      </div>
+
+      <div class="card">
+        <div class="danger-row" id="resetRow">
+          <p>Repartir de zéro efface toutes tes opérations, capital compris.</p>
+          <button class="btn-sm btn-danger" id="resetBtn" type="button">Tout effacer</button>
+        </div>
+        <div class="confirm" id="resetConfirm" hidden>
+          <p id="resetText">Effacer toutes les opérations ?</p>
+          <div class="row">
+            <button class="btn-sm btn-solid-danger" id="resetYes" type="button">Oui, tout effacer</button>
+            <button class="btn-sm btn-ghost" id="resetNo" type="button">Annuler</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HISTORIQUE -->
+    <section class="view" id="view-historique" aria-label="Historique" hidden>
+      <div class="chips" role="group" aria-label="Filtrer">
+        <button class="chip" type="button" data-f="all" aria-pressed="true">Tout</button>
+        <button class="chip" type="button" data-f="expense" aria-pressed="false">Dépenses</button>
+        <button class="chip" type="button" data-f="money" aria-pressed="false">Ajouts et retraits</button>
+      </div>
+      <ul class="hist" id="hist"></ul>
+    </section>
+  </main>
+</div>
+
+<nav class="tabs" aria-label="Navigation">
+  <div class="tabs-in">
+    <button class="tab" type="button" data-v="saisie" aria-current="page"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="6" r="2"/><circle cx="12" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="18" cy="12" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="12" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg>Saisie</button>
+    <button class="tab" type="button" data-v="tableau"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="12" width="4" height="9" rx="1.5"/><rect x="10" y="4" width="4" height="17" rx="1.5"/><rect x="17" y="9" width="4" height="12" rx="1.5"/></svg>Tableau</button>
+    <button class="tab" type="button" data-v="historique"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r="1" fill="currentColor"/><circle cx="3.5" cy="12" r="1" fill="currentColor"/><circle cx="3.5" cy="18" r="1" fill="currentColor"/></svg>Historique</button>
+  </div>
+</nav>
+
+<div class="toast" id="toast" role="status" hidden><span id="toastMsg"></span><button id="toastUndo" type="button" hidden>Annuler</button></div>
+
+<script>
+(function(){
+  "use strict";
+  const $ = s => document.querySelector(s);
+  const NF = new Intl.NumberFormat('fr-FR', {maximumFractionDigits: 0});
+  const NF1 = new Intl.NumberFormat('fr-FR', {maximumFractionDigits: 1});
+  const EUR = new Intl.NumberFormat('fr-FR', {style: 'currency', currency: 'EUR'});
+  const DAYF = new Intl.DateTimeFormat('fr-FR', {weekday: 'short', day: 'numeric', month: 'short'});
+  const MONTHF = new Intl.DateTimeFormat('fr-FR', {month: 'long'});
+  const TIMEF = new Intl.DateTimeFormat('fr-FR', {hour: '2-digit', minute: '2-digit'});
+  const XPF_PER_EUR = 119.331742; // parité fixe 1 000 XPF = 8,38 €
+  const MAX_DIGITS = 9;
+  const KINDS = {
+    capital: {label: 'Capital de départ', sign: 1, ico: '+'},
+    add:     {label: 'Ajout',             sign: 1, ico: '+'},
+    remove:  {label: 'Retrait',           sign: -1, ico: '−'},
+    expense: {label: 'Dépense',           sign: -1, ico: '−'}
+  };
+
+  let txs = [];            // triées de la plus récente à la plus ancienne
+  let amountStr = '';
+  let store = null;
+  let loaded = false;
+  let histFilter = 'all';
+  let openTx = null;
+  let toastTimer = null;
+  let chartDays = [];
+
+  const fmt = n => NF.format(Math.round(n));
+  const money = (n, signed) => {
+    const s = n < 0 ? '−' : (signed && n > 0 ? '+' : '');
+    return s + fmt(Math.abs(n)) + ' XPF';
+  };
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const startOfDay = t => { const d = new Date(t); d.setHours(0,0,0,0); return d.getTime(); };
+  const dayKey = t => { const d = new Date(t); return d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate(); };
+  const newId = () => 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+
+  function sanitize(arr){
+    if (!Array.isArray(arr)) return [];
+    return arr.filter(t => t && typeof t.id === 'string' && KINDS[t.kind] && Number.isFinite(t.amount) && t.amount > 0 && Number.isFinite(t.at))
+      .map(t => ({id: t.id, kind: t.kind, amount: Math.round(t.amount), at: t.at}))
+      .sort((a, b) => b.at - a.at);
+  }
+
+  function totals(){
+    const r = {cap: 0, add: 0, rem: 0, exp: 0};
+    for (const t of txs){
+      if (t.kind === 'capital') r.cap += t.amount;
+      else if (t.kind === 'add') r.add += t.amount;
+      else if (t.kind === 'remove') r.rem += t.amount;
+      else r.exp += t.amount;
+    }
+    r.balance = r.cap + r.add - r.rem - r.exp;
+    return r;
+  }
+
+  function spentSince(t0){
+    let s = 0;
+    for (const t of txs){ if (t.kind === 'expense' && t.at >= t0) s += t.amount; }
+    return s;
+  }
+
+  /* ---------- Stockage ---------- */
+  async function withRetry(fn){
+    try { return await fn(); }
+    catch (e){
+      if (e && e.code === 'unavailable'){
+        await new Promise(r => setTimeout(r, 400 + Math.random() * 600));
+        return fn();
+      }
+      throw e;
+    }
+  }
+
+  function localStore(){
+    const KEY = 'poche-xpf-v1';
+    try { const raw = localStorage.getItem(KEY); if (raw) txs = sanitize(JSON.parse(raw)); } catch (e) {}
+    const save = () => { try { localStorage.setItem(KEY, JSON.stringify(txs)); } catch (e) {} };
+    return {mode: 'local', put: async () => save(), del: async () => save()};
+  }
+
+  function dbStore(col){
+    return {
+      mode: 'db',
+      put: tx => col.doc(tx.id).set({kind: tx.kind, amount: tx.amount, at: tx.at}),
+      del: id => col.doc(id).delete()
+    };
+  }
+
+  function errMsg(e){
+    const c = e && e.code;
+    if (c === 'quota_exceeded') return "Stockage plein : supprime d'anciennes opérations dans l'historique.";
+    if (c === 'revoked' || c === 'not_granted' || c === 'permission_denied') return "Enregistrement refusé : tu n'as plus accès. Rouvre la page.";
+    return "Pas enregistré. Vérifie ta connexion et réessaie.";
+  }
+
+  function setSync(state){
+    const el = $('#sync');
+    el.dataset.state = state;
+    el.textContent = state === 'db' ? 'Sauvegardé' : state === 'local' ? 'Sur cet appareil' : 'Chargement…';
+  }
+  function showBanner(msg){ const b = $('#banner'); b.textContent = msg; b.hidden = false; }
+  function hideBanner(){ $('#banner').hidden = true; }
+
+  async function init(){
+    renderAll();
+    const c = window.claude;
+    if (!c || typeof c.use !== 'function'){ useLocal(); return; }
+    let db = null, user = null, uid = null;
+    try { [db, user] = await Promise.all([c.use('db'), c.use('user')]); } catch (e) {}
+    if (user){ try { uid = await user.id(); } catch (e) {} }
+    if (!db || !uid){ useLocal(); return; }
+
+    const col = db.collection('data/users/' + uid);
+    store = dbStore(col);
+    const timer = setTimeout(() => {
+      if (!loaded) showBanner("Tes données mettent du temps à arriver. Vérifie ta connexion, puis rouvre la page.");
+    }, 10000);
+    col.orderBy('at', 'desc').limit(1000).onSnapshot(snap => {
+      clearTimeout(timer);
+      loaded = true;
+      hideBanner();
+      setSync('db');
+      txs = sanitize(snap.docs.filter(d => d.exists).map(d => Object.assign({}, d.data(), {id: d.id})));
+      renderAll();
+    }, err => {
+      clearTimeout(timer);
+      loaded = true;
+      showBanner("Impossible de lire tes données (" + (err && err.code || 'erreur') + "). Rouvre la page pour réessayer.");
+      renderAll();
+    });
+  }
+
+  function useLocal(){
+    store = localStore();
+    loaded = true;
+    setSync('local');
+    showBanner("Tu n'es pas connecté à claude.ai : tes données restent sur cet appareil seulement.");
+    renderAll();
+  }
+
+  /* ---------- Actions ---------- */
+  const CONFIRM = {
+    expense: (a, b) => `Dépense de ${money(a)} notée. Il te reste ${money(b)}.`,
+    add:     (a, b) => `${money(a)} ajoutés. Solde : ${money(b)}.`,
+    remove:  (a, b) => `${money(a)} retirés. Solde : ${money(b)}.`,
+    capital: (a)    => `Capital de ${money(a)} enregistré.`
+  };
+
+  async function record(kind){
+    if (!loaded || !store) return;
+    const amount = parseInt(amountStr || '0', 10);
+    if (!amount){ nudge(); return; }
+    const tx = {id: newId(), kind, amount, at: Date.now()};
+    txs = [tx].concat(txs);
+    amountStr = '';
+    renderAll();
+    showToast(CONFIRM[kind](amount, totals().balance), tx.id);
+    try { await withRetry(() => store.put(tx)); }
+    catch (e){
+      txs = txs.filter(t => t.id !== tx.id);
+      renderAll();
+      showToast(errMsg(e));
+    }
+  }
+
+  async function removeTx(id, msg){
+    const tx = txs.find(t => t.id === id);
+    if (!tx) return;
+    txs = txs.filter(t => t.id !== id);
+    if (openTx === id) openTx = null;
+    renderAll();
+    try { await withRetry(() => store.del(id)); if (msg) showToast(msg); }
+    catch (e){
+      txs = sanitize(txs.concat([tx]));
+      renderAll();
+      showToast(errMsg(e));
+    }
+  }
+
+  async function resetAll(){
+    const all = txs.slice();
+    txs = [];
+    renderAll();
+    const failed = [];
+    for (const t of all){
+      try { await withRetry(() => store.del(t.id)); } catch (e) { failed.push(t); }
+    }
+    if (failed.length){
+      txs = sanitize(txs.concat(failed));
+      renderAll();
+      showToast(`${failed.length} opération(s) non effacée(s). Réessaie.`);
+    } else {
+      showToast("Tout est effacé. Définis ton nouveau capital.");
+      go('saisie');
+    }
+  }
+
+  function nudge(){
+    const el = $('#amount');
+    el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
+  }
+
+  function press(k){
+    if (k === 'back') amountStr = amountStr.slice(0, -1);
+    else if (k === 'clear') amountStr = '';
+    else {
+      if (!amountStr && (k === '0' || k === '000')) return;
+      const next = amountStr + k;
+      if (next.length > MAX_DIGITS){ nudge(); return; }
+      amountStr = next;
+    }
+    renderEntry();
+  }
+
+  /* ---------- Toast ---------- */
+  function showToast(msg, undoId){
+    const t = $('#toast'), u = $('#toastUndo');
+    $('#toastMsg').textContent = msg;
+    u.hidden = !undoId;
+    u.onclick = undoId ? () => { hideToast(); removeTx(undoId, 'Annulé.'); } : null;
+    t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(hideToast, undoId ? 5000 : 3500);
+  }
+  function hideToast(){ $('#toast').hidden = true; }
+
+  /* ---------- Rendu ---------- */
+  function renderAll(){
+    renderHero();
+    renderEntry();
+    renderDashboard();
+    renderHistory();
+  }
+
+  function renderHero(){
+    const T = totals();
+    const bal = $('#balance');
+    if (!loaded){ bal.innerHTML = '… <small>XPF</small>'; return; }
+    bal.innerHTML = esc((T.balance < 0 ? '−' : '') + fmt(Math.abs(T.balance))) + ' <small>XPF</small>';
+    $('#hero').classList.toggle('is-neg', T.balance < 0);
+    $('#hero .label').textContent = T.balance < 0 ? 'Tu es à découvert' : 'Il te reste';
+    $('#balanceEur').textContent = '≈ ' + EUR.format(T.balance / XPF_PER_EUR);
+    $('#spentToday').textContent = "Dépensé aujourd'hui : " + money(spentSince(startOfDay(Date.now())));
+  }
+
+  function renderEntry(){
+    const a = parseInt(amountStr || '0', 10);
+    const amt = $('#amount');
+    amt.textContent = fmt(a);
+    amt.classList.toggle('is-empty', !a);
+    const first = loaded && txs.length === 0;
+    $('#actions').hidden = first;
+    $('#actionsFirst').hidden = !first;
+    $('#entryLabel').textContent = first ? 'Mon argent de poche' : "Montant";
+    const p = $('#preview');
+    p.className = 'preview';
+    const bal = totals().balance;
+    if (!loaded) p.textContent = 'Chargement de ton solde…';
+    else if (first) p.textContent = a ? `Ton capital de départ sera de ${money(a)}.` : 'Tape ton argent de poche avec le clavier.';
+    else if (!a) p.textContent = "Tape le prix de ton achat.";
+    else {
+      const after = bal - a;
+      p.classList.add(after < 0 ? 'neg' : 'ok');
+      p.textContent = after < 0 ? `Après cet achat tu serais à ${money(after)}.` : `Après cet achat il te restera ${money(after)}.`;
+    }
+    const dis = !loaded || !a;
+    ['#btnExpense', '#btnAdd', '#btnRemove', '#btnCapital'].forEach(s => { $(s).disabled = dis; });
+  }
+
+  function renderDashboard(){
+    const now = Date.now();
+    const today0 = startOfDay(now);
+    const week0 = (() => { const d = new Date(today0); d.setDate(d.getDate() - 6); return d.getTime(); })();
+    const month0 = (() => { const d = new Date(today0); d.setDate(1); return d.getTime(); })();
+    const m30 = (() => { const d = new Date(today0); d.setDate(d.getDate() - 29); return d.getTime(); })();
+    const unit = ' <small>XPF</small>';
+    $('#stToday').innerHTML = esc(fmt(spentSince(today0))) + unit;
+    $('#stWeek').innerHTML = esc(fmt(spentSince(week0))) + unit;
+    $('#stMonthLabel').textContent = MONTHF.format(now).replace(/^./, c => c.toUpperCase());
+    $('#stMonth').innerHTML = esc(fmt(spentSince(month0))) + unit;
+    // moyenne sur les jours réellement couverts (max 30)
+    const oldest = txs.length ? startOfDay(txs[txs.length - 1].at) : today0;
+    const span = Math.min(30, Math.round((today0 - Math.max(oldest, m30)) / 86400000) + 1);
+    $('#stAvg').innerHTML = esc(fmt(spentSince(Math.max(oldest, m30)) / Math.max(1, span))) + unit;
+
+    const T = totals();
+    const inMoney = T.cap + T.add;
+    $('#lgCap').textContent = money(T.cap);
+    $('#lgAdd').textContent = money(T.add);
+    $('#lgRem').textContent = T.rem ? money(-T.rem) : money(0);
+    $('#lgExp').textContent = T.exp ? money(-T.exp) : money(0);
+    $('#lgBal').textContent = money(T.balance);
+    const pct = inMoney ? Math.round(T.exp / inMoney * 100) : 0;
+    $('#meterFill').style.width = Math.min(100, pct) + '%';
+    $('#meterText').textContent = inMoney
+      ? `Tu as dépensé ${pct} % de l'argent que tu as mis (${money(T.exp)} sur ${money(inMoney)}).`
+      : "Aucun montant enregistré pour l'instant.";
+    $('#resetText').textContent = `Effacer les ${txs.length} opération(s) ? Ton solde repartira à 0 XPF.`;
+    $('#resetBtn').disabled = !txs.length;
+
+    if (!$('#view-tableau').hidden) renderChart();
+  }
+
+  function niceStep(raw){
+    const p = Math.pow(10, Math.floor(Math.log10(raw)));
+    const f = raw / p;
+    return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
+  }
+  const tick = v => v >= 1000 ? NF1.format(v / 1000) + ' k' : fmt(v);
+
+  function renderChart(){
+    const wrap = $('#chart');
+    const W = Math.floor(wrap.clientWidth);
+    if (!W) return;
+    const H = 184, pl = 38, pr = 4, pt = 12, pb = 26;
+    const today0 = startOfDay(Date.now());
+    const days = [];
+    for (let i = 13; i >= 0; i--){
+      const d = new Date(today0); d.setDate(d.getDate() - i);
+      days.push({t: d.getTime(), key: dayKey(d.getTime()), total: 0});
+    }
+    const idx = new Map(days.map((d, i) => [d.key, i]));
+    for (const t of txs){
+      if (t.kind !== 'expense') continue;
+      const i = idx.get(dayKey(t.at));
+      if (i !== undefined) days[i].total += t.amount;
+    }
+    const max = Math.max(0, ...days.map(d => d.total));
+    const step = max > 0 ? Math.max(1, niceStep(max / 3)) : 1000;
+    const top = max > 0 ? Math.ceil(max / step) * step : 3000;
+    const ih = H - pt - pb, iw = W - pl - pr, band = iw / 14;
+    const bw = Math.max(4, Math.min(20, band * 0.58));
+    const yOf = v => pt + ih - (v / top) * ih;
+    const yb = pt + ih;
+    let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Dépenses par jour sur 14 jours, maximum ${esc(money(max))}">`;
+    for (let v = 0; v <= top + 1e-9; v += step){
+      const y = yOf(v).toFixed(1);
+      s += `<line class="grid${v === 0 ? ' base' : ''}" x1="${pl}" x2="${W - pr}" y1="${y}" y2="${y}"/>`;
+      s += `<text class="axis" x="${pl - 6}" y="${y}" text-anchor="end" dominant-baseline="middle">${esc(tick(v))}</text>`;
+    }
+    days.forEach((d, i) => {
+      const cx = pl + band * i + band / 2;
+      if (d.total > 0){
+        const h = Math.max(2, (d.total / top) * ih);
+        const r = Math.min(4, bw / 2, h);
+        const x = cx - bw / 2, yt = yb - h;
+        s += `<path class="bar${i === 13 ? ' today' : ''}" data-i="${i}" d="M${x.toFixed(1)},${yb} V${(yt + r).toFixed(1)} A${r},${r} 0 0 1 ${(x + r).toFixed(1)},${yt.toFixed(1)} H${(x + bw - r).toFixed(1)} A${r},${r} 0 0 1 ${(x + bw).toFixed(1)},${(yt + r).toFixed(1)} V${yb} Z"/>`;
+      }
+      if ((13 - i) % 2 === 0){
+        s += `<text class="axis${i === 13 ? ' strong' : ''}" x="${cx.toFixed(1)}" y="${H - 8}" text-anchor="middle">${i === 13 ? 'auj.' : new Date(d.t).getDate()}</text>`;
+      }
+      s += `<rect class="hit" data-i="${i}" x="${(pl + band * i).toFixed(1)}" y="${pt}" width="${band.toFixed(1)}" height="${ih}"/>`;
+    });
+    if (max === 0) s += `<text class="axis" x="${(pl + iw / 2).toFixed(1)}" y="${(pt + ih / 2).toFixed(1)}" text-anchor="middle">Aucune dépense ces 14 derniers jours</text>`;
+    s += '</svg><div class="tip" id="tip" hidden></div>';
+    wrap.innerHTML = s;
+    chartDays = days.map((d, i) => Object.assign(d, {cx: pl + band * i + band / 2, top: d.total > 0 ? yb - Math.max(2, (d.total / top) * ih) : yb}));
+    wrap.querySelectorAll('.hit').forEach(r => {
+      const i = +r.dataset.i;
+      r.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') showTip(i); });
+      r.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') hideTip(); });
+      r.addEventListener('click', e => { e.stopPropagation(); showTip(i); });
+    });
+  }
+
+  function showTip(i){
+    const d = chartDays[i]; if (!d) return;
+    const tip = $('#tip'); if (!tip) return;
+    const W = $('#chart').clientWidth;
+    const label = i === 13 ? "Aujourd'hui" : DAYF.format(d.t);
+    tip.innerHTML = esc(label) + '<b>' + esc(d.total ? money(d.total) : 'Aucune dépense') + '</b>';
+    tip.style.left = Math.min(W - 60, Math.max(60, d.cx)) + 'px';
+    tip.style.top = d.top + 'px';
+    tip.hidden = false;
+    document.querySelectorAll('#chart .bar').forEach(b => b.classList.toggle('hl', +b.dataset.i === i));
+  }
+  function hideTip(){
+    const tip = $('#tip'); if (tip) tip.hidden = true;
+    document.querySelectorAll('#chart .bar.hl').forEach(b => b.classList.remove('hl'));
+  }
+
+  function dayLabel(t){
+    const t0 = startOfDay(Date.now());
+    const d0 = startOfDay(t);
+    if (d0 === t0) return "Aujourd'hui";
+    if (t0 - d0 > 0 && t0 - d0 <= 90000000 && new Date(t0 - 86400000).getDate() === new Date(d0).getDate()) return 'Hier';
+    return DAYF.format(t);
+  }
+
+  function renderHistory(){
+    const list = $('#hist');
+    if (!loaded){ list.innerHTML = '<li class="empty">Chargement…</li>'; return; }
+    const asc = txs.slice().reverse();
+    const after = new Map();
+    let run = 0;
+    for (const t of asc){ run += KINDS[t.kind].sign * t.amount; after.set(t.id, run); }
+    const shown = txs.filter(t => histFilter === 'all' || (histFilter === 'expense' ? t.kind === 'expense' : t.kind !== 'expense'));
+    if (!shown.length){
+      list.innerHTML = txs.length
+        ? '<li class="empty"><b>Rien ici</b>Aucune opération ne correspond à ce filtre.</li>'
+        : '<li class="empty"><b>Pas encore d\'opération</b>Tes dépenses, ajouts et retraits s\'afficheront ici, jour par jour. Commence par définir ton capital dans Saisie.</li>';
+      return;
+    }
+    const groups = [];
+    for (const t of shown){
+      const k = dayKey(t.at);
+      let g = groups[groups.length - 1];
+      if (!g || g.key !== k){ g = {key: k, at: t.at, items: [], spent: 0}; groups.push(g); }
+      g.items.push(t);
+      if (t.kind === 'expense') g.spent += t.amount;
+    }
+    let h = '';
+    for (const g of groups){
+      h += `<li class="day"><span>${esc(dayLabel(g.at))}</span><span>${g.spent ? 'Dépensé ' + esc(money(g.spent)) : ''}</span></li>`;
+      g.items.forEach((t, j) => {
+        const K = KINDS[t.kind];
+        const isOpen = openTx === t.id;
+        const signed = K.sign * t.amount;
+        h += `<li class="tx${j === g.items.length - 1 ? ' last' : ''}">`
+          + `<button class="tx-main" type="button" data-open="${esc(t.id)}" aria-expanded="${isOpen}">`
+          + `<span class="ico k-${t.kind}" aria-hidden="true">${K.ico}</span>`
+          + `<span class="tx-text"><span class="tx-kind">${esc(K.label)}</span><span class="tx-meta">${esc(TIMEF.format(t.at))} · solde ${esc(money(after.get(t.id)))}</span></span>`
+          + `<span class="tx-amt ${signed < 0 ? 'neg' : 'pos'}">${esc(money(signed, true))}</span>`
+          + `</button>`
+          + `<div class="tx-actions"${isOpen ? '' : ' hidden'}><button class="btn-sm btn-danger" type="button" data-del="${esc(t.id)}">Supprimer cette opération</button></div>`
+          + `</li>`;
+      });
+    }
+    list.innerHTML = h;
+  }
+
+  /* ---------- Navigation ---------- */
+  const VIEWS = ['saisie', 'tableau', 'historique'];
+  const fromHash = () => { const h = (location.hash || '').slice(1); return VIEWS.includes(h) ? h : 'saisie'; };
+  function showView(v){
+    VIEWS.forEach(n => { $('#view-' + n).hidden = n !== v; });
+    document.querySelectorAll('.tab').forEach(b => {
+      if (b.dataset.v === v) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+    });
+    if (v === 'tableau') renderChart();
+    window.scrollTo(0, 0);
+  }
+  function go(v){
+    if (location.hash !== '#' + v){ try { location.hash = v; } catch (e) {} }
+    showView(v);
+  }
+  window.addEventListener('hashchange', () => showView(fromHash()));
+
+  /* ---------- Événements ---------- */
+  $('#keypad').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (b) press(b.dataset.k); });
+  $('#clearBtn').addEventListener('click', () => press('clear'));
+  $('#btnExpense').addEventListener('click', () => record('expense'));
+  $('#btnAdd').addEventListener('click', () => record('add'));
+  $('#btnRemove').addEventListener('click', () => record('remove'));
+  $('#btnCapital').addEventListener('click', () => record('capital'));
+  document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => go(b.dataset.v)));
+
+  document.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => {
+    histFilter = c.dataset.f;
+    document.querySelectorAll('.chip').forEach(x => x.setAttribute('aria-pressed', String(x === c)));
+    renderHistory();
+  }));
+  $('#hist').addEventListener('click', e => {
+    const del = e.target.closest('[data-del]');
+    if (del){ removeTx(del.dataset.del, 'Opération supprimée.'); return; }
+    const op = e.target.closest('[data-open]');
+    if (op){ openTx = openTx === op.dataset.open ? null : op.dataset.open; renderHistory(); }
+  });
+
+  $('#resetBtn').addEventListener('click', () => { $('#resetRow').hidden = true; $('#resetConfirm').hidden = false; });
+  $('#resetNo').addEventListener('click', () => { $('#resetRow').hidden = false; $('#resetConfirm').hidden = true; });
+  $('#resetYes').addEventListener('click', () => { $('#resetRow').hidden = false; $('#resetConfirm').hidden = true; resetAll(); });
+
+  document.addEventListener('click', e => { if (!e.target.closest('#chart')) hideTip(); });
+
+  document.addEventListener('keydown', e => {
+    if ($('#view-saisie').hidden || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (/^[0-9]$/.test(e.key)){ press(e.key); e.preventDefault(); }
+    else if (e.key === 'Backspace'){ press('back'); e.preventDefault(); }
+    else if (e.key === 'Escape'){ press('clear'); }
+    else if (e.key === 'Enter' && !(e.target.closest && e.target.closest('button'))){
+      record(loaded && txs.length === 0 ? 'capital' : 'expense'); e.preventDefault();
+    }
+  });
+
+  let raf = 0;
+  window.addEventListener('resize', () => {
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => { if (!$('#view-tableau').hidden) renderChart(); });
+  });
+
+  showView(fromHash());
+  init();
+})();
+</script>
