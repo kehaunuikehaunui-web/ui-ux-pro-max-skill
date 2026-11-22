@@ -8,8 +8,8 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 : "${ANDROID_HOME:?set ANDROID_HOME to your Android SDK}"
-VERSION_CODE="${VERSION_CODE:-2}"
-VERSION_NAME="${VERSION_NAME:-1.1}"
+VERSION_CODE="${VERSION_CODE:-3}"
+VERSION_NAME="${VERSION_NAME:-1.2}"
 BT="$ANDROID_HOME/build-tools/34.0.0"
 JAR="$ANDROID_HOME/platforms/android-34/android.jar"
 KS="${POCHE_KEYSTORE:-$PWD/poche-xpf.keystore}"

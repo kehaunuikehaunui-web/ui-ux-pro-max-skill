@@ -197,9 +197,41 @@ button:disabled{opacity:.42;cursor:default}
 .tab svg{width:22px;height:22px}
 .tab[aria-current="page"]{color:var(--accent)}
 
-.toast{position:fixed;left:50%;transform:translateX(-50%);top:calc(10px + env(safe-area-inset-top,0px));z-index:30;width:min(448px,calc(100% - 32px));background:var(--ink);color:var(--bg);border-radius:12px;padding:10px 10px 10px 14px;display:flex;align-items:center;gap:10px;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.22)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);top:calc(10px + env(safe-area-inset-top,0px));z-index:50;width:min(448px,calc(100% - 32px));background:var(--ink);color:var(--bg);border-radius:12px;padding:10px 10px 10px 14px;display:flex;align-items:center;gap:10px;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.22)}
 .toast span{flex:1;min-width:0}
 .toast button{font-weight:800;color:var(--bg);text-decoration:underline;padding:6px 8px;flex:none}
+
+/* Profils */
+.pchip{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 12px 0 4px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-weight:700;font-size:14px;max-width:60%;min-width:0}
+.pchip span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.av{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#FFFFFF;font-family:var(--font-display);font-weight:700;font-size:14px;flex:none}
+.av.lg{width:64px;height:64px;font-size:28px}
+.pscreen{position:fixed;inset:0;z-index:40;background:var(--bg);overflow-y:auto;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.pwrap{max-width:420px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 32px;display:flex;flex-direction:column;gap:16px}
+.pwrap h1{font-family:var(--font-display);font-size:26px;line-height:1.15;margin:0;letter-spacing:-.01em;text-wrap:balance;overflow-wrap:anywhere}
+.plead{margin:0;color:var(--muted);font-size:14px}
+.pgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.pcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px 10px;display:grid;justify-items:center;align-content:start;gap:8px;text-align:center;min-width:0}
+.pcard b{overflow-wrap:anywhere}
+.pcard small{font-size:12px;color:var(--muted)}
+.pcard.new{border-style:dashed;color:var(--accent)}
+.pcard.new .av{background:var(--accent-soft);color:var(--accent)}
+.pform{display:grid;gap:14px}
+.pform label,.plabel{display:grid;gap:6px;font-size:13px;font-weight:700;color:var(--muted)}
+.pform label.check{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink)}
+.pfield{display:grid;gap:6px}
+.swatches{display:flex;gap:10px;flex-wrap:wrap}
+.sw{width:40px;height:40px;border-radius:50%;border:3px solid transparent;box-shadow:inset 0 0 0 2px var(--bg)}
+.sw[aria-checked="true"]{border-color:var(--ink)}
+.pbtns{display:flex;gap:8px;flex-wrap:wrap}
+.pbtns .btn{flex:1 1 140px}
+.pin-dots{display:flex;gap:14px;justify-content:center;padding:4px 0}
+.pin-dots i{width:14px;height:14px;border-radius:50%;border:2px solid var(--muted)}
+.pin-dots i.on{background:var(--ink);border-color:var(--ink)}
+.phead{display:grid;justify-items:center;gap:8px;text-align:center}
+.plist{display:grid;gap:8px}
+.plist .btn{justify-content:flex-start;padding:0 16px}
+.danger-text{color:var(--out)}
 
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
@@ -208,6 +240,7 @@ button:disabled{opacity:.42;cursor:default}
   <header class="top">
     <div class="brand">Poche <span>XPF</span></div>
     <div class="sync" id="sync" data-state="loading">Chargement…</div>
+    <button class="pchip" id="profileBtn" type="button" hidden></button>
   </header>
   <div class="banner" id="banner" role="status" hidden></div>
 
@@ -346,6 +379,8 @@ button:disabled{opacity:.42;cursor:default}
   </div>
 </nav>
 
+<section class="pscreen" id="profileScreen" aria-label="Profils" hidden><div class="pwrap" id="pBody"></div></section>
+
 <div class="toast" id="toast" role="status" hidden><span id="toastMsg"></span><button id="toastUndo" type="button" hidden>Annuler</button></div>
 
 <script>
@@ -380,6 +415,15 @@ button:disabled{opacity:.42;cursor:default}
   let catEdit = null;      // {id, mode: 'rename' | 'delete'}
   let renameDraft = '';
   let catQueue = Promise.resolve();
+  // Profils : seulement en mode local (APK, ou page ouverte sans compte claude.ai)
+  const PKEY = 'poche-xpf-profiles-v1';
+  const PCOLORS = ['#17607D', '#B5381F', '#1C7F52', '#7A4FB3', '#B86E0F', '#2E3A8C'];
+  const MAX_PROFILES = 12;
+  let profiles = [];
+  let lastProfile = null;
+  let currentProfile = null;
+  let pView = null;        // écran profils affiché : {mode: choose|create|edit|pin|menu, ...}
+  let pinBuf = '';
   let txs = [];            // triées de la plus récente à la plus ancienne
   let amountStr = '';
   let store = null;
@@ -452,14 +496,14 @@ button:disabled{opacity:.42;cursor:default}
     }
   }
 
-  function localStore(){
-    const KEY = 'poche-xpf-v1';
+  function localStore(pid){
+    const KEY = 'poche-xpf-v1:' + pid;
     try { const raw = localStorage.getItem(KEY); if (raw) txs = sanitize(JSON.parse(raw)); } catch (e) {}
-    const CKEY = 'poche-xpf-cats-v1';
+    const CKEY = 'poche-xpf-cats-v1:' + pid;
     try { const raw = localStorage.getItem(CKEY); if (raw){ const l = sanitizeCats(JSON.parse(raw)); if (l) cats = l; } } catch (e) {}
     const save = () => { try { localStorage.setItem(KEY, JSON.stringify(txs)); } catch (e) {} };
-    const saveCats = () => { try { localStorage.setItem(CKEY, JSON.stringify(cats)); } catch (e) {} };
-    return {mode: 'local', put: async () => save(), del: async () => save(), putCats: async () => saveCats()};
+    const saveCats = list => { try { localStorage.setItem(CKEY, JSON.stringify(list)); } catch (e) {} };
+    return {mode: 'local', put: async () => save(), del: async () => save(), putCats: async list => saveCats(list)};
   }
 
   function dbStore(col){
@@ -493,7 +537,7 @@ button:disabled{opacity:.42;cursor:default}
   async function init(){
     renderAll();
     const c = window.claude;
-    if (!c || typeof c.use !== 'function'){ useLocal(); return; }
+    if (IS_APP || !c || typeof c.use !== 'function'){ useLocal(); return; }
     let db = null, user = null, uid = null;
     try { [db, user] = await Promise.all([c.use('db'), c.use('user')]); } catch (e) {}
     if (user){ try { uid = await user.id(); } catch (e) {} }
@@ -526,11 +570,213 @@ button:disabled{opacity:.42;cursor:default}
   }
 
   function useLocal(){
-    store = localStore();
-    loaded = true;
-    setSync('local');
+    $('#sync').hidden = true;
     if (!IS_APP) showBanner("Tu n'es pas connecté à claude.ai : tes données restent sur cet appareil seulement.");
+    loadProfiles();
+    const last = getProfile(lastProfile);
+    if (!profiles.length) showProfiles({mode: 'create'});
+    else if (last && !last.pin) openProfile(last.id);
+    else if (last) showProfiles({mode: 'pin', id: last.id});
+    else showProfiles({mode: 'choose'});
+  }
+
+  /* ---------- Profils ---------- */
+  function loadProfiles(){
+    try {
+      const o = JSON.parse(localStorage.getItem(PKEY) || 'null');
+      if (o && Array.isArray(o.list)){
+        profiles = o.list
+          .filter(p => p && typeof p.id === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(p.id) && typeof p.name === 'string' && p.name.trim())
+          .map(p => ({id: p.id, name: p.name.trim().slice(0, 20), color: PCOLORS.includes(p.color) ? p.color : PCOLORS[0], pin: typeof p.pin === 'string' ? p.pin : null}));
+        lastProfile = typeof o.last === 'string' ? o.last : null;
+      }
+    } catch (e) {}
+  }
+  function saveProfiles(){ try { localStorage.setItem(PKEY, JSON.stringify({list: profiles, last: lastProfile})); } catch (e) {} }
+  const getProfile = id => profiles.find(p => p.id === id) || null;
+  // Empreinte du code : évite de garder le code en clair, ce n'est pas un chiffrement.
+  function pinHash(pin, salt){
+    let h = 0x811c9dc5;
+    const s = salt + ':' + pin;
+    for (let i = 0; i < s.length; i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+    return h.toString(16);
+  }
+  const initial = name => (name.trim()[0] || '?').toUpperCase();
+  const avatar = (p, cls) => `<span class="av${cls ? ' ' + cls : ''}" style="background:${p.color}" aria-hidden="true">${esc(initial(p.name))}</span>`;
+  function hasLegacy(){ try { return localStorage.getItem('poche-xpf-v1') !== null; } catch (e) { return false; } }
+  function migrateLegacy(pid){
+    try {
+      [['poche-xpf-v1', 'poche-xpf-v1:' + pid], ['poche-xpf-cats-v1', 'poche-xpf-cats-v1:' + pid]].forEach(([o, n]) => {
+        const v = localStorage.getItem(o);
+        if (v !== null){ localStorage.setItem(n, v); localStorage.removeItem(o); }
+      });
+    } catch (e) {}
+  }
+  function txCountFor(pid){
+    try { const a = JSON.parse(localStorage.getItem('poche-xpf-v1:' + pid) || '[]'); return Array.isArray(a) ? a.length : 0; } catch (e) { return 0; }
+  }
+
+  function updateProfileChip(){
+    const p = getProfile(currentProfile), b = $('#profileBtn');
+    b.hidden = !p;
+    if (!p) return;
+    b.innerHTML = avatar(p) + '<span>' + esc(p.name) + '</span>';
+    b.setAttribute('aria-label', 'Profil de ' + p.name + ' : changer ou modifier');
+  }
+
+  function closeProfileData(){
+    currentProfile = null; store = null; loaded = false; txs = [];
+    updateProfileChip();
     renderAll();
+  }
+
+  function openProfile(id){
+    if (!getProfile(id)) return;
+    currentProfile = id; lastProfile = id;
+    saveProfiles();
+    txs = []; cats = DEFAULT_CATS.map(c => Object.assign({}, c));
+    amountStr = ''; selCat = null; histCat = ''; histFilter = 'all'; openTx = null; catEdit = null;
+    document.querySelectorAll('.chip').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.f === 'all')));
+    store = localStore(id);
+    loaded = true;
+    updateProfileChip();
+    hideProfiles();
+    hideToast();
+    renderAll();
+    go('saisie');
+  }
+
+  function deleteProfile(id){
+    const p = getProfile(id);
+    if (!p) return;
+    try { localStorage.removeItem('poche-xpf-v1:' + id); localStorage.removeItem('poche-xpf-cats-v1:' + id); } catch (e) {}
+    profiles = profiles.filter(x => x.id !== id);
+    if (lastProfile === id) lastProfile = null;
+    saveProfiles();
+    if (currentProfile === id) closeProfileData();
+    showProfiles({mode: profiles.length ? 'choose' : 'create'});
+    showToast(`Profil de ${p.name} supprimé.`);
+  }
+
+  function showProfiles(view){
+    pView = view; pinBuf = '';
+    renderProfiles();
+    const s = $('#profileScreen');
+    s.hidden = false; s.scrollTop = 0;
+  }
+  function hideProfiles(){ $('#profileScreen').hidden = true; pView = null; }
+
+  function renderProfiles(){
+    const v = pView;
+    if (!v) return;
+    const body = $('#pBody');
+    const cur = getProfile(currentProfile);
+    if (v.mode === 'choose'){
+      body.innerHTML = '<div class="brand">Poche <span>XPF</span></div><h1>Qui utilise Poche XPF ?</h1>'
+        + '<p class="plead">Chaque profil a son propre solde, ses dépenses et ses catégories.</p>'
+        + '<div class="pgrid">'
+        + profiles.map(p => `<button class="pcard" type="button" data-p-open="${esc(p.id)}">${avatar(p, 'lg')}<b>${esc(p.name)}</b>${p.pin ? '<small>Protégé par un code</small>' : ''}</button>`).join('')
+        + (profiles.length < MAX_PROFILES ? '<button class="pcard new" type="button" data-p-new><span class="av lg" aria-hidden="true">+</span><b>Nouveau profil</b></button>' : '')
+        + '</div>'
+        + (cur ? '<button class="btn btn-ghost" type="button" data-p-back>Retour à mon profil</button>' : '');
+    } else if (v.mode === 'create' || v.mode === 'edit'){
+      const p = v.mode === 'edit' ? getProfile(v.id) : null;
+      if (!v.color) v.color = p ? p.color : PCOLORS[profiles.length % PCOLORS.length];
+      const legacy = !p && !profiles.length && hasLegacy();
+      const title = p ? 'Modifier mon profil' : (profiles.length ? 'Nouveau profil' : 'Créer mon profil');
+      const lead = p ? 'Change ton prénom, ta couleur ou ton code.'
+        : legacy ? 'Tes opérations déjà notées seront rattachées à ce profil.'
+        : 'Ton solde et tes dépenses resteront séparés de ceux des autres profils.';
+      body.innerHTML = `<h1>${title}</h1><p class="plead">${lead}</p>`
+        + '<form class="pform" id="pForm" novalidate>'
+        + `<label for="pName">Prénom<input class="field" id="pName" type="text" maxlength="20" autocomplete="off" value="${esc(p ? p.name : '')}"></label>`
+        + '<div class="pfield"><span class="plabel">Couleur</span><div class="swatches" role="radiogroup" aria-label="Couleur du profil">'
+        + PCOLORS.map((c, i) => `<button type="button" class="sw" role="radio" aria-checked="${c === v.color}" aria-label="Couleur ${i + 1}" data-sw="${c}" style="background:${c}"></button>`).join('')
+        + '</div></div>'
+        + `<label for="pPin">${p && p.pin ? "Nouveau code (laisse vide pour garder l'actuel)" : 'Code à 4 chiffres (facultatif)'}<input class="field" id="pPin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="new-password"></label>`
+        + '<label for="pPin2">Confirme le code<input class="field" id="pPin2" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="new-password"></label>'
+        + (p && p.pin ? '<label class="check" for="pNoPin"><input type="checkbox" id="pNoPin"> Retirer mon code</label>' : '')
+        + '<p class="form-err" id="pErr" role="alert" hidden></p>'
+        + `<div class="pbtns"><button class="btn btn-accent" type="submit">${p ? 'Enregistrer' : 'Créer le profil'}</button>`
+        + (profiles.length ? '<button class="btn btn-ghost" type="button" data-p-cancel>Annuler</button>' : '')
+        + '</div></form>';
+    } else if (v.mode === 'pin'){
+      const p = getProfile(v.id);
+      if (!p){ showProfiles({mode: 'choose'}); return; }
+      const n = v.forgot ? txCountFor(p.id) : 0;
+      body.innerHTML = `<div class="phead">${avatar(p, 'lg')}<h1>${esc(p.name)}</h1><p class="plead">Entre ton code pour ouvrir ton profil.</p></div>`
+        + `<div class="pin-dots" id="pinDots">${[0, 1, 2, 3].map(i => `<i${i < pinBuf.length ? ' class="on"' : ''}></i>`).join('')}</div>`
+        + `<p class="form-err" id="pErr" role="alert"${v.err ? '' : ' hidden'}>${esc(v.err || '')}</p>`
+        + '<div class="keypad">'
+        + ['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(k => `<button class="key" type="button" data-pk="${k}">${k}</button>`).join('')
+        + '<button class="key alt" type="button" data-p-choose>Profils</button><button class="key" type="button" data-pk="0">0</button>'
+        + '<button class="key alt" type="button" data-pk="back" aria-label="Effacer le dernier chiffre">⌫</button></div>'
+        + '<button class="link" type="button" data-p-forgot>Code oublié ?</button>'
+        + (v.forgot ? `<div class="confirm"><p>Sans le code, ce profil ne peut pas s'ouvrir. Tu peux le supprimer avec ses ${n} opération(s). C'est définitif.</p>`
+          + `<div class="row"><button class="btn-sm btn-solid-danger" type="button" data-p-del="${esc(p.id)}">Supprimer ce profil</button><button class="btn-sm btn-ghost" type="button" data-p-forgot-no>Annuler</button></div></div>` : '');
+    } else if (v.mode === 'menu'){
+      if (!cur){ showProfiles({mode: 'choose'}); return; }
+      body.innerHTML = `<div class="phead">${avatar(cur, 'lg')}<h1>${esc(cur.name)}</h1><p class="plead">${cur.pin ? 'Profil protégé par un code.' : 'Profil sans code.'}</p></div>`
+        + '<div class="plist"><button class="btn btn-ghost" type="button" data-p-choose>Changer de profil</button>'
+        + '<button class="btn btn-ghost" type="button" data-p-edit>Modifier mon profil</button>'
+        + (cur.pin ? '<button class="btn btn-ghost" type="button" data-p-lock>Verrouiller</button>' : '')
+        + '<button class="btn btn-ghost danger-text" type="button" data-p-delask>Supprimer mon profil</button></div>'
+        + (v.del ? `<div class="confirm"><p>Supprimer le profil de ${esc(cur.name)} et ses ${txs.length} opération(s) ? C'est définitif.</p>`
+          + `<div class="row"><button class="btn-sm btn-solid-danger" type="button" data-p-del="${esc(cur.id)}">Oui, supprimer</button><button class="btn-sm btn-ghost" type="button" data-p-delno>Annuler</button></div></div>` : '')
+        + '<button class="btn btn-accent" type="button" data-p-back>Retour</button>';
+    }
+  }
+
+  function pinPress(k){
+    const v = pView;
+    if (!v || v.mode !== 'pin') return;
+    if (k === 'back') pinBuf = pinBuf.slice(0, -1);
+    else if (pinBuf.length < 4) pinBuf += k;
+    v.err = null;
+    if (pinBuf.length === 4){
+      const p = getProfile(v.id);
+      if (p && pinHash(pinBuf, p.id) === p.pin){ pinBuf = ''; openProfile(p.id); return; }
+      pinBuf = '';
+      v.err = 'Code incorrect. Réessaie.';
+      renderProfiles();
+      const d = $('#pinDots'); if (d) d.classList.add('shake');
+      return;
+    }
+    renderProfiles();
+  }
+
+  function submitProfile(e){
+    e.preventDefault();
+    const v = pView;
+    const p = v.mode === 'edit' ? getProfile(v.id) : null;
+    const name = $('#pName').value.trim();
+    const pin = $('#pPin').value.trim(), pin2 = $('#pPin2').value.trim();
+    const noPin = !!($('#pNoPin') && $('#pNoPin').checked);
+    let err = null;
+    if (!p && profiles.length >= MAX_PROFILES) err = MAX_PROFILES + ' profils maximum sur ce téléphone.';
+    else if (!name) err = 'Écris ton prénom.';
+    else if (profiles.some(x => (!p || x.id !== p.id) && x.name.toLowerCase() === name.toLowerCase())) err = 'Ce prénom est déjà pris par un autre profil.';
+    else if (!noPin && (pin || pin2)){
+      if (!/^\d{4}$/.test(pin)) err = 'Le code doit faire 4 chiffres.';
+      else if (pin !== pin2) err = 'Les deux codes ne sont pas identiques.';
+    }
+    if (err){ const el = $('#pErr'); el.textContent = err; el.hidden = false; return; }
+    if (p){
+      p.name = name; p.color = v.color;
+      if (noPin) p.pin = null; else if (pin) p.pin = pinHash(pin, p.id);
+      saveProfiles();
+      updateProfileChip();
+      hideProfiles();
+      showToast('Profil mis à jour.');
+    } else {
+      const id = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      const first = !profiles.length;
+      profiles.push({id, name, color: v.color, pin: pin ? pinHash(pin, id) : null});
+      if (first) migrateLegacy(id);
+      saveProfiles();
+      openProfile(id);
+      showToast(`Profil de ${name} créé.`);
+    }
   }
 
   /* ---------- Actions ---------- */
@@ -594,10 +840,11 @@ button:disabled{opacity:.42;cursor:default}
   /* ---------- Catégories ---------- */
   function saveCats(prev, okMsg){
     const list = cats.map(c => ({id: c.id, name: c.name}));
+    const st = store;
     renderAll();
     catQueue = catQueue
-      .then(() => withRetry(() => store.putCats(list)))
-      .then(() => { if (okMsg) showToast(okMsg); }, e => { cats = prev; renderAll(); showToast(errMsg(e)); });
+      .then(() => withRetry(() => st.putCats(list)))
+      .then(() => { if (okMsg) showToast(okMsg); }, e => { if (store === st){ cats = prev; renderAll(); } showToast(errMsg(e)); });
   }
   function validateName(name, exceptId){
     const n = (name || '').trim();
@@ -1083,6 +1330,34 @@ button:disabled{opacity:.42;cursor:default}
     if (op){ openTx = openTx === op.dataset.open ? null : op.dataset.open; renderHistory(); }
   });
 
+  $('#profileBtn').addEventListener('click', () => showProfiles({mode: 'menu'}));
+  $('#profileScreen').addEventListener('submit', e => { if (e.target.id === 'pForm') submitProfile(e); });
+  $('#profileScreen').addEventListener('click', e => {
+    const t = e.target.closest('button');
+    if (!t || !pView) return;
+    const d = t.dataset;
+    if (d.pOpen){
+      const p = getProfile(d.pOpen);
+      if (p && p.pin) showProfiles({mode: 'pin', id: p.id}); else if (p) openProfile(p.id);
+    }
+    else if ('pNew' in d) showProfiles({mode: 'create'});
+    else if ('pBack' in d){ if (currentProfile) hideProfiles(); }
+    else if ('pCancel' in d) showProfiles({mode: pView.mode === 'edit' ? 'menu' : 'choose'});
+    else if (d.sw){
+      pView.color = d.sw;
+      document.querySelectorAll('#profileScreen .sw').forEach(s => s.setAttribute('aria-checked', String(s.dataset.sw === d.sw)));
+    }
+    else if (d.pk) pinPress(d.pk);
+    else if ('pChoose' in d) showProfiles({mode: 'choose'});
+    else if ('pForgot' in d){ pView.forgot = true; renderProfiles(); }
+    else if ('pForgotNo' in d){ pView.forgot = false; renderProfiles(); }
+    else if (d.pDel) deleteProfile(d.pDel);
+    else if ('pEdit' in d) showProfiles({mode: 'edit', id: currentProfile});
+    else if ('pLock' in d){ const id = currentProfile; closeProfileData(); showProfiles({mode: 'pin', id}); }
+    else if ('pDelask' in d){ pView.del = true; renderProfiles(); }
+    else if ('pDelno' in d){ pView.del = false; renderProfiles(); }
+  });
+
   $('#resetBtn').addEventListener('click', () => { $('#resetRow').hidden = true; $('#resetConfirm').hidden = false; });
   $('#resetNo').addEventListener('click', () => { $('#resetRow').hidden = false; $('#resetConfirm').hidden = true; });
   $('#resetYes').addEventListener('click', () => { $('#resetRow').hidden = false; $('#resetConfirm').hidden = true; resetAll(); });
@@ -1090,6 +1365,13 @@ button:disabled{opacity:.42;cursor:default}
   document.addEventListener('click', e => { if (!e.target.closest('#chart')) hideTip(); });
 
   document.addEventListener('keydown', e => {
+    if (!$('#profileScreen').hidden){
+      if (pView && pView.mode === 'pin' && !e.ctrlKey && !e.metaKey && !e.altKey){
+        if (/^[0-9]$/.test(e.key)){ pinPress(e.key); e.preventDefault(); }
+        else if (e.key === 'Backspace'){ pinPress('back'); e.preventDefault(); }
+      }
+      return;
+    }
     if ($('#view-saisie').hidden || e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
     if (/^[0-9]$/.test(e.key)){ press(e.key); e.preventDefault(); }
