@@ -88,6 +88,16 @@ button:disabled{opacity:.42;cursor:default}
 .btn-ghost{background:var(--sunk);color:var(--ink)}
 .btn-accent{background:var(--accent);color:var(--surface);height:58px;font-size:18px}
 .hint{font-size:13px;color:var(--muted);text-align:center;margin:0}
+.mode{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--sunk);border-radius:14px;padding:4px}
+.mode button{height:44px;border-radius:10px;font-weight:800;font-size:15px;color:var(--muted);touch-action:manipulation}
+.mode button[aria-checked="true"]{background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.mode button[data-mode="expense"][aria-checked="true"]{color:var(--out)}
+.mode button[data-mode="add"][aria-checked="true"]{color:var(--in)}
+.mode button[data-mode="remove"][aria-checked="true"]{color:var(--ink)}
+.mode-hint{font-size:13px;color:var(--muted);text-align:right}
+.btn-in-solid{background:var(--in);color:var(--surface);height:58px;font-size:18px}
+.btn-dark{background:var(--ink);color:var(--bg);height:58px;font-size:18px}
+.hint-line{font-size:13px;color:var(--muted);margin:0}
 .cat-pick{display:grid;gap:6px;min-width:0}
 .cat-row{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px}
 .cat-row::-webkit-scrollbar{display:none}
@@ -192,7 +202,7 @@ button:disabled{opacity:.42;cursor:default}
 
 /* Tabs */
 .tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(8px,env(safe-area-inset-right,0px))}
-.tabs-in{max-width:480px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr)}
+.tabs-in{max-width:480px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
 .tab{height:62px;display:grid;place-items:center;align-content:center;gap:3px;font-size:12px;font-weight:700;color:var(--muted)}
 .tab svg{width:22px;height:22px}
 .tab[aria-current="page"]{color:var(--accent)}
@@ -233,6 +243,20 @@ button:disabled{opacity:.42;cursor:default}
 .plist .btn{justify-content:flex-start;padding:0 16px}
 .danger-text{color:var(--out)}
 
+/* Petits écrans : la saisie tient sans défiler */
+@media (max-height: 760px){
+  .app{padding-block:8px calc(84px + env(safe-area-inset-bottom,0px));gap:8px}
+  .view{gap:8px}
+  .hero{padding:12px 16px 10px}
+  .balance{font-size:clamp(30px,9.5vw,40px)}
+  .entry{padding:8px 12px}
+  .amount{font-size:clamp(30px,9vw,38px)}
+  .key{height:44px}
+  .keypad{gap:6px}
+  .mode button{height:40px}
+  .actions{gap:6px}
+}
+
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -253,6 +277,12 @@ button:disabled{opacity:.42;cursor:default}
         <div class="hero-foot"><span id="balanceEur">≈ 0,00 €</span><span id="spentToday">Dépensé aujourd'hui : 0 XPF</span></div>
       </div>
 
+      <div class="mode" id="modeSeg" role="radiogroup" aria-label="Type d'opération">
+        <button type="button" role="radio" data-mode="expense" aria-checked="true">− Dépense</button>
+        <button type="button" role="radio" data-mode="add" aria-checked="false">+ Ajout</button>
+        <button type="button" role="radio" data-mode="remove" aria-checked="false">Retrait</button>
+      </div>
+
       <div class="entry">
         <div class="entry-top">
           <span class="label" id="entryLabel">Prix de l'achat</span>
@@ -260,6 +290,7 @@ button:disabled{opacity:.42;cursor:default}
         </div>
         <div class="amount-row"><output class="amount num is-empty" id="amount" aria-live="polite">0</output><span class="amount-unit">XPF</span></div>
         <div class="preview" id="preview">&nbsp;</div>
+        <div class="mode-hint" id="modeHint" hidden>Un retrait baisse ton solde sans compter comme une dépense.</div>
       </div>
 
       <div class="keypad" id="keypad">
@@ -278,15 +309,11 @@ button:disabled{opacity:.42;cursor:default}
       </div>
 
       <div class="actions" id="actions">
-        <div class="cat-pick">
+        <div class="cat-pick" id="catPick">
           <span class="label">Catégorie · facultatif</span>
           <div class="cat-row" id="catRow" role="group" aria-label="Catégorie de la dépense"></div>
         </div>
-        <button class="btn btn-out" id="btnExpense" type="button">− Enregistrer la dépense</button>
-        <div class="row">
-          <button class="btn btn-in" id="btnAdd" type="button">+ Ajouter</button>
-          <button class="btn btn-ghost" id="btnRemove" type="button">− Retirer</button>
-        </div>
+        <button class="btn btn-out" id="btnMain" type="button">− Enregistrer la dépense</button>
       </div>
       <div class="actions" id="actionsFirst" hidden>
         <button class="btn btn-accent" id="btnCapital" type="button">Définir mon capital</button>
@@ -332,7 +359,22 @@ button:disabled{opacity:.42;cursor:default}
           <dt class="total">Solde</dt><dd class="total" id="lgBal">0 XPF</dd>
         </dl>
       </div>
+    </section>
 
+    <!-- HISTORIQUE -->
+    <section class="view" id="view-historique" aria-label="Historique" hidden>
+      <div class="chips" role="group" aria-label="Filtrer">
+        <button class="chip" type="button" data-f="all" aria-pressed="true">Tout</button>
+        <button class="chip" type="button" data-f="expense" aria-pressed="false">Dépenses</button>
+        <button class="chip" type="button" data-f="money" aria-pressed="false">Ajouts et retraits</button>
+      </div>
+      <select class="select" id="histCat" aria-label="Filtrer par catégorie" hidden></select>
+      <p class="hint-line" id="histHint" hidden>Touche une opération pour changer sa catégorie ou la supprimer.</p>
+      <ul class="hist" id="hist"></ul>
+    </section>
+
+    <!-- REGLAGES -->
+    <section class="view" id="view-reglages" aria-label="Réglages" hidden>
       <div class="card" id="profCard" hidden>
         <div class="card-head"><h2>Profils</h2><span class="sub" id="profCount"></span></div>
         <p class="meter-text" id="profText"></p>
@@ -365,17 +407,11 @@ button:disabled{opacity:.42;cursor:default}
           </div>
         </div>
       </div>
-    </section>
 
-    <!-- HISTORIQUE -->
-    <section class="view" id="view-historique" aria-label="Historique" hidden>
-      <div class="chips" role="group" aria-label="Filtrer">
-        <button class="chip" type="button" data-f="all" aria-pressed="true">Tout</button>
-        <button class="chip" type="button" data-f="expense" aria-pressed="false">Dépenses</button>
-        <button class="chip" type="button" data-f="money" aria-pressed="false">Ajouts et retraits</button>
+      <div class="card">
+        <h2>À propos</h2>
+        <p class="meter-text" id="aboutText">Poche XPF.</p>
       </div>
-      <select class="select" id="histCat" aria-label="Filtrer par catégorie" hidden></select>
-      <ul class="hist" id="hist"></ul>
     </section>
   </main>
 </div>
@@ -385,6 +421,7 @@ button:disabled{opacity:.42;cursor:default}
     <button class="tab" type="button" data-v="saisie" aria-current="page"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="6" cy="6" r="2"/><circle cx="12" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="18" cy="12" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="12" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg>Saisie</button>
     <button class="tab" type="button" data-v="tableau"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="12" width="4" height="9" rx="1.5"/><rect x="10" y="4" width="4" height="17" rx="1.5"/><rect x="17" y="9" width="4" height="12" rx="1.5"/></svg>Tableau</button>
     <button class="tab" type="button" data-v="historique"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r="1" fill="currentColor"/><circle cx="3.5" cy="12" r="1" fill="currentColor"/><circle cx="3.5" cy="18" r="1" fill="currentColor"/></svg>Historique</button>
+    <button class="tab" type="button" data-v="reglages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h9M19 7h1M4 17h3M13 17h7"/><circle cx="16" cy="7" r="2.5"/><circle cx="10" cy="17" r="2.5"/></svg>Réglages</button>
   </div>
 </nav>
 
@@ -433,6 +470,7 @@ button:disabled{opacity:.42;cursor:default}
   let currentProfile = null;
   let pView = null;        // écran profils affiché : {mode: choose|create|edit|pin|menu, ...}
   let pinBuf = '';
+  let mode = 'expense';    // saisie : expense | add | remove
   let txs = [];            // triées de la plus récente à la plus ancienne
   let amountStr = '';
   let store = null;
@@ -542,6 +580,13 @@ button:disabled{opacity:.42;cursor:default}
   }
   function showBanner(msg){ const b = $('#banner'); b.textContent = msg; b.hidden = false; }
   function hideBanner(){ $('#banner').hidden = true; }
+  function setAbout(where){
+    const v = typeof window.POCHE_VERSION === 'string' && window.POCHE_VERSION ? ' ' + window.POCHE_VERSION : '';
+    const data = where === 'db' ? 'Tes données sont enregistrées dans ton compte claude.ai.'
+      : IS_APP ? "Tes données sont enregistrées sur ce téléphone : désinstaller l'app les efface."
+      : 'Tes données restent dans ce navigateur, sur cet appareil.';
+    $('#aboutText').textContent = `Poche XPF${v}. ${data} Taux fixe : 1 000 XPF = 8,38 €.`;
+  }
 
   async function init(){
     renderAll();
@@ -554,6 +599,7 @@ button:disabled{opacity:.42;cursor:default}
 
     const col = db.collection('data/users/' + uid);
     store = dbStore(col);
+    setAbout('db');
     col.doc('categories').onSnapshot(snap => {
       const l = snap.exists ? sanitizeCats((snap.data() || {}).list) : null;
       cats = l || DEFAULT_CATS.map(c => Object.assign({}, c));
@@ -580,6 +626,7 @@ button:disabled{opacity:.42;cursor:default}
 
   function useLocal(){
     $('#sync').hidden = true;
+    setAbout('local');
     if (!IS_APP) showBanner("Tu n'es pas connecté à claude.ai : tes données restent sur cet appareil seulement.");
     loadProfiles();
     const last = getProfile(lastProfile);
@@ -831,6 +878,7 @@ button:disabled{opacity:.42;cursor:default}
     txs = [tx].concat(txs);
     amountStr = '';
     selCat = null;
+    if (kind !== 'expense') mode = 'expense';
     renderAll();
     showToast(CONFIRM[kind](amount, totals().balance, catName(tx.cat)), tx.id);
     try { await withRetry(() => store.put(tx)); }
@@ -983,8 +1031,7 @@ button:disabled{opacity:.42;cursor:default}
     row.innerHTML = cats.map(c => `<button class="cchip" type="button" data-cat="${esc(c.id)}" aria-pressed="${selCat === c.id}">${esc(c.name)}</button>`).join('')
       + `<button class="cchip manage" type="button" data-manage>${cats.length ? 'Modifier' : '+ Créer une catégorie'}</button>`;
     row.scrollLeft = sl;
-    const n = catName(selCat);
-    $('#btnExpense').textContent = n ? `− Dépense · ${n}` : '− Enregistrer la dépense';
+    renderMainBtn();
   }
 
   function periodStart(p){
@@ -1060,22 +1107,45 @@ button:disabled{opacity:.42;cursor:default}
     amt.textContent = fmt(a);
     amt.classList.toggle('is-empty', !a);
     const first = loaded && txs.length === 0;
+    if (first) mode = 'expense';
     $('#actions').hidden = first;
     $('#actionsFirst').hidden = !first;
-    $('#entryLabel').textContent = first ? 'Mon argent de poche' : "Montant";
+    $('#modeSeg').hidden = first;
+    document.querySelectorAll('#modeSeg [data-mode]').forEach(x => x.setAttribute('aria-checked', String(x.dataset.mode === mode)));
+    $('#catPick').hidden = mode !== 'expense';
+    $('#modeHint').hidden = first || mode !== 'remove';
+    $('#entryLabel').textContent = first ? 'Mon argent de poche'
+      : mode === 'add' ? 'Montant à ajouter' : mode === 'remove' ? 'Montant à retirer' : "Prix de l'achat";
     const p = $('#preview');
     p.className = 'preview';
     const bal = totals().balance;
     if (!loaded) p.textContent = 'Chargement de ton solde…';
     else if (first) p.textContent = a ? `Ton capital de départ sera de ${money(a)}.` : 'Tape ton argent de poche avec le clavier.';
-    else if (!a) p.textContent = "Tape le prix de ton achat.";
+    else if (!a) p.textContent = mode === 'add' ? 'Tape le montant que tu ajoutes.' : mode === 'remove' ? 'Tape le montant que tu retires.' : 'Tape le prix de ton achat.';
     else {
-      const after = bal - a;
+      const after = mode === 'add' ? bal + a : bal - a;
       p.classList.add(after < 0 ? 'neg' : 'ok');
-      p.textContent = after < 0 ? `Après cet achat tu serais à ${money(after)}.` : `Après cet achat il te restera ${money(after)}.`;
+      if (mode === 'add') p.textContent = `Après cet ajout tu auras ${money(after)}.`;
+      else {
+        const what = mode === 'remove' ? 'ce retrait' : 'cet achat';
+        p.textContent = after < 0 ? `Après ${what} tu serais à ${money(after)}.` : `Après ${what} il te restera ${money(after)}.`;
+      }
     }
-    const dis = !loaded || !a;
-    ['#btnExpense', '#btnAdd', '#btnRemove', '#btnCapital'].forEach(s => { $(s).disabled = dis; });
+    $('#btnCapital').disabled = !loaded || !a;
+    renderMainBtn();
+  }
+
+  function renderMainBtn(){
+    const a = parseInt(amountStr || '0', 10);
+    const b = $('#btnMain');
+    if (mode === 'add'){ b.className = 'btn btn-in-solid'; b.textContent = a ? `+ Ajouter ${money(a)}` : '+ Ajouter'; }
+    else if (mode === 'remove'){ b.className = 'btn btn-dark'; b.textContent = a ? `− Retirer ${money(a)}` : '− Retirer'; }
+    else {
+      const n = catName(selCat);
+      b.className = 'btn btn-out';
+      b.textContent = n ? `− Dépense · ${n}` : a ? `− Dépense de ${money(a)}` : '− Enregistrer la dépense';
+    }
+    b.disabled = !loaded || !a;
   }
 
   function renderDashboard(){
@@ -1200,6 +1270,7 @@ button:disabled{opacity:.42;cursor:default}
 
   function renderHistory(){
     const list = $('#hist');
+    $('#histHint').hidden = !loaded || !txs.length;
     if (!loaded){ list.innerHTML = '<li class="empty">Chargement…</li>'; return; }
     const asc = txs.slice().reverse();
     const after = new Map();
@@ -1258,7 +1329,7 @@ button:disabled{opacity:.42;cursor:default}
   }
 
   /* ---------- Navigation ---------- */
-  const VIEWS = ['saisie', 'tableau', 'historique'];
+  const VIEWS = ['saisie', 'tableau', 'historique', 'reglages'];
   const fromHash = () => { const h = (location.hash || '').slice(1); return VIEWS.includes(h) ? h : 'saisie'; };
   function showView(v){
     VIEWS.forEach(n => { $('#view-' + n).hidden = n !== v; });
@@ -1277,9 +1348,15 @@ button:disabled{opacity:.42;cursor:default}
   /* ---------- Événements ---------- */
   $('#keypad').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (b) press(b.dataset.k); });
   $('#clearBtn').addEventListener('click', () => press('clear'));
-  $('#btnExpense').addEventListener('click', () => record('expense'));
-  $('#btnAdd').addEventListener('click', () => record('add'));
-  $('#btnRemove').addEventListener('click', () => record('remove'));
+  $('#btnMain').addEventListener('click', () => record(mode));
+  $('#modeSeg').addEventListener('click', e => {
+    const b = e.target.closest('[data-mode]');
+    if (!b) return;
+    mode = b.dataset.mode;
+    if (mode !== 'expense') selCat = null;
+    renderEntry();
+    renderCatRow();
+  });
   $('#btnCapital').addEventListener('click', () => record('capital'));
   document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => go(b.dataset.v)));
 
@@ -1297,7 +1374,7 @@ button:disabled{opacity:.42;cursor:default}
 
   $('#catRow').addEventListener('click', e => {
     if (e.target.closest('[data-manage]')){
-      go('tableau');
+      go('reglages');
       requestAnimationFrame(() => $('#catCard').scrollIntoView({block: 'start'}));
       return;
     }
@@ -1420,7 +1497,7 @@ button:disabled{opacity:.42;cursor:default}
     else if (e.key === 'Backspace'){ press('back'); e.preventDefault(); }
     else if (e.key === 'Escape'){ press('clear'); }
     else if (e.key === 'Enter' && !(e.target.closest && e.target.closest('button'))){
-      record(loaded && txs.length === 0 ? 'capital' : 'expense'); e.preventDefault();
+      record(loaded && txs.length === 0 ? 'capital' : mode); e.preventDefault();
     }
   });
 

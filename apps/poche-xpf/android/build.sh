@@ -8,15 +8,15 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 : "${ANDROID_HOME:?set ANDROID_HOME to your Android SDK}"
-VERSION_CODE="${VERSION_CODE:-5}"
-VERSION_NAME="${VERSION_NAME:-1.4}"
+VERSION_CODE="${VERSION_CODE:-6}"
+VERSION_NAME="${VERSION_NAME:-1.5}"
 BT="$ANDROID_HOME/build-tools/34.0.0"
 JAR="$ANDROID_HOME/platforms/android-34/android.jar"
 KS="${POCHE_KEYSTORE:-$PWD/poche-xpf.keystore}"
 KS_PASS="${POCHE_KEYSTORE_PASS:-pochexpf}"
 
 rm -rf build && mkdir -p build/gen build/classes build/dex dist
-python3 make_assets.py build/assets
+POCHE_VERSION="$VERSION_NAME" python3 make_assets.py build/assets
 
 "$BT/aapt2" compile --dir res -o build/res.zip
 "$BT/aapt2" link -o build/base.apk -I "$JAR" --manifest AndroidManifest.xml \

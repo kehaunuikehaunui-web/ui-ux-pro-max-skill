@@ -5,7 +5,7 @@
 - sets window.POCHE_APP so the page stores data on the phone without the claude.ai banner
 - swaps Google Fonts for the bundled copies in fonts/ (works offline)
 """
-import re, shutil, sys
+import json, os, re, shutil, sys
 from pathlib import Path
 
 here = Path(__file__).resolve().parent
@@ -23,7 +23,8 @@ head = ('<!doctype html><html lang="fr"><head><meta charset="utf-8">'
         '<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);'
         'padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui}'
         'img{max-width:100%}[hidden]{display:none!important}</style>'
-        '<script>window.POCHE_APP=true</script></head><body>')
+        '<script>window.POCHE_APP=true;window.POCHE_VERSION='
+        + json.dumps(os.environ.get("POCHE_VERSION", "")) + '</script></head><body>')
 
 if out.exists():
     shutil.rmtree(out)
