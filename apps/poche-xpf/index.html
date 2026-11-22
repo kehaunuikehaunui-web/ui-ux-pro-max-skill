@@ -360,6 +360,7 @@ button:disabled{opacity:.42;cursor:default}
   const TIMEF = new Intl.DateTimeFormat('fr-FR', {hour: '2-digit', minute: '2-digit'});
   const XPF_PER_EUR = 119.331742; // parité fixe 1 000 XPF = 8,38 €
   const MAX_DIGITS = 9;
+  const IS_APP = window.POCHE_APP === true; // version Android (APK)
   const KINDS = {
     capital: {label: 'Capital de départ', sign: 1, ico: '+'},
     add:     {label: 'Ajout',             sign: 1, ico: '+'},
@@ -484,7 +485,7 @@ button:disabled{opacity:.42;cursor:default}
   function setSync(state){
     const el = $('#sync');
     el.dataset.state = state;
-    el.textContent = state === 'db' ? 'Sauvegardé' : state === 'local' ? 'Sur cet appareil' : 'Chargement…';
+    el.textContent = state === 'db' ? 'Sauvegardé' : state === 'local' ? (IS_APP ? 'Sur ce téléphone' : 'Sur cet appareil') : 'Chargement…';
   }
   function showBanner(msg){ const b = $('#banner'); b.textContent = msg; b.hidden = false; }
   function hideBanner(){ $('#banner').hidden = true; }
@@ -528,7 +529,7 @@ button:disabled{opacity:.42;cursor:default}
     store = localStore();
     loaded = true;
     setSync('local');
-    showBanner("Tu n'es pas connecté à claude.ai : tes données restent sur cet appareil seulement.");
+    if (!IS_APP) showBanner("Tu n'es pas connecté à claude.ai : tes données restent sur cet appareil seulement.");
     renderAll();
   }
 
