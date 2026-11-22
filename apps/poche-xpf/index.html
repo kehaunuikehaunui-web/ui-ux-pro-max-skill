@@ -596,7 +596,8 @@ button:disabled{opacity:.42;cursor:default}
       if (o && Array.isArray(o.list)){
         profiles = o.list
           .filter(p => p && typeof p.id === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(p.id) && typeof p.name === 'string' && p.name.trim())
-          .map(p => ({id: p.id, name: p.name.trim().slice(0, 20), color: PCOLORS.includes(p.color) ? p.color : PCOLORS[0], pin: typeof p.pin === 'string' ? p.pin : null}));
+          .map(p => ({id: p.id, name: p.name.trim().slice(0, 20), color: PCOLORS.includes(p.color) ? p.color : PCOLORS[0], pin: typeof p.pin === 'string' ? p.pin : null,
+            pinLen: Number.isInteger(p.pinLen) && p.pinLen >= 4 && p.pinLen <= 8 ? p.pinLen : 4}));
         lastProfile = typeof o.last === 'string' ? o.last : null;
       }
     } catch (e) {}
@@ -724,8 +725,8 @@ button:disabled{opacity:.42;cursor:default}
         + '<div class="pfield"><span class="plabel">Couleur</span><div class="swatches" role="radiogroup" aria-label="Couleur du profil">'
         + PCOLORS.map((c, i) => `<button type="button" class="sw" role="radio" aria-checked="${c === v.color}" aria-label="Couleur ${i + 1}" data-sw="${c}" style="background:${c}"></button>`).join('')
         + '</div></div>'
-        + `<label for="pPin">${p && p.pin ? "Nouveau code (laisse vide pour garder l'actuel)" : 'Code à 4 chiffres (facultatif)'}<input class="field" id="pPin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="new-password"></label>`
-        + '<label for="pPin2">Confirme le code<input class="field" id="pPin2" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="new-password"></label>'
+        + `<label for="pPin">${p && p.pin ? "Nouveau code, 4 à 8 chiffres (laisse vide pour garder l'actuel)" : 'Code de 4 à 8 chiffres (facultatif)'}<input class="field" id="pPin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="new-password"></label>`
+        + '<label for="pPin2">Confirme le code<input class="field" id="pPin2" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="new-password"></label>'
         + (p && p.pin ? '<label class="check" for="pNoPin"><input type="checkbox" id="pNoPin"> Retirer mon code</label>' : '')
         + '<p class="form-err" id="pErr" role="alert" hidden></p>'
         + `<div class="pbtns"><button class="btn btn-accent" type="submit">${p ? 'Enregistrer' : 'Créer le profil'}</button>`
@@ -736,7 +737,7 @@ button:disabled{opacity:.42;cursor:default}
       if (!p){ showProfiles({mode: 'choose'}); return; }
       const n = v.forgot ? txCountFor(p.id) : 0;
       body.innerHTML = `<div class="phead">${avatar(p, 'lg')}<h1>${esc(p.name)}</h1><p class="plead">Entre ton code pour ouvrir ton profil.</p></div>`
-        + `<div class="pin-dots" id="pinDots">${[0, 1, 2, 3].map(i => `<i${i < pinBuf.length ? ' class="on"' : ''}></i>`).join('')}</div>`
+        + `<div class="pin-dots" id="pinDots">${Array.from({length: p.pinLen || 4}, (_, i) => `<i${i < pinBuf.length ? ' class="on"' : ''}></i>`).join('')}</div>`
         + `<p class="form-err" id="pErr" role="alert"${v.err ? '' : ' hidden'}>${esc(v.err || '')}</p>`
         + '<div class="keypad">'
         + ['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(k => `<button class="key" type="button" data-pk="${k}">${k}</button>`).join('')
@@ -763,11 +764,12 @@ button:disabled{opacity:.42;cursor:default}
   function pinPress(k){
     const v = pView;
     if (!v || v.mode !== 'pin') return;
+    const p = getProfile(v.id);
+    const len = (p && p.pinLen) || 4;
     if (k === 'back') pinBuf = pinBuf.slice(0, -1);
-    else if (pinBuf.length < 4) pinBuf += k;
+    else if (pinBuf.length < len) pinBuf += k;
     v.err = null;
-    if (pinBuf.length === 4){
-      const p = getProfile(v.id);
+    if (pinBuf.length === len){
       if (p && pinHash(pinBuf, p.id) === p.pin){ pinBuf = ''; openProfile(p.id); return; }
       pinBuf = '';
       v.err = 'Code incorrect. Réessaie.';
@@ -790,13 +792,14 @@ button:disabled{opacity:.42;cursor:default}
     else if (!name) err = 'Écris ton prénom.';
     else if (profiles.some(x => (!p || x.id !== p.id) && x.name.toLowerCase() === name.toLowerCase())) err = 'Ce prénom est déjà pris par un autre profil.';
     else if (!noPin && (pin || pin2)){
-      if (!/^\d{4}$/.test(pin)) err = 'Le code doit faire 4 chiffres.';
+      if (!/^\d{4,8}$/.test(pin)) err = 'Le code doit faire entre 4 et 8 chiffres.';
       else if (pin !== pin2) err = 'Les deux codes ne sont pas identiques.';
     }
     if (err){ const el = $('#pErr'); el.textContent = err; el.hidden = false; return; }
     if (p){
       p.name = name; p.color = v.color;
-      if (noPin) p.pin = null; else if (pin) p.pin = pinHash(pin, p.id);
+      if (noPin){ p.pin = null; p.pinLen = 4; }
+      else if (pin){ p.pin = pinHash(pin, p.id); p.pinLen = pin.length; }
       saveProfiles();
       updateProfileChip();
       hideProfiles();
@@ -804,7 +807,7 @@ button:disabled{opacity:.42;cursor:default}
     } else {
       const id = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
       const first = !profiles.length;
-      profiles.push({id, name, color: v.color, pin: pin ? pinHash(pin, id) : null});
+      profiles.push({id, name, color: v.color, pin: pin ? pinHash(pin, id) : null, pinLen: pin ? pin.length : 4});
       if (first) migrateLegacy(id);
       saveProfiles();
       openProfile(id);
