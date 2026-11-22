@@ -333,6 +333,15 @@ button:disabled{opacity:.42;cursor:default}
         </dl>
       </div>
 
+      <div class="card" id="profCard" hidden>
+        <div class="card-head"><h2>Profils</h2><span class="sub" id="profCount"></span></div>
+        <p class="meter-text" id="profText"></p>
+        <div class="pbtns">
+          <button class="btn-sm btn-ghost" id="profAdd" type="button">+ Ajouter un profil</button>
+          <button class="btn-sm btn-ghost" id="profManage" type="button">Gérer les profils</button>
+        </div>
+      </div>
+
       <div class="card" id="catCard">
         <div class="card-head"><h2>Mes catégories</h2><span class="sub" id="catCount"></span></div>
         <ul class="cat-list" id="catList"></ul>
@@ -616,7 +625,18 @@ button:disabled{opacity:.42;cursor:default}
     try { const a = JSON.parse(localStorage.getItem('poche-xpf-v1:' + pid) || '[]'); return Array.isArray(a) ? a.length : 0; } catch (e) { return 0; }
   }
 
+  function renderProfCard(){
+    const p = getProfile(currentProfile);
+    $('#profCard').hidden = !p;
+    if (!p) return;
+    const n = profiles.length;
+    $('#profCount').textContent = n + ' / ' + MAX_PROFILES;
+    $('#profText').textContent = `Tu utilises le profil de ${p.name}. ${n > 1 ? n + ' profils sont' : 'Un seul profil est'} enregistré${n > 1 ? 's' : ''} sur ce téléphone.`;
+    $('#profAdd').disabled = n >= MAX_PROFILES;
+  }
+
   function updateProfileChip(){
+    renderProfCard();
     const p = getProfile(currentProfile), b = $('#profileBtn');
     b.hidden = !p;
     if (!p) return;
@@ -653,8 +673,9 @@ button:disabled{opacity:.42;cursor:default}
     profiles = profiles.filter(x => x.id !== id);
     if (lastProfile === id) lastProfile = null;
     saveProfiles();
-    if (currentProfile === id) closeProfileData();
-    showProfiles({mode: profiles.length ? 'choose' : 'create'});
+    const keepManage = !!(pView && pView.mode === 'choose' && pView.manage);
+    if (currentProfile === id) closeProfileData(); else updateProfileChip();
+    showProfiles(profiles.length ? {mode: 'choose', manage: keepManage} : {mode: 'create'});
     showToast(`Profil de ${p.name} supprimé.`);
   }
 
@@ -672,13 +693,23 @@ button:disabled{opacity:.42;cursor:default}
     const body = $('#pBody');
     const cur = getProfile(currentProfile);
     if (v.mode === 'choose'){
-      body.innerHTML = '<div class="brand">Poche <span>XPF</span></div><h1>Qui utilise Poche XPF ?</h1>'
-        + '<p class="plead">Chaque profil a son propre solde, ses dépenses et ses catégories.</p>'
+      const del = v.delId ? getProfile(v.delId) : null;
+      const delCount = del ? (del.id === currentProfile ? txs.length : txCountFor(del.id)) : 0;
+      body.innerHTML = '<div class="brand">Poche <span>XPF</span></div>'
+        + `<h1>${v.manage ? 'Gérer les profils' : 'Qui utilise Poche XPF ?'}</h1>`
+        + `<p class="plead">${v.manage ? 'Supprime un profil ou ajoutes-en un nouveau.' : 'Chaque profil a son propre solde, ses dépenses et ses catégories.'}</p>`
+        + (del ? `<div class="confirm"><p>Supprimer le profil de ${esc(del.name)}${del.id === currentProfile ? ' (ton profil actuel)' : ''} et ses ${delCount} opération(s) ? C'est définitif.</p>`
+          + `<div class="row"><button class="btn-sm btn-solid-danger" type="button" data-p-del="${esc(del.id)}">Oui, supprimer</button><button class="btn-sm btn-ghost" type="button" data-p-delcancel>Annuler</button></div></div>` : '')
         + '<div class="pgrid">'
-        + profiles.map(p => `<button class="pcard" type="button" data-p-open="${esc(p.id)}">${avatar(p, 'lg')}<b>${esc(p.name)}</b>${p.pin ? '<small>Protégé par un code</small>' : ''}</button>`).join('')
+        + profiles.map(p => v.manage
+          ? `<div class="pcard">${avatar(p, 'lg')}<b>${esc(p.name)}</b><button class="mini danger" type="button" data-p-delpick="${esc(p.id)}" aria-label="Supprimer le profil de ${esc(p.name)}">Supprimer</button></div>`
+          : `<button class="pcard" type="button" data-p-open="${esc(p.id)}">${avatar(p, 'lg')}<b>${esc(p.name)}</b>${p.pin ? '<small>Protégé par un code</small>' : ''}</button>`).join('')
         + (profiles.length < MAX_PROFILES ? '<button class="pcard new" type="button" data-p-new><span class="av lg" aria-hidden="true">+</span><b>Nouveau profil</b></button>' : '')
         + '</div>'
-        + (cur ? '<button class="btn btn-ghost" type="button" data-p-back>Retour à mon profil</button>' : '');
+        + '<div class="plist">'
+        + `<button class="btn btn-ghost" type="button" data-p-manage>${v.manage ? 'Terminé' : 'Gérer les profils'}</button>`
+        + (cur ? '<button class="btn btn-ghost" type="button" data-p-back>Retour à mon profil</button>' : '')
+        + '</div>';
     } else if (v.mode === 'create' || v.mode === 'edit'){
       const p = v.mode === 'edit' ? getProfile(v.id) : null;
       if (!v.color) v.color = p ? p.color : PCOLORS[profiles.length % PCOLORS.length];
@@ -718,6 +749,8 @@ button:disabled{opacity:.42;cursor:default}
       if (!cur){ showProfiles({mode: 'choose'}); return; }
       body.innerHTML = `<div class="phead">${avatar(cur, 'lg')}<h1>${esc(cur.name)}</h1><p class="plead">${cur.pin ? 'Profil protégé par un code.' : 'Profil sans code.'}</p></div>`
         + '<div class="plist"><button class="btn btn-ghost" type="button" data-p-choose>Changer de profil</button>'
+        + (profiles.length < MAX_PROFILES ? '<button class="btn btn-ghost" type="button" data-p-new>+ Ajouter un profil</button>' : '')
+        + '<button class="btn btn-ghost" type="button" data-p-managego>Gérer les profils</button>'
         + '<button class="btn btn-ghost" type="button" data-p-edit>Modifier mon profil</button>'
         + (cur.pin ? '<button class="btn btn-ghost" type="button" data-p-lock>Verrouiller</button>' : '')
         + '<button class="btn btn-ghost danger-text" type="button" data-p-delask>Supprimer mon profil</button></div>'
@@ -1331,6 +1364,8 @@ button:disabled{opacity:.42;cursor:default}
   });
 
   $('#profileBtn').addEventListener('click', () => showProfiles({mode: 'menu'}));
+  $('#profAdd').addEventListener('click', () => showProfiles({mode: 'create'}));
+  $('#profManage').addEventListener('click', () => showProfiles({mode: 'choose', manage: true}));
   $('#profileScreen').addEventListener('submit', e => { if (e.target.id === 'pForm') submitProfile(e); });
   $('#profileScreen').addEventListener('click', e => {
     const t = e.target.closest('button');
@@ -1340,6 +1375,10 @@ button:disabled{opacity:.42;cursor:default}
       const p = getProfile(d.pOpen);
       if (p && p.pin) showProfiles({mode: 'pin', id: p.id}); else if (p) openProfile(p.id);
     }
+    else if ('pManage' in d){ pView.manage = !pView.manage; pView.delId = null; renderProfiles(); }
+    else if ('pManagego' in d) showProfiles({mode: 'choose', manage: true});
+    else if (d.pDelpick){ pView.delId = d.pDelpick; renderProfiles(); $('#profileScreen').scrollTop = 0; }
+    else if ('pDelcancel' in d){ pView.delId = null; renderProfiles(); }
     else if ('pNew' in d) showProfiles({mode: 'create'});
     else if ('pBack' in d){ if (currentProfile) hideProfiles(); }
     else if ('pCancel' in d) showProfiles({mode: pView.mode === 'edit' ? 'menu' : 'choose'});
