@@ -98,7 +98,31 @@ data class UserData(
     val imported: List<ImportedTrack> = emptyList(),
     val downloads: List<DownloadEntry> = emptyList(),
     val trash: List<TrashEntry> = emptyList(),
+    /** Derniers titres écoutés (le plus récent en premier), pour l'aléatoire intelligent. */
+    val recent: List<String> = emptyList(),
+    /** Nombre d'écoutes par titre, pour la lecture automatique. */
+    val playCounts: Map<String, Int> = emptyMap(),
+    /** Préréglages d'égaliseur créés par l'utilisateur. */
+    val eqPresets: List<EqPreset> = emptyList(),
+    /** Pochettes personnalisées : clé ([coverKeyTrack], [coverKeyAlbum], [coverKeyPlaylist]) → fichier image. */
+    val covers: Map<String, String> = emptyMap(),
 )
+
+/** Préréglage d'égaliseur personnel (niveaux en millibels, avec les fréquences de l'appareil d'origine). */
+@Serializable
+data class EqPreset(val name: String, val centerHz: List<Int>, val levels: List<Int>)
+
+fun coverKeyTrack(trackId: String) = "track:$trackId"
+fun coverKeyPlaylist(playlistId: String) = "playlist:$playlistId"
+fun coverKeyAlbum(track: Track): String? =
+    if (track.album == Track.UNKNOWN_ALBUM || track.album.isBlank()) null
+    else "album:${normalize(track.artist)}|${normalize(track.album)}"
+
+/** Pochette personnalisée d'un titre (titre d'abord, puis album). */
+fun Map<String, String>.coverFor(track: Track?): String? {
+    if (track == null) return null
+    return this[coverKeyTrack(track.id)] ?: coverKeyAlbum(track)?.let { this[it] }
+}
 
 enum class SortOrder(val label: String) {
     TITLE("Titre"),

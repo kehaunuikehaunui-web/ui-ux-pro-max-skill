@@ -11,6 +11,9 @@ import com.khn.mp3.data.JamendoRepository
 import com.khn.mp3.data.SharedAudioImporter
 import com.khn.mp3.data.TrackDeleter
 import com.khn.mp3.data.TrashRepository
+import com.khn.mp3.data.LyricsRepository
+import com.khn.mp3.data.SnapshotStore
+import com.khn.mp3.playback.SleepTimer
 import com.khn.mp3.data.DownloadRepository
 import com.khn.mp3.data.LibraryRepository
 import com.khn.mp3.data.SettingsRepository
@@ -55,6 +58,9 @@ class AppContainer(app: Application) {
     val sharedImporter = SharedAudioImporter(app)
     val deleter = TrackDeleter(app)
     val trash = TrashRepository(app, userData)
+    val lyrics = LyricsRepository(app)
+    val snapshots = SnapshotStore(app)
+    val sleepTimer = SleepTimer()
     val downloads = DownloadRepository(app, userData)
     val audioEffects = AudioEffects(settings, scope)
     val player = PlayerController(app)

@@ -2,22 +2,28 @@ package com.khn.mp3.ui.screens
 
 import android.net.Uri
 import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -27,21 +33,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Bedtime
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Equalizer
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
+import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Repeat
@@ -49,20 +54,25 @@ import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
+import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -72,26 +82,38 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
+import com.khn.mp3.data.CoverStyle
 import com.khn.mp3.data.Track
+import com.khn.mp3.data.coverFor
 import com.khn.mp3.data.formatDuration
 import com.khn.mp3.playback.PlayerState
-import com.khn.mp3.ui.components.Artwork
+import com.khn.mp3.playback.SleepTimer
+import com.khn.mp3.ui.MainViewModel
+import com.khn.mp3.ui.components.LocalCovers
 import com.khn.mp3.ui.components.NeonSlider
-import com.khn.mp3.ui.components.PlayingBars
+import com.khn.mp3.ui.components.PlayerCover
+import com.khn.mp3.ui.components.TrackArtwork
+import com.khn.mp3.ui.components.artworkModel
+import com.khn.mp3.ui.components.rememberArtworkAccent
 import com.khn.mp3.ui.theme.Khn
 import com.khn.mp3.ui.theme.KhnColors
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
-private fun artworkUriFor(state: PlayerState, track: Track?): Uri? =
-    track?.uri ?: state.currentId?.takeIf { it.startsWith("ext:") }?.let { Uri.parse(it.removePrefix("ext:")) }
+internal fun externalUriFor(state: PlayerState): Uri? =
+    state.currentId?.takeIf { it.startsWith("ext:") }?.let { Uri.parse(it.removePrefix("ext:")) }
 
 /** Mini-lecteur au-dessus de la barre de navigation. */
 @Composable
@@ -114,7 +136,7 @@ fun MiniPlayer(
             .clickable(onClick = onOpen),
     ) {
         Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Artwork(artworkUriFor(state, track), state.currentId.orEmpty(), Modifier.size(46.dp))
+            TrackArtwork(track, Modifier.size(46.dp), fallbackUri = externalUriFor(state), seed = state.currentId.orEmpty())
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(state.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -149,30 +171,44 @@ fun MiniPlayer(
 /** Écran « Lecture en cours » plein écran, fermeture par glissement vers le bas. */
 @Composable
 fun NowPlayingScreen(
+    vm: MainViewModel,
     state: PlayerState,
     track: Track?,
-    tracksById: Map<String, Track>,
-    position: StateFlow<Long>,
-    isFavorite: Boolean,
     onClose: () -> Unit,
-    onTogglePlay: () -> Unit,
-    onNext: () -> Unit,
-    onPrevious: () -> Unit,
-    onSeek: (Long) -> Unit,
-    onToggleShuffle: () -> Unit,
-    onCycleRepeat: () -> Unit,
-    onToggleFavorite: () -> Unit,
-    onAddToPlaylist: () -> Unit,
     onOpenSound: () -> Unit,
-    onSkipTo: (Int) -> Unit,
-    onRemoveFromQueue: (Int) -> Unit,
-    boostMb: Int = 0,
-    onOpenBoost: () -> Unit = {},
+    onOpenBoost: () -> Unit,
+    onAddToPlaylist: () -> Unit,
 ) {
+    val settings by vm.settings.collectAsStateWithLifecycle()
+    val favorites by vm.favorites.collectAsStateWithLifecycle()
+    val byId by vm.tracksById.collectAsStateWithLifecycle()
+    val sleep by vm.sleepTimer.collectAsStateWithLifecycle()
+    val covers = LocalCovers.current
+
     val scope = rememberCoroutineScope()
     val offsetY = remember { Animatable(0f) }
     var showQueue by remember { mutableStateOf(false) }
-    val artUri = artworkUriFor(state, track)
+    var showSleep by remember { mutableStateOf(false) }
+    var showLyrics by rememberSaveable { mutableStateOf(false) }
+    var menu by remember { mutableStateOf(false) }
+
+    val fallback = externalUriFor(state)
+    val seed = state.currentId.orEmpty()
+    val isFavorite = state.currentId in favorites
+
+    // Couleur d'accent tirée de la pochette (animée entre deux morceaux).
+    val accentRaw = rememberArtworkAccent(
+        artworkModel(track?.uri ?: fallback, covers.coverFor(track)),
+        enabled = settings.dynamicColors,
+    )
+    val accent by animateColorAsState(accentRaw ?: KhnColors.Violet, tween(600), label = "accent")
+    val accent2 by animateColorAsState(
+        accentRaw?.let { lerpTo(it, KhnColors.Magenta, 0.35f) } ?: KhnColors.Magenta, tween(600), label = "accent2",
+    )
+
+    val lyricsPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null && track != null) vm.importLyrics(track, uri)
+    }
 
     Box(
         Modifier
@@ -188,14 +224,11 @@ fun NowPlayingScreen(
                 },
             ),
     ) {
-        // Fond : pochette floutée (Android 12+) + dégradé sombre
+        // Fond : pochette floutée (Android 12+) + dégradé aux couleurs de la pochette.
         if (Build.VERSION.SDK_INT >= 31) {
-            Artwork(
-                artUri, state.currentId.orEmpty(),
-                Modifier
-                    .fillMaxSize()
-                    .graphicsLayer { alpha = 0.55f }
-                    .blur(70.dp),
+            TrackArtwork(
+                track, fallbackUri = fallback, seed = seed,
+                modifier = Modifier.fillMaxSize().graphicsLayer { alpha = 0.45f }.blur(80.dp),
                 shape = RoundedCornerShape(0.dp),
                 iconSize = 0.dp,
             )
@@ -205,8 +238,8 @@ fun NowPlayingScreen(
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        0f to KhnColors.Background.copy(alpha = 0.35f),
-                        0.55f to KhnColors.Background.copy(alpha = 0.75f),
+                        0f to accent.copy(alpha = 0.42f),
+                        0.45f to KhnColors.Background.copy(alpha = 0.72f),
                         1f to KhnColors.Background,
                     ),
                 ),
@@ -220,6 +253,7 @@ fun NowPlayingScreen(
                 .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            // ---- Barre du haut ----
             Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onClose) {
                     Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = "Fermer", modifier = Modifier.size(32.dp))
@@ -229,29 +263,78 @@ fun NowPlayingScreen(
                     Text(
                         if (state.queue.isNotEmpty()) "${state.index + 1} / ${state.queue.size}" else "",
                         style = MaterialTheme.typography.labelMedium,
-                        color = KhnColors.Violet,
+                        color = accent,
                     )
                 }
-                IconButton(onClick = onOpenSound) { Icon(Icons.Rounded.Equalizer, contentDescription = "Paramètres du son") }
+                Box {
+                    IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, contentDescription = "Options") }
+                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                        if (track != null) DropdownMenuItem(
+                            text = { Text("Changer la pochette") },
+                            leadingIcon = { Icon(Icons.Rounded.Image, null) },
+                            onClick = { menu = false; vm.askCover(track) },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Égaliseur et son") },
+                            leadingIcon = { Icon(Icons.Rounded.Equalizer, null) },
+                            onClick = { menu = false; onOpenSound() },
+                        )
+                        HorizontalDivider()
+                        Text(
+                            "Style de la pochette",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = KhnColors.TextMuted,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                        )
+                        CoverStyle.entries.forEach { s ->
+                            DropdownMenuItem(
+                                text = { Text(s.label) },
+                                trailingIcon = { if (settings.coverStyle == s) Icon(Icons.Rounded.Check, null, tint = accent) },
+                                onClick = { menu = false; vm.setCoverStyle(s) },
+                            )
+                        }
+                    }
+                }
             }
 
-            Spacer(Modifier.weight(0.6f))
+            // ---- Pochette ou paroles ----
+            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                AnimatedContent(
+                    targetState = showLyrics,
+                    transitionSpec = { fadeIn(tween(250)) togetherWith fadeOut(tween(200)) },
+                    label = "coverOrLyrics",
+                ) { lyricsMode ->
+                    if (lyricsMode) {
+                        LyricsPanel(
+                            vm = vm,
+                            track = track,
+                            position = vm.position,
+                            accent = accent,
+                            onSeek = vm.player::seekTo,
+                            onImport = { lyricsPicker.launch(arrayOf("*/*")) },
+                        )
+                    } else {
+                        SwipeableCover(
+                            onNext = vm.player::next,
+                            onPrevious = vm.player::previous,
+                        ) {
+                            PlayerCover(
+                                track = track,
+                                fallbackUri = fallback,
+                                seed = seed,
+                                style = settings.coverStyle,
+                                isPlaying = state.isPlaying,
+                                glow = accent,
+                                modifier = Modifier.fillMaxWidth(0.86f),
+                            )
+                        }
+                    }
+                }
+            }
 
-            // Pochette : légère respiration selon lecture / pause
-            val scale by animateFloatAsState(if (state.isPlaying) 1f else 0.9f, spring(dampingRatio = 0.6f, stiffness = 300f), label = "art")
-            Artwork(
-                artUri, state.currentId.orEmpty(),
-                Modifier
-                    .fillMaxWidth(0.86f)
-                    .aspectRatio(1f)
-                    .graphicsLayer { scaleX = scale; scaleY = scale }
-                    .shadow(32.dp, RoundedCornerShape(28.dp), ambientColor = KhnColors.Violet, spotColor = KhnColors.Magenta),
-                shape = RoundedCornerShape(28.dp),
-                iconSize = 96.dp,
-            )
+            Spacer(Modifier.height(12.dp))
 
-            Spacer(Modifier.weight(0.5f))
-
+            // ---- Titre ----
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(
@@ -262,7 +345,7 @@ fun NowPlayingScreen(
                     )
                     Text(state.artist, style = MaterialTheme.typography.bodyLarge, color = KhnColors.TextMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                IconButton(onClick = onToggleFavorite, enabled = track != null) {
+                IconButton(onClick = { state.currentId?.let(vm::toggleFavorite) }, enabled = track != null) {
                     Icon(
                         if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                         contentDescription = "Favori",
@@ -272,28 +355,29 @@ fun NowPlayingScreen(
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
-            SeekBar(position, state.durationMs, onSeek)
             Spacer(Modifier.height(12.dp))
+            SeekBar(vm.position, state.durationMs, accent, vm.player::seekTo)
+            Spacer(Modifier.height(8.dp))
 
+            // ---- Commandes ----
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = onToggleShuffle) {
-                    Icon(Icons.Rounded.Shuffle, contentDescription = "Aléatoire", tint = if (state.shuffle) KhnColors.Violet else KhnColors.TextMuted)
+                IconButton(onClick = vm.player::toggleShuffle) {
+                    Icon(Icons.Rounded.Shuffle, contentDescription = "Aléatoire", tint = if (state.shuffle) accent else KhnColors.TextMuted)
                 }
-                IconButton(onClick = onPrevious, modifier = Modifier.size(56.dp)) {
+                IconButton(onClick = vm.player::previous, modifier = Modifier.size(56.dp)) {
                     Icon(Icons.Rounded.SkipPrevious, contentDescription = "Précédent", modifier = Modifier.size(40.dp))
                 }
                 Box(
                     Modifier
                         .size(76.dp)
-                        .shadow(24.dp, CircleShape, ambientColor = KhnColors.Magenta, spotColor = KhnColors.Violet)
+                        .shadow(24.dp, CircleShape, ambientColor = accent2, spotColor = accent)
                         .clip(CircleShape)
-                        .background(KhnColors.Neon)
-                        .clickable(onClick = onTogglePlay),
+                        .background(Brush.linearGradient(listOf(accent, accent2)))
+                        .clickable(onClick = vm.player::togglePlay),
                     contentAlignment = Alignment.Center,
                 ) {
                     if (state.isBuffering) CircularProgressIndicator(Modifier.size(32.dp), color = Color.White, strokeWidth = 3.dp)
@@ -304,20 +388,21 @@ fun NowPlayingScreen(
                         modifier = Modifier.size(44.dp),
                     )
                 }
-                IconButton(onClick = onNext, modifier = Modifier.size(56.dp)) {
+                IconButton(onClick = vm.player::next, modifier = Modifier.size(56.dp)) {
                     Icon(Icons.Rounded.SkipNext, contentDescription = "Suivant", modifier = Modifier.size(40.dp))
                 }
-                IconButton(onClick = onCycleRepeat) {
+                IconButton(onClick = vm.player::cycleRepeat) {
                     Icon(
                         if (state.repeatMode == Player.REPEAT_MODE_ONE) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat,
                         contentDescription = "Répéter",
-                        tint = if (state.repeatMode != Player.REPEAT_MODE_OFF) KhnColors.Violet else KhnColors.TextMuted,
+                        tint = if (state.repeatMode != Player.REPEAT_MODE_OFF) accent else KhnColors.TextMuted,
                     )
                 }
             }
 
-            Spacer(Modifier.weight(0.4f))
+            Spacer(Modifier.height(12.dp))
 
+            // ---- Barre d'outils ----
             Row(
                 Modifier.fillMaxWidth().padding(bottom = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -326,24 +411,11 @@ fun NowPlayingScreen(
                 IconButton(onClick = onAddToPlaylist, enabled = track != null) {
                     Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = "Ajouter à une playlist")
                 }
-                // Accès rapide à l'amplification
-                val boosted = boostMb > 0
-                Row(
-                    Modifier
-                        .clip(Khn.shapes.pill)
-                        .background(if (boosted) KhnColors.NeonHorizontal else SolidColor(KhnColors.SurfaceHigh.copy(alpha = 0.8f)))
-                        .clickable(onClick = onOpenBoost)
-                        .padding(horizontal = 16.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(Icons.AutoMirrored.Rounded.VolumeUp, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        if (boosted) "+${"%.1f".format(boostMb / 100f)} dB" else "Amplifier",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = Color.White,
-                    )
+                IconButton(onClick = { showLyrics = !showLyrics }) {
+                    Icon(Icons.Rounded.Subtitles, contentDescription = "Paroles", tint = if (showLyrics) accent else KhnColors.Text)
                 }
+                BoostPill(settings.sound.loudnessGain, accent, accent2, onOpenBoost)
+                SleepButton(sleep, accent) { showSleep = true }
                 IconButton(onClick = { showQueue = true }) {
                     Icon(Icons.AutoMirrored.Rounded.QueueMusic, contentDescription = "File d'attente")
                 }
@@ -352,12 +424,120 @@ fun NowPlayingScreen(
     }
 
     if (showQueue) {
-        QueueSheet(state, tracksById, onSkipTo, onRemoveFromQueue) { showQueue = false }
+        QueueSheet(
+            state = state,
+            tracksById = byId,
+            onSkipTo = vm.player::skipTo,
+            onRemove = vm.player::removeFromQueue,
+            onMove = vm::moveQueueItem,
+            onDismiss = { showQueue = false },
+        )
+    }
+    if (showSleep) {
+        SleepTimerSheet(
+            state = sleep,
+            onStart = { vm.startSleepTimer(it); showSleep = false },
+            onEndOfTrack = { vm.sleepAtEndOfTrack(); showSleep = false },
+            onCancel = { vm.cancelSleepTimer(); showSleep = false },
+            onDismiss = { showSleep = false },
+        )
+    }
+}
+
+/** Glisser la pochette à gauche / à droite pour changer de morceau. */
+@Composable
+private fun SwipeableCover(onNext: () -> Unit, onPrevious: () -> Unit, content: @Composable () -> Unit) {
+    val scope = rememberCoroutineScope()
+    val offsetX = remember { Animatable(0f) }
+    var width by remember { mutableIntStateOf(1) }
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .onSizeChanged { width = it.width }
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures(
+                    onDragEnd = {
+                        scope.launch {
+                            val threshold = width * 0.25f
+                            val value = offsetX.value
+                            if (abs(value) < threshold) {
+                                offsetX.animateTo(0f, spring())
+                                return@launch
+                            }
+                            val toLeft = value < 0
+                            offsetX.animateTo(if (toLeft) -width.toFloat() else width.toFloat(), tween(160))
+                            if (toLeft) onNext() else onPrevious()
+                            offsetX.snapTo(if (toLeft) width.toFloat() else -width.toFloat())
+                            offsetX.animateTo(0f, spring(dampingRatio = 0.8f, stiffness = 400f))
+                        }
+                    },
+                    onDragCancel = { scope.launch { offsetX.animateTo(0f, spring()) } },
+                ) { change, drag ->
+                    change.consume()
+                    scope.launch { offsetX.snapTo(offsetX.value + drag) }
+                }
+            }
+            .graphicsLayer {
+                translationX = offsetX.value
+                alpha = 1f - (abs(offsetX.value) / width.coerceAtLeast(1)).coerceIn(0f, 0.6f)
+            },
+        contentAlignment = Alignment.Center,
+    ) { content() }
+}
+
+@Composable
+private fun BoostPill(boostMb: Int, accent: Color, accent2: Color, onClick: () -> Unit) {
+    val boosted = boostMb > 0
+    Row(
+        Modifier
+            .clip(Khn.shapes.pill)
+            .background(if (boosted) Brush.horizontalGradient(listOf(accent, accent2)) else SolidColor(KhnColors.SurfaceHigh.copy(alpha = 0.8f)))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.AutoMirrored.Rounded.VolumeUp, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(
+            if (boosted) "+${"%.0f".format(boostMb / 100f)} dB" else "Amplifier",
+            style = MaterialTheme.typography.labelLarge,
+            color = Color.White,
+        )
     }
 }
 
 @Composable
-private fun SeekBar(position: StateFlow<Long>, durationMs: Long, onSeek: (Long) -> Unit) {
+private fun SleepButton(state: SleepTimer.State, accent: Color, onClick: () -> Unit) {
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(state) {
+        while (state is SleepTimer.State.At) {
+            now = System.currentTimeMillis()
+            delay(15_000)
+        }
+    }
+    val active = state !is SleepTimer.State.Off
+    Row(
+        Modifier.clip(Khn.shapes.pill).clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Rounded.Bedtime, contentDescription = "Minuterie", tint = if (active) accent else KhnColors.Text)
+        when (state) {
+            is SleepTimer.State.At -> {
+                val min = ((state.endAtMs - now + 59_999) / 60_000).coerceAtLeast(0)
+                Spacer(Modifier.width(4.dp))
+                Text("$min min", style = MaterialTheme.typography.labelMedium, color = accent)
+            }
+            SleepTimer.State.EndOfTrack -> {
+                Spacer(Modifier.width(4.dp))
+                Text("fin", style = MaterialTheme.typography.labelMedium, color = accent)
+            }
+            SleepTimer.State.Off -> Unit
+        }
+    }
+}
+
+@Composable
+private fun SeekBar(position: StateFlow<Long>, durationMs: Long, accent: Color, onSeek: (Long) -> Unit) {
     val pos by position.collectAsStateWithLifecycle()
     var dragging by remember { mutableStateOf(false) }
     var dragValue by remember { mutableFloatStateOf(0f) }
@@ -371,6 +551,7 @@ private fun SeekBar(position: StateFlow<Long>, durationMs: Long, onSeek: (Long) 
                 onSeek((dragValue * duration).toLong())
                 dragging = false
             },
+            activeColor = accent,
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(formatDuration((shown * duration).toLong()), style = MaterialTheme.typography.labelMedium, color = KhnColors.TextMuted)
@@ -379,48 +560,10 @@ private fun SeekBar(position: StateFlow<Long>, durationMs: Long, onSeek: (Long) 
     }
 }
 
-@Composable
-private fun QueueSheet(
-    state: PlayerState,
-    tracksById: Map<String, Track>,
-    onSkipTo: (Int) -> Unit,
-    onRemove: (Int) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val listState = rememberLazyListState()
-    LaunchedEffect(Unit) { if (state.index > 0) listState.scrollToItem((state.index - 1).coerceAtLeast(0)) }
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = KhnColors.Surface,
-    ) {
-        Text("File d'attente · ${state.queue.size}", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
-        LazyColumn(state = listState, contentPadding = PaddingValues(bottom = 32.dp)) {
-            itemsIndexed(state.queue, key = { i, e -> "$i-${e.mediaId}" }) { i, entry ->
-                val current = i == state.index
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable { onSkipTo(i) }
-                        .padding(start = 20.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
-                        Artwork(tracksById[entry.mediaId]?.uri, entry.mediaId, Modifier.size(44.dp))
-                        if (current) Box(Modifier.size(44.dp).clip(Khn.shapes.artwork).background(Color.Black.copy(alpha = 0.45f)), contentAlignment = Alignment.Center) {
-                            PlayingBars(state.isPlaying)
-                        }
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(entry.title, style = MaterialTheme.typography.titleSmall, color = if (current) KhnColors.Violet else KhnColors.Text, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(entry.artist, style = MaterialTheme.typography.bodySmall, color = KhnColors.TextMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                    if (!current) IconButton(onClick = { onRemove(i) }) {
-                        Icon(Icons.Rounded.Close, contentDescription = "Retirer", tint = KhnColors.TextMuted)
-                    }
-                }
-            }
-        }
-    }
-}
+/** Mélange deux couleurs (t = 0 → a, t = 1 → b). */
+private fun lerpTo(a: Color, b: Color, t: Float) = Color(
+    red = a.red + (b.red - a.red) * t,
+    green = a.green + (b.green - a.green) * t,
+    blue = a.blue + (b.blue - a.blue) * t,
+    alpha = 1f,
+)

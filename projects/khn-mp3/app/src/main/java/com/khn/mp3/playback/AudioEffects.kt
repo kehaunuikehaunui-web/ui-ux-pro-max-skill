@@ -53,6 +53,16 @@ object EqPresets {
         "Aigus+" to listOf(0, 0, 1, 4, 6),
     )
 
+    /** Adapte des niveaux enregistrés sur d'autres fréquences aux bandes de l'appareil (fréquence la plus proche). */
+    fun mapLevels(levels: List<Int>, fromHz: List<Int>, spec: EqSpec): List<Int> {
+        if (fromHz == spec.centerHz && levels.size == spec.centerHz.size) return levels
+        if (fromHz.isEmpty() || levels.size != fromHz.size) return List(spec.centerHz.size) { 0 }
+        return spec.centerHz.map { hz ->
+            val nearest = fromHz.indices.minBy { abs(ln(fromHz[it].toDouble()) - ln(hz.toDouble())) }
+            levels[nearest].coerceIn(spec.minLevel, spec.maxLevel)
+        }
+    }
+
     fun levelsFor(name: String, spec: EqSpec): List<Int> {
         val db = all.firstOrNull { it.first == name }?.second ?: return List(spec.centerHz.size) { 0 }
         return spec.centerHz.map { hz ->

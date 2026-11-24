@@ -27,8 +27,8 @@ android {
         applicationId = "com.khn.mp3"
         minSdk = 26
         targetSdk = 35
-        versionCode = 6
-        versionName = "1.4.0"
+        versionCode = 7
+        versionName = "1.5.0"
     }
 
     signingConfigs {
@@ -103,6 +103,7 @@ dependencies {
     implementation(libs.androidx.media3.session)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.profileinstaller)
+    implementation(libs.androidx.palette)
 
     implementation(libs.coil.compose)
     implementation(libs.kotlinx.serialization.json)

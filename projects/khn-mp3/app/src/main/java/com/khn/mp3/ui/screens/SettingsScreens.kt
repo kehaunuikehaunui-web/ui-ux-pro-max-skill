@@ -41,6 +41,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -60,6 +61,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.khn.mp3.BuildConfig
 import com.khn.mp3.data.MAX_BOOST_MB
+import com.khn.mp3.data.CoverStyle
+import com.khn.mp3.ui.components.TextInputDialog
+import androidx.compose.material.icons.rounded.Save
 import com.khn.mp3.data.SoundSettings
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
@@ -156,6 +160,58 @@ fun SettingsScreen(
             }
         }
 
+        item {
+            SettingsCard {
+                Text("Lecteur", style = MaterialTheme.typography.titleSmall)
+                Spacer(Modifier.height(8.dp))
+                Text("Style de la pochette", style = MaterialTheme.typography.bodyMedium)
+                Row(Modifier.padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    CoverStyle.entries.forEach { st ->
+                        FilterChip(
+                            selected = settings.coverStyle == st,
+                            onClick = { vm.setCoverStyle(st) },
+                            label = { Text(st.label) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = KhnColors.Violet,
+                                selectedLabelColor = Color.White,
+                                containerColor = KhnColors.SurfaceHigh,
+                            ),
+                            border = null,
+                        )
+                    }
+                }
+                SwitchRow(
+                    title = "Couleurs de la pochette",
+                    subtitle = "Le lecteur prend les couleurs de la pochette du morceau",
+                    checked = settings.dynamicColors,
+                    onChange = vm::setDynamicColors,
+                )
+            }
+        }
+
+        item { SectionTitle("Lecture") }
+        item {
+            SettingsCard {
+                SwitchRow(
+                    title = "Aléatoire intelligent",
+                    subtitle = "Évite les titres écoutés récemment et deux titres du même artiste à la suite",
+                    checked = settings.playback.smartShuffle,
+                    onChange = vm::setSmartShuffle,
+                )
+                SwitchRow(
+                    title = "Lecture automatique",
+                    subtitle = "Quand la file se termine, des titres proches sont ajoutés (même artiste, album, tes plus écoutés)",
+                    checked = settings.playback.autoplay,
+                    onChange = vm::setAutoplay,
+                )
+                Text(
+                    "La file d'attente et la position sont retrouvées au redémarrage de l'app.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = KhnColors.TextMuted,
+                )
+            }
+        }
+
         item { SectionTitle("Bibliothèque") }
         item {
             SettingsCard {
@@ -199,7 +255,10 @@ fun SoundScreen(vm: MainViewModel, contentPadding: PaddingValues, onBack: () -> 
     val settings by vm.settings.collectAsStateWithLifecycle()
     val spec by vm.audioEffects.spec.collectAsStateWithLifecycle()
     val limiterOk by vm.audioEffects.limiterAvailable.collectAsStateWithLifecycle()
+    val userPresets by vm.eqPresets.collectAsStateWithLifecycle()
+    var savingPreset by remember { mutableStateOf(false) }
     val sound = settings.sound
+    var crossfade by remember(settings.playback.crossfadeSec) { mutableFloatStateOf(settings.playback.crossfadeSec.toFloat()) }
 
     // État local pendant le glissement ; persistance au relâchement.
     var bands by remember { mutableStateOf(emptyList<Int>()) }
@@ -245,6 +304,23 @@ fun SoundScreen(vm: MainViewModel, contentPadding: PaddingValues, onBack: () -> 
                 }
                 Spacer(Modifier.height(12.dp))
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Préréglages personnels (enregistrés par l'utilisateur).
+                    userPresets.forEach { p ->
+                        FilterChip(
+                            selected = sound.preset == p.name,
+                            onClick = {
+                                vm.applyEqPreset(p, spec)
+                                bands = EqPresets.mapLevels(p.levels, p.centerHz, spec)
+                            },
+                            label = { Text("★ ${p.name}") },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = KhnColors.Magenta,
+                                selectedLabelColor = Color.White,
+                                containerColor = KhnColors.SurfaceHigh,
+                            ),
+                            border = null,
+                        )
+                    }
                     EqPresets.all.forEach { (name, _) ->
                         FilterChip(
                             selected = sound.preset == name,
@@ -264,7 +340,20 @@ fun SoundScreen(vm: MainViewModel, contentPadding: PaddingValues, onBack: () -> 
                         )
                     }
                 }
-                Spacer(Modifier.height(16.dp))
+                Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = { savingPreset = true }) {
+                        Icon(Icons.Rounded.Save, null, tint = KhnColors.Violet, modifier = Modifier.size(18.dp))
+                        Text("  Enregistrer mon réglage", color = KhnColors.Violet)
+                    }
+                    Spacer(Modifier.weight(1f))
+                    val selectedUser = userPresets.firstOrNull { it.name == sound.preset }
+                    if (selectedUser != null) {
+                        TextButton(onClick = { vm.deleteEqPreset(selectedUser.name) }) {
+                            Text("Supprimer « ${selectedUser.name} »", color = KhnColors.TextMuted, maxLines = 1)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
                 val range = (spec.maxLevel - spec.minLevel).coerceAtLeast(1) / 2f
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                     spec.centerHz.forEachIndexed { i, hz ->
@@ -336,6 +425,22 @@ fun SoundScreen(vm: MainViewModel, contentPadding: PaddingValues, onBack: () -> 
 
         item {
             SettingsCard {
+                Text("Transitions", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(8.dp))
+                LabeledSlider("Fondu entre les morceaux", if (crossfade < 0.5f) "Désactivé" else "${crossfade.roundToInt()} s") {
+                    NeonSlider(crossfade, { crossfade = it }, valueRange = 0f..10f, steps = 9, onValueChangeFinished = { vm.setCrossfade(crossfade.roundToInt()) })
+                }
+                SwitchRow(
+                    title = "Fondu à la pause et à la reprise",
+                    subtitle = "Le son baisse et remonte en douceur au lieu de se couper net",
+                    checked = settings.playback.fadeOnPause,
+                    onChange = vm::setFadeOnPause,
+                )
+            }
+        }
+
+        item {
+            SettingsCard {
                 Text("Lecture", style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(8.dp))
                 LabeledSlider("Vitesse", "×${"%.2f".format(speed)}") {
@@ -368,6 +473,20 @@ fun SoundScreen(vm: MainViewModel, contentPadding: PaddingValues, onBack: () -> 
                 )
             }
         }
+    }
+
+    if (savingPreset) {
+        TextInputDialog(
+            title = "Enregistrer mon réglage",
+            initial = "",
+            confirmLabel = "Enregistrer",
+            placeholder = "Nom (ex. Voiture, Basses fortes)",
+            onConfirm = { name ->
+                savingPreset = false
+                vm.saveEqPreset(name, bands.ifEmpty { EqPresets.levelsFor(sound.preset, spec) }, spec)
+            },
+            onDismiss = { savingPreset = false },
+        )
     }
 }
 

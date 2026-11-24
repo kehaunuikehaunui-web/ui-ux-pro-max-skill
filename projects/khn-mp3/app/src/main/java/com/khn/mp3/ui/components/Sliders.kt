@@ -30,6 +30,7 @@ fun NeonSlider(
     valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
     steps: Int = 0,
     onValueChangeFinished: (() -> Unit)? = null,
+    activeColor: Color = KhnColors.Violet,
 ) {
     Slider(
         value = value,
@@ -40,7 +41,7 @@ fun NeonSlider(
         modifier = modifier,
         colors = SliderDefaults.colors(
             thumbColor = Color.White,
-            activeTrackColor = KhnColors.Violet,
+            activeTrackColor = activeColor,
             inactiveTrackColor = KhnColors.Outline,
             activeTickColor = Color.Transparent,
             inactiveTickColor = Color.Transparent,

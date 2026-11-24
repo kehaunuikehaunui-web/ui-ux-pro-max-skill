@@ -17,6 +17,12 @@ import com.khn.mp3.data.DownloadRepository
 import com.khn.mp3.data.FAVORITES_PLAYLIST_ID
 import com.khn.mp3.data.FreeTrack
 import com.khn.mp3.data.TrashEntry
+import com.khn.mp3.data.CoverStyle
+import com.khn.mp3.data.EqPreset
+import com.khn.mp3.data.Lyrics
+import com.khn.mp3.playback.EqPresets
+import com.khn.mp3.playback.EqSpec
+import com.khn.mp3.playback.SleepTimer
 import com.khn.mp3.data.JamendoRepository
 import com.khn.mp3.data.isYoutubeUrl
 import kotlinx.coroutines.CancellationException
@@ -219,6 +225,134 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             player.play(listOf(known ?: library.externalTrack(uri)), 0)
         }
     }
+
+    // ---------------- Paroles ----------------
+
+    sealed interface LyricsUi {
+        data object Idle : LyricsUi
+        data class Loading(val trackId: String) : LyricsUi
+        data class Ready(val trackId: String, val lyrics: Lyrics?) : LyricsUi
+    }
+
+    private val _lyrics = MutableStateFlow<LyricsUi>(LyricsUi.Idle)
+    val lyrics: StateFlow<LyricsUi> = _lyrics.asStateFlow()
+    private var lyricsJob: Job? = null
+
+    /** Charge les paroles du titre affiché (cache → fichier → LRCLIB). */
+    fun loadLyrics(track: Track?) {
+        if (track == null) { _lyrics.value = LyricsUi.Idle; return }
+        val cur = _lyrics.value
+        if ((cur is LyricsUi.Ready && cur.trackId == track.id) || (cur is LyricsUi.Loading && cur.trackId == track.id)) return
+        lyricsJob?.cancel()
+        lyricsJob = viewModelScope.launch {
+            _lyrics.value = LyricsUi.Loading(track.id)
+            _lyrics.value = LyricsUi.Ready(track.id, c.lyrics.load(track))
+        }
+    }
+
+    fun searchLyricsOnline(track: Track) {
+        lyricsJob?.cancel()
+        lyricsJob = viewModelScope.launch {
+            _lyrics.value = LyricsUi.Loading(track.id)
+            val l = c.lyrics.refreshOnline(track)
+            _lyrics.value = LyricsUi.Ready(track.id, l)
+            if (l == null) toast("Aucune parole trouvée en ligne pour ce titre")
+        }
+    }
+
+    fun importLyrics(track: Track, uri: Uri) {
+        viewModelScope.launch {
+            val l = c.lyrics.import(track, uri)
+            if (l == null) toast("Fichier de paroles illisible") else {
+                _lyrics.value = LyricsUi.Ready(track.id, l)
+                toast(if (l.synced) "Paroles synchronisées importées" else "Paroles importées")
+            }
+        }
+    }
+
+    // ---------------- Pochettes personnalisées ----------------
+
+    val covers: StateFlow<Map<String, String>> = c.userData.data
+        .map { it.covers }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
+    private val _coverSheet = MutableStateFlow<Track?>(null)
+    /** Titre dont on modifie la pochette (feuille de choix ouverte). */
+    val coverSheet: StateFlow<Track?> = _coverSheet.asStateFlow()
+    fun askCover(track: Track) { _coverSheet.value = track }
+    fun dismissCoverSheet() { _coverSheet.value = null }
+
+    private val _coverPicks = Channel<String>(Channel.BUFFERED)
+    /** Demandes d'ouverture du sélecteur d'images (clé de pochette visée). */
+    val coverPicks = _coverPicks.receiveAsFlow()
+    private var pendingCoverKey: String? = null
+
+    fun pickCover(key: String) {
+        _coverSheet.value = null
+        pendingCoverKey = key
+        _coverPicks.trySend(key)
+    }
+
+    fun onCoverPicked(uri: Uri?) {
+        val key = pendingCoverKey ?: return
+        pendingCoverKey = null
+        if (uri == null) return
+        viewModelScope.launch {
+            val path = withContext(Dispatchers.IO) { copyImage(uri, "covers", 1000) }
+            if (path == null) { toast("Impossible de lire cette image"); return@launch }
+            covers.value[key]?.let { old -> runCatching { File(old).delete() } }
+            c.userData.setCover(key, path)
+            toast("Pochette mise à jour")
+        }
+    }
+
+    fun removeCover(key: String) {
+        _coverSheet.value = null
+        covers.value[key]?.let { runCatching { File(it).delete() } }
+        c.userData.removeCover(key)
+        toast("Pochette d'origine rétablie")
+    }
+
+    // ---------------- Préréglages d'égaliseur ----------------
+
+    val eqPresets: StateFlow<List<EqPreset>> = c.userData.data
+        .map { it.eqPresets }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    fun saveEqPreset(name: String, levels: List<Int>, spec: EqSpec) {
+        val clean = name.trim().take(30)
+        if (clean.isEmpty()) return
+        c.userData.saveEqPreset(EqPreset(clean, spec.centerHz, levels))
+        c.settings.setBands(levels, clean)
+        toast("Préréglage « $clean » enregistré")
+    }
+
+    fun applyEqPreset(preset: EqPreset, spec: EqSpec) {
+        c.settings.setBands(EqPresets.mapLevels(preset.levels, preset.centerHz, spec), preset.name)
+        if (!settings.value.sound.eqEnabled) c.settings.setEqEnabled(true)
+    }
+
+    fun deleteEqPreset(name: String) {
+        c.userData.deleteEqPreset(name)
+        toast("Préréglage « $name » supprimé")
+    }
+
+    // ---------------- Lecture : transitions, file, apparence ----------------
+
+    fun setCrossfade(sec: Int) = c.settings.setCrossfade(sec)
+    fun setFadeOnPause(v: Boolean) = c.settings.setFadeOnPause(v)
+    fun setAutoplay(v: Boolean) = c.settings.setAutoplay(v)
+    fun setSmartShuffle(v: Boolean) = c.settings.setSmartShuffle(v)
+    fun setCoverStyle(v: CoverStyle) = c.settings.setCoverStyle(v)
+    fun setDynamicColors(v: Boolean) = c.settings.setDynamicColors(v)
+    fun moveQueueItem(from: Int, to: Int) = player.moveItem(from, to)
+
+    // ---------------- Minuterie de mise en veille ----------------
+
+    val sleepTimer: StateFlow<SleepTimer.State> = c.sleepTimer.state
+    fun startSleepTimer(minutes: Int) { c.sleepTimer.start(minutes); toast("La musique s'arrêtera dans $minutes min") }
+    fun sleepAtEndOfTrack() { c.sleepTimer.endOfTrack(); toast("La musique s'arrêtera à la fin du morceau") }
+    fun cancelSleepTimer() { c.sleepTimer.cancel(); toast("Minuterie désactivée") }
 
     // ---------------- Corbeille ----------------
 
@@ -600,13 +734,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setBackgroundBlur(v: Int) = c.settings.setBackgroundBlur(v)
     fun setMinDuration(sec: Int) = c.settings.setMinDuration(sec)
 
-    /** Copie redimensionnée (max 1440 px) dans le stockage privé : l'image reste disponible même si l'originale est supprimée. */
-    private fun copyBackground(uri: Uri): String? = runCatching {
+    private fun copyBackground(uri: Uri): String? = copyImage(uri, null, 1440)
+
+    /** Copie redimensionnée dans le stockage privé : l'image reste disponible même si l'originale est supprimée. */
+    private fun copyImage(uri: Uri, subdir: String?, maxPx: Int): String? = runCatching {
         val resolver = getApplication<Application>().contentResolver
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
         var sample = 1
-        while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= 1440) sample *= 2
+        while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= maxPx) sample *= 2
         val bitmap = resolver.openInputStream(uri)?.use {
             BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = sample })
         } ?: return null
@@ -621,7 +757,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val upright = if (rotation == 0f) bitmap else
             Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, Matrix().apply { postRotate(rotation) }, true)
                 .also { if (it !== bitmap) bitmap.recycle() }
-        val out = File(getApplication<Application>().filesDir, "background_${System.currentTimeMillis()}.jpg")
+        val dir = subdir?.let { File(getApplication<Application>().filesDir, it).apply { mkdirs() } }
+            ?: getApplication<Application>().filesDir
+        val out = File(dir, "${subdir ?: "background"}_${System.currentTimeMillis()}.jpg")
         out.outputStream().use { upright.compress(Bitmap.CompressFormat.JPEG, 90, it) }
         upright.recycle()
         out.absolutePath

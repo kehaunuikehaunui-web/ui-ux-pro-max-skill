@@ -115,6 +115,26 @@ class UserDataRepository(context: Context, private val scope: CoroutineScope) {
         )
     }
 
+    // ---- Historique d'écoute ----
+    fun recordPlay(trackId: String) = mutate { d ->
+        d.copy(
+            recent = (listOf(trackId) + d.recent.filterNot { it == trackId }).take(200),
+            playCounts = d.playCounts + (trackId to ((d.playCounts[trackId] ?: 0) + 1)),
+        )
+    }
+
+    // ---- Préréglages d'égaliseur ----
+    fun saveEqPreset(preset: EqPreset) = mutate { d ->
+        d.copy(eqPresets = d.eqPresets.filterNot { it.name.equals(preset.name, true) } + preset)
+    }
+
+    fun deleteEqPreset(name: String) = mutate { d -> d.copy(eqPresets = d.eqPresets.filterNot { it.name == name }) }
+
+    // ---- Pochettes personnalisées ----
+    fun setCover(key: String, path: String) = mutate { d -> d.copy(covers = d.covers + (key to path)) }
+
+    fun removeCover(key: String) = mutate { d -> d.copy(covers = d.covers - key) }
+
     // ---- Corbeille ----
     fun addTrash(entries: List<TrashEntry>) = mutate { d -> d.copy(trash = entries + d.trash) }
 

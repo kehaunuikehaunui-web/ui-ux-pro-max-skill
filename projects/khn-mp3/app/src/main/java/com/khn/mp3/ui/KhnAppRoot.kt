@@ -60,6 +60,10 @@ import coil.compose.AsyncImage
 import android.app.Activity
 import androidx.activity.result.IntentSenderRequest
 import com.khn.mp3.ui.components.AddToPlaylistSheet
+import com.khn.mp3.ui.components.LocalCovers
+import com.khn.mp3.ui.screens.CoverSheet
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.compose.runtime.CompositionLocalProvider
 import com.khn.mp3.ui.components.DeleteConfirmDialog
 import com.khn.mp3.ui.screens.BoostSheet
 import com.khn.mp3.ui.screens.DownloadScreen
@@ -86,6 +90,14 @@ private enum class Tab(val route: String, val label: String, val icon: ImageVect
 
 @Composable
 fun KhnAppRoot(openPlayerEvents: Flow<Unit>, vm: MainViewModel = viewModel()) {
+    val covers by vm.covers.collectAsStateWithLifecycle()
+    CompositionLocalProvider(LocalCovers provides covers) {
+        KhnAppContent(openPlayerEvents, vm)
+    }
+}
+
+@Composable
+private fun KhnAppContent(openPlayerEvents: Flow<Unit>, vm: MainViewModel) {
     val nav = rememberNavController()
     val snackbar = remember { SnackbarHostState() }
     val settings by vm.settings.collectAsStateWithLifecycle()
@@ -131,6 +143,15 @@ fun KhnAppRoot(openPlayerEvents: Flow<Unit>, vm: MainViewModel = viewModel()) {
         }
     }
     val foreverConfirm by vm.foreverConfirm.collectAsStateWithLifecycle()
+
+    // Pochettes personnalisées : feuille de choix + sélecteur d'images.
+    val coverTarget by vm.coverSheet.collectAsStateWithLifecycle()
+    val coverPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { vm.onCoverPicked(it) }
+    LaunchedEffect(Unit) {
+        vm.coverPicks.collect {
+            coverPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+        }
+    }
     LaunchedEffect(Unit) {
         vm.navigation.collect { route ->
             nowPlayingOpen = false
@@ -188,28 +209,16 @@ fun KhnAppRoot(openPlayerEvents: Flow<Unit>, vm: MainViewModel = viewModel()) {
         ) {
             BackHandler { nowPlayingOpen = false }
             NowPlayingScreen(
+                vm = vm,
                 state = player,
                 track = currentTrack,
-                tracksById = byId,
-                position = vm.position,
-                isFavorite = player.currentId in favorites,
                 onClose = { nowPlayingOpen = false },
-                onTogglePlay = vm.player::togglePlay,
-                onNext = vm.player::next,
-                onPrevious = vm.player::previous,
-                onSeek = vm.player::seekTo,
-                onToggleShuffle = vm.player::toggleShuffle,
-                onCycleRepeat = vm.player::cycleRepeat,
-                onToggleFavorite = { player.currentId?.let(vm::toggleFavorite) },
-                onAddToPlaylist = { currentTrack?.let { addToPlaylistIds = listOf(it.id) } },
                 onOpenSound = {
                     nowPlayingOpen = false
                     nav.navigate("sound") { launchSingleTop = true }
                 },
-                onSkipTo = vm.player::skipTo,
-                onRemoveFromQueue = vm.player::removeFromQueue,
-                boostMb = settings.sound.loudnessGain,
                 onOpenBoost = { showBoost = true },
+                onAddToPlaylist = { currentTrack?.let { addToPlaylistIds = listOf(it.id) } },
             )
         }
     }
@@ -224,6 +233,10 @@ fun KhnAppRoot(openPlayerEvents: Flow<Unit>, vm: MainViewModel = viewModel()) {
             },
             onDismiss = { showBoost = false },
         )
+    }
+
+    coverTarget?.let { t ->
+        CoverSheet(t, onPick = vm::pickCover, onReset = vm::removeCover, onDismiss = vm::dismissCoverSheet)
     }
 
     foreverConfirm?.let { entries ->

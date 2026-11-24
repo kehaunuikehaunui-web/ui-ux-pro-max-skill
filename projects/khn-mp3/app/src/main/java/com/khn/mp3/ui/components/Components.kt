@@ -108,7 +108,7 @@ fun TrackRow(
     ) {
         leading?.invoke()
         Box(Modifier.size(52.dp)) {
-            Artwork(track.uri, track.id, Modifier.size(52.dp))
+            TrackArtwork(track, Modifier.size(52.dp))
             if (isCurrent) {
                 Box(
                     Modifier

@@ -37,7 +37,11 @@ import coil.key.Keyer
 import coil.request.ImageRequest
 import coil.request.Options
 import coil.size.Dimension
+import androidx.compose.runtime.staticCompositionLocalOf
+import com.khn.mp3.data.Track
+import com.khn.mp3.data.coverFor
 import com.khn.mp3.ui.theme.Khn
+import java.io.File
 import java.io.IOException
 import kotlin.math.absoluteValue
 
@@ -93,6 +97,34 @@ class ArtworkFetcher(
     }
 }
 
+/** Pochettes personnalisées de l'utilisateur (clé → fichier), fournies à tout l'écran. */
+val LocalCovers = staticCompositionLocalOf<Map<String, String>> { emptyMap() }
+
+/** Source d'image : pochette personnalisée en priorité, sinon pochette intégrée au fichier. */
+fun artworkModel(uri: Uri?, customFile: String?): Any? =
+    customFile?.let(::File)?.takeIf { it.exists() } ?: uri?.let(::ArtworkRequest)
+
+/** Pochette d'un titre, en tenant compte des pochettes personnalisées (titre puis album). */
+@Composable
+fun TrackArtwork(
+    track: Track?,
+    modifier: Modifier = Modifier,
+    fallbackUri: Uri? = null,
+    seed: String = track?.id.orEmpty(),
+    shape: Shape = Khn.shapes.artwork,
+    iconSize: Dp = 22.dp,
+) {
+    val covers = LocalCovers.current
+    Artwork(
+        uri = track?.uri ?: fallbackUri,
+        seed = seed,
+        modifier = modifier,
+        shape = shape,
+        iconSize = iconSize,
+        customFile = covers.coverFor(track),
+    )
+}
+
 private val placeholderGradients = listOf(
     listOf(Color(0xFF6D28D9), Color(0xFFDB2777)),
     listOf(Color(0xFF4338CA), Color(0xFF06B6D4)),
@@ -109,10 +141,11 @@ fun Artwork(
     modifier: Modifier = Modifier,
     shape: Shape = Khn.shapes.artwork,
     iconSize: Dp = 22.dp,
+    customFile: String? = null,
 ) {
     val context = LocalContext.current
-    val request = remember(uri) {
-        uri?.let { ImageRequest.Builder(context).data(ArtworkRequest(it)).build() }
+    val request = remember(uri, customFile) {
+        artworkModel(uri, customFile)?.let { ImageRequest.Builder(context).data(it).build() }
     }
     // Le dégradé est dessiné dessous ; l'image le recouvre une fois chargée (pas de sous-composition).
     Box(modifier.clip(shape)) {

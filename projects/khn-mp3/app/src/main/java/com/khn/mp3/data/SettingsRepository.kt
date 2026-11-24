@@ -43,7 +43,20 @@ data class Settings(
     val minDurationSec: Int = 30,
     val sort: SortOrder = SortOrder.TITLE,
     val jamendoClientId: String = "",
+    val playback: PlaybackPrefs = PlaybackPrefs(),
+    val coverStyle: CoverStyle = CoverStyle.ROUNDED,
+    val dynamicColors: Boolean = true,
 )
+
+@Immutable
+data class PlaybackPrefs(
+    val crossfadeSec: Int = 0,         // fondu entre les morceaux (0 = désactivé)
+    val fadeOnPause: Boolean = true,   // fondu court à la pause / reprise
+    val autoplay: Boolean = true,      // ajoute des titres proches quand la file se termine
+    val smartShuffle: Boolean = true,  // aléatoire qui évite les répétitions
+)
+
+enum class CoverStyle(val label: String) { SQUARE("Carrée"), ROUNDED("Arrondie"), VINYL("Vinyle") }
 
 /** Amplification maximale : +15 dB. */
 const val MAX_BOOST_MB = 1500
@@ -68,6 +81,12 @@ class SettingsRepository(private val context: Context, private val scope: Corout
         val minDur = intPreferencesKey("min_duration")
         val sort = stringPreferencesKey("sort")
         val jamendo = stringPreferencesKey("jamendo_client_id")
+        val crossfade = intPreferencesKey("crossfade_sec")
+        val fadePause = booleanPreferencesKey("fade_on_pause")
+        val autoplay = booleanPreferencesKey("autoplay")
+        val smartShuffle = booleanPreferencesKey("smart_shuffle")
+        val coverStyle = stringPreferencesKey("cover_style")
+        val dynamicColors = booleanPreferencesKey("dynamic_colors")
     }
 
     val settings: StateFlow<Settings> = context.dataStore.data
@@ -96,6 +115,14 @@ class SettingsRepository(private val context: Context, private val scope: Corout
             minDurationSec = this[K.minDur] ?: d.minDurationSec,
             sort = this[K.sort]?.let { runCatching { SortOrder.valueOf(it) }.getOrNull() } ?: d.sort,
             jamendoClientId = this[K.jamendo] ?: "",
+            playback = PlaybackPrefs(
+                crossfadeSec = this[K.crossfade] ?: d.playback.crossfadeSec,
+                fadeOnPause = this[K.fadePause] ?: d.playback.fadeOnPause,
+                autoplay = this[K.autoplay] ?: d.playback.autoplay,
+                smartShuffle = this[K.smartShuffle] ?: d.playback.smartShuffle,
+            ),
+            coverStyle = this[K.coverStyle]?.let { runCatching { CoverStyle.valueOf(it) }.getOrNull() } ?: d.coverStyle,
+            dynamicColors = this[K.dynamicColors] ?: d.dynamicColors,
         )
     }
 
@@ -126,4 +153,10 @@ class SettingsRepository(private val context: Context, private val scope: Corout
     fun setMinDuration(sec: Int) = edit { it[K.minDur] = sec.coerceIn(0, 180) }
     fun setSort(order: SortOrder) = edit { it[K.sort] = order.name }
     fun setJamendoClientId(v: String) = edit { it[K.jamendo] = v.trim() }
+    fun setCrossfade(sec: Int) = edit { it[K.crossfade] = sec.coerceIn(0, 10) }
+    fun setFadeOnPause(v: Boolean) = edit { it[K.fadePause] = v }
+    fun setAutoplay(v: Boolean) = edit { it[K.autoplay] = v }
+    fun setSmartShuffle(v: Boolean) = edit { it[K.smartShuffle] = v }
+    fun setCoverStyle(v: CoverStyle) = edit { it[K.coverStyle] = v.name }
+    fun setDynamicColors(v: Boolean) = edit { it[K.dynamicColors] = v }
 }

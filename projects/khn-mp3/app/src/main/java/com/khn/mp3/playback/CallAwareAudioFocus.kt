@@ -19,7 +19,11 @@ import androidx.media3.common.Player
  *
  * KHN MP3 ne demande jamais le focus pendant un appel, pour ne pas perturber l'application d'appel.
  */
-class CallAwareAudioFocus(context: Context, private val player: Player) {
+class CallAwareAudioFocus(
+    context: Context,
+    private val player: Player,
+    private val mixer: VolumeMixer,
+) {
 
     private val am = context.getSystemService(AudioManager::class.java)
     private val handler = Handler(Looper.getMainLooper())
@@ -28,7 +32,7 @@ class CallAwareAudioFocus(context: Context, private val player: Player) {
     var callVolume = DEFAULT_CALL_VOLUME
         set(value) {
             field = value
-            if (duckedForCall) player.volume = value
+            if (duckedForCall) mixer.duck = value
         }
 
     private var hasFocus = false
@@ -120,7 +124,7 @@ class CallAwareAudioFocus(context: Context, private val player: Player) {
                     setPlayWhenReady(true)
                 }
             }
-            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> player.volume = DUCK_VOLUME
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> mixer.duck = DUCK_VOLUME
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
                 if (continueInCalls) duckForCall(watch = false) // le retour du focus signalera la fin
                 else pauseByFocus()
@@ -149,7 +153,7 @@ class CallAwareAudioFocus(context: Context, private val player: Player) {
 
     private fun duckForCall(watch: Boolean = true) {
         duckedForCall = true
-        player.volume = callVolume
+        mixer.duck = callVolume
         if (watch) {
             handler.removeCallbacks(callWatcher)
             handler.postDelayed(callWatcher, CALL_POLL_MS)
@@ -158,7 +162,7 @@ class CallAwareAudioFocus(context: Context, private val player: Player) {
 
     private fun unduck() {
         duckedForCall = false
-        player.volume = 1f
+        mixer.duck = 1f
     }
 
     private fun setPlayWhenReady(value: Boolean) {

@@ -9,6 +9,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Image
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Badge
@@ -226,6 +227,7 @@ fun LibraryScreen(
                             if (track.source == Track.Source.IMPORTED) {
                                 add(MenuAction("Retirer de la bibliothèque", Icons.Rounded.Delete) { vm.removeImported(track) })
                             }
+                            add(MenuAction("Changer la pochette", Icons.Rounded.Image) { vm.askCover(track) })
                             add(MenuAction("Sélectionner", Icons.Rounded.CheckCircle) { toggle(track.id) })
                             add(MenuAction("Mettre à la corbeille", Icons.Rounded.Delete) { vm.moveToTrash(listOf(track)) })
                         },

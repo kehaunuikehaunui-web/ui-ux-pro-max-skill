@@ -68,6 +68,12 @@ import com.khn.mp3.data.formatDuration
 import com.khn.mp3.data.normalize
 import com.khn.mp3.ui.MainViewModel
 import com.khn.mp3.ui.components.Artwork
+import com.khn.mp3.ui.components.LocalCovers
+import com.khn.mp3.ui.components.TrackArtwork
+import com.khn.mp3.data.coverFor
+import com.khn.mp3.data.coverKeyPlaylist
+import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.Restore
 import com.khn.mp3.ui.components.EmptyState
 import com.khn.mp3.ui.components.GradientButton
 import com.khn.mp3.ui.components.MenuAction
@@ -169,7 +175,11 @@ private fun PlaylistCard(
                 contentAlignment = Alignment.Center,
             ) { Icon(Icons.Rounded.Favorite, null, tint = Color.White, modifier = Modifier.size(30.dp)) }
         } else {
-            Artwork(cover?.uri, coverSeed, Modifier.size(64.dp), iconSize = 28.dp)
+            val covers = LocalCovers.current
+            Artwork(
+                cover?.uri, coverSeed, Modifier.size(64.dp), iconSize = 28.dp,
+                customFile = covers[coverKeyPlaylist(coverSeed)] ?: covers.coverFor(cover),
+            )
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
@@ -219,6 +229,16 @@ fun PlaylistDetailScreen(
                     IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, "Options") }
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                         DropdownMenuItem(text = { Text("Renommer") }, leadingIcon = { Icon(Icons.Rounded.Edit, null) }, onClick = { menu = false; renaming = true })
+                        DropdownMenuItem(
+                            text = { Text("Changer la pochette") },
+                            leadingIcon = { Icon(Icons.Rounded.Image, null) },
+                            onClick = { menu = false; vm.pickCover(coverKeyPlaylist(playlistId)) },
+                        )
+                        if (LocalCovers.current.containsKey(coverKeyPlaylist(playlistId))) DropdownMenuItem(
+                            text = { Text("Pochette automatique") },
+                            leadingIcon = { Icon(Icons.Rounded.Restore, null) },
+                            onClick = { menu = false; vm.removeCover(coverKeyPlaylist(playlistId)) },
+                        )
                         DropdownMenuItem(text = { Text("Supprimer") }, leadingIcon = { Icon(Icons.Rounded.Delete, null) }, onClick = { menu = false; confirmDelete = true })
                     }
                 }
@@ -231,7 +251,11 @@ fun PlaylistDetailScreen(
                         Icon(Icons.Rounded.Favorite, null, tint = Color.White, modifier = Modifier.size(80.dp))
                     }
                 } else {
-                    Artwork(tracks.firstOrNull()?.uri, playlistId, Modifier.size(180.dp), shape = Khn.shapes.card, iconSize = 72.dp)
+                    val covers = LocalCovers.current
+                    Artwork(
+                        tracks.firstOrNull()?.uri, playlistId, Modifier.size(180.dp), shape = Khn.shapes.card, iconSize = 72.dp,
+                        customFile = covers[coverKeyPlaylist(playlistId)] ?: covers.coverFor(tracks.firstOrNull()),
+                    )
                 }
                 Spacer(Modifier.height(16.dp))
                 Text(name, style = MaterialTheme.typography.headlineSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -266,6 +290,7 @@ fun PlaylistDetailScreen(
                 })
                 if (!isFavorites && index > 0) add(MenuAction("Monter", Icons.Rounded.ArrowUpward) { vm.movePlaylistItem(playlistId, index, index - 1) })
                 if (!isFavorites && index < tracks.lastIndex) add(MenuAction("Descendre", Icons.Rounded.ArrowDownward) { vm.movePlaylistItem(playlistId, index, index + 1) })
+                add(MenuAction("Changer la pochette", Icons.Rounded.Image) { vm.askCover(track) })
                 add(MenuAction("Mettre à la corbeille", Icons.Rounded.Delete) { vm.moveToTrash(listOf(track)) })
             }
             TrackRow(
@@ -356,7 +381,7 @@ private fun TrackPickerSheet(
                             .padding(horizontal = 16.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Artwork(t.uri, t.id, Modifier.size(44.dp))
+                        TrackArtwork(t, Modifier.size(44.dp))
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
                             Text(t.title, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)

@@ -13,7 +13,9 @@ import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
+import com.khn.mp3.container
 import com.khn.mp3.data.Track
+import com.khn.mp3.data.coverFor
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
@@ -77,6 +79,14 @@ class PlayerController(private val context: Context) {
             val c = runCatching { f.get() }.getOrNull() ?: run { future = null; return@addListener }
             controller = c
             c.addListener(listener)
+            // Reprise : la file et la position de la dernière session, en pause.
+            if (c.mediaItemCount == 0 && pending.isEmpty()) {
+                context.container.snapshots.load()?.let { snap ->
+                    c.setMediaItems(snap.items.map { it.toMediaItem() }, snap.index, snap.positionMs)
+                    c.shuffleModeEnabled = snap.shuffle
+                    c.repeatMode = snap.repeatMode
+                }
+            }
             sync(c, rebuildQueue = true)
             while (pending.isNotEmpty()) pending.removeFirst().invoke(c)
         }, ContextCompat.getMainExecutor(context))
@@ -188,6 +198,11 @@ class PlayerController(private val context: Context) {
         }
     }
 
+    /** Glisser-déposer dans la file d'attente. */
+    fun moveItem(from: Int, to: Int) = withController { c ->
+        if (from in 0 until c.mediaItemCount && to in 0 until c.mediaItemCount && from != to) c.moveMediaItem(from, to)
+    }
+
     fun toggleShuffle() = withController { it.shuffleModeEnabled = !it.shuffleModeEnabled }
     fun cycleRepeat() = withController {
         it.repeatMode = when (it.repeatMode) {
@@ -197,19 +212,7 @@ class PlayerController(private val context: Context) {
         }
     }
 
-    private fun Track.toMediaItem(): MediaItem = MediaItem.Builder()
-        .setMediaId(id)
-        .setUri(uri)
-        .setRequestMetadata(MediaItem.RequestMetadata.Builder().setMediaUri(uri).build())
-        .setMediaMetadata(
-            MediaMetadata.Builder()
-                .setTitle(title)
-                .setArtist(artist)
-                .setAlbumTitle(album)
-                .setDurationMs(durationMs.takeIf { it > 0 })
-                .setIsPlayable(true)
-                .setIsBrowsable(false)
-                .build(),
-        )
-        .build()
+    /** Élément du lecteur avec la pochette personnalisée éventuelle (affichée dans la notification). */
+    private fun Track.toMediaItem(): MediaItem =
+        toMediaItem(context.container.userData.data.value.covers.coverFor(this))
 }

@@ -19,6 +19,12 @@ Lecteur de musique Android personnel : Kotlin, Jetpack Compose et Media3/ExoPlay
 | Augmenter le son | Amplification jusqu'à +15 dB, bouton **Amplifier** dans le lecteur |
 | Qualité sonore | **Anti-saturation** : limiteur en fin de chaîne (Android 9+), le son reste propre même amplifié |
 | Pendant les appels | La musique continue à volume réduit (réglable) pendant les appels vidéo/vocaux, retour au volume normal à la fin ; désactivable dans **Paramètres du son** |
+| Égaliseur personnalisable | Préréglages perso enregistrés sous un nom (★), appliqués sur n'importe quel appareil (adaptation aux bandes) |
+| Paroles synchronisées | Bouton **Paroles** du lecteur : karaoké (ligne en cours centrée, toucher pour y aller). Sources : paroles intégrées au MP3 (ID3 USLT), fichier `.lrc` (importé ou à côté du fichier), sinon **LRCLIB** en ligne ; mises en cache pour le hors-ligne |
+| Pochettes | Image de la galerie pour un titre ou tout un album, pochette de playlist ; style **carré / arrondi / vinyle** qui tourne ; pochette perso aussi dans la notification |
+| File intelligente | Aléatoire intelligent (évite titres récents et même artiste à la suite), lecture automatique de titres proches en fin de file, glisser-déposer dans la file, reprise de la file et de la position au redémarrage |
+| Transitions | Fondu entre les morceaux 0–10 s, fondu court à la pause/reprise |
+| Lecteur | Couleurs tirées de la pochette, glisser la pochette pour changer de titre, minuterie de mise en veille (durée ou fin du morceau) |
 | Photo d'arrière-plan | **Réglages › Apparence** : photo de la galerie, assombrissement, flou (Android 12+) |
 | Fichiers personnels | Bouton 📂 : importer des fichiers depuis n'importe quel dossier (carte SD, Téléchargements…) ; « Ouvrir avec KHN MP3 » depuis le gestionnaire de fichiers |
 
@@ -42,7 +48,7 @@ Pendant un appel, seul l'utilisateur entend la musique : Android ne permet pas �
 
 ## Installer l'APK
 
-1. Copier `KHN-MP3-v1.4.0.apk` sur le téléphone (une nouvelle version s'installe par-dessus l'ancienne, sans perte de données).
+1. Copier `KHN-MP3-v1.5.0.apk` sur le téléphone (une nouvelle version s'installe par-dessus l'ancienne, sans perte de données).
 2. L'ouvrir, puis autoriser « Installer des applis inconnues » pour l'app qui l'ouvre (Fichiers, Chrome…).
 3. Au premier lancement, autoriser l'accès à la musique.
 
