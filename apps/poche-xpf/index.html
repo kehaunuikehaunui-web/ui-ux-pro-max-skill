@@ -9,7 +9,7 @@
   --bg:#F1F5F6; --surface:#FFFFFF; --sunk:#E6ECEE; --ink:#0F1F26; --muted:#55686E; --line:#D6E0E3;
   --accent:#17607D; --accent-soft:#DCEBF1; --bar:#93BCCC;
   --hero-bg:#123F52; --hero-ink:#F1F8FA; --hero-muted:#A9C6D2;
-  --in:#1C7F52; --in-soft:#DDF0E6; --out:#B5381F; --out-soft:#F8E2DC;
+  --in:#1C7F52; --in-soft:#DDF0E6; --out:#B5381F; --out-soft:#F8E2DC; --warn:#9A5A06;
   --font-display:"Bricolage Grotesque","Manrope",system-ui,sans-serif;
   --font-body:"Manrope",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   --r:14px;
@@ -19,7 +19,7 @@
     --bg:#0B1316; --surface:#131D21; --sunk:#1B272C; --ink:#E3ECEF; --muted:#8DA1A7; --line:#24343A;
     --accent:#63B7D9; --accent-soft:#17323E; --bar:#36728A;
     --hero-bg:#17394A; --hero-ink:#EAF4F8; --hero-muted:#8FB3C2;
-    --in:#56C793; --in-soft:#143128; --out:#F0806A; --out-soft:#3A1E19;
+    --in:#56C793; --in-soft:#143128; --out:#F0806A; --out-soft:#3A1E19; --warn:#F0B04F;
     color-scheme:dark;
   }
 }
@@ -27,7 +27,7 @@
   --bg:#0B1316; --surface:#131D21; --sunk:#1B272C; --ink:#E3ECEF; --muted:#8DA1A7; --line:#24343A;
   --accent:#63B7D9; --accent-soft:#17323E; --bar:#36728A;
   --hero-bg:#17394A; --hero-ink:#EAF4F8; --hero-muted:#8FB3C2;
-  --in:#56C793; --in-soft:#143128; --out:#F0806A; --out-soft:#3A1E19;
+  --in:#56C793; --in-soft:#143128; --out:#F0806A; --out-soft:#3A1E19; --warn:#F0B04F;
   color-scheme:dark;
 }
 html,body{height:100%}
@@ -253,6 +253,35 @@ button:disabled{opacity:.42;cursor:default}
 .pin-foot{display:grid;justify-items:center;gap:10px}
 .pin-foot .confirm{width:100%;box-sizing:border-box}
 
+/* Budgets, épargne, sauvegarde */
+.bud,.goal{display:grid;gap:5px}
+.bud-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.bud-head b{font-weight:700;overflow-wrap:anywhere;min-width:0}
+.bud-head span{font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.bar{height:8px;background:var(--sunk);border-radius:4px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:4px;background:var(--accent)}
+.bar.warn i{background:var(--warn)}
+.bar.over i{background:var(--out)}
+.bar.done i{background:var(--in)}
+.bud-note{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.bud-note.warn,.budget-hint.warn,.backup-meta.warn{color:var(--warn);font-weight:700}
+.bud-note.over,.budget-hint.over{color:var(--out);font-weight:700}
+.bud-list{display:grid;gap:12px}
+.bud-sep{border-top:1px solid var(--line)}
+.edit-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,140px);gap:8px 10px;align-items:center}
+.pform .edit-grid label{display:block;color:var(--ink);font-size:14px;overflow-wrap:anywhere}
+.edit-grid .field{width:100%;box-sizing:border-box;text-align:right}
+.goal{padding-top:12px;border-top:1px solid var(--line)}
+.goal:first-child{border-top:0;padding-top:0}
+.goal-actions{display:flex;gap:8px;flex-wrap:wrap}
+.inline-form{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.inline-form .field{flex:1 1 120px}
+.budget-hint{font-size:13px;text-align:right;color:var(--muted)}
+.btn-accent-sm{background:var(--accent);color:var(--surface)}
+.k-save,.k-unsave{background:var(--accent-soft);color:var(--accent)}
+.tx-amt.sav{color:var(--accent)}
+.backup-meta{font-size:13px;color:var(--muted);margin:0}
+
 /* Petits écrans : la saisie tient sans défiler */
 @media (max-height: 760px){
   .app{padding-block:8px calc(84px + env(safe-area-inset-bottom,0px));gap:8px}
@@ -265,6 +294,9 @@ button:disabled{opacity:.42;cursor:default}
   .keypad{gap:6px}
   .mode button{height:40px}
   .actions{gap:6px}
+  .preview,.budget-hint,.mode-hint{font-size:12.5px}
+  .cat-pick{gap:4px}
+  .cchip{height:34px}
 }
 
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
@@ -301,6 +333,7 @@ button:disabled{opacity:.42;cursor:default}
         <div class="amount-row"><output class="amount num is-empty" id="amount" aria-live="polite">0</output><span class="amount-unit">XPF</span></div>
         <div class="preview" id="preview">&nbsp;</div>
         <div class="mode-hint" id="modeHint" hidden>Un retrait baisse ton solde sans compter comme une dépense.</div>
+        <div class="budget-hint" id="budgetHint" hidden></div>
       </div>
 
       <div class="keypad" id="keypad">
@@ -333,6 +366,11 @@ button:disabled{opacity:.42;cursor:default}
 
     <!-- TABLEAU DE BORD -->
     <section class="view" id="view-tableau" aria-label="Tableau de bord" hidden>
+      <div class="card" id="budgetCard">
+        <div class="card-head"><h2>Budget du mois</h2><span class="sub" id="budgetMonth"></span></div>
+        <div id="budgetBody"></div>
+      </div>
+
       <div class="stats">
         <div class="tile"><span class="label">Aujourd'hui</span><span class="val num" id="stToday">0</span></div>
         <div class="tile"><span class="label">7 derniers jours</span><span class="val num" id="stWeek">0</span></div>
@@ -357,6 +395,11 @@ button:disabled{opacity:.42;cursor:default}
         <ul class="breakdown" id="breakdown"></ul>
       </div>
 
+      <div class="card" id="goalCard">
+        <div class="card-head"><h2>Objectifs d'épargne</h2><span class="sub" id="goalTotal"></span></div>
+        <div id="goalBody"></div>
+      </div>
+
       <div class="card">
         <h2>Bilan</h2>
         <div class="meter" aria-hidden="true"><i id="meterFill" style="width:0%"></i></div>
@@ -366,7 +409,8 @@ button:disabled{opacity:.42;cursor:default}
           <dt>Ajouts</dt><dd id="lgAdd">0 XPF</dd>
           <dt>Retraits</dt><dd id="lgRem">0 XPF</dd>
           <dt>Dépenses</dt><dd id="lgExp">0 XPF</dd>
-          <dt class="total">Solde</dt><dd class="total" id="lgBal">0 XPF</dd>
+          <dt>Mis de côté (épargne)</dt><dd id="lgSave">0 XPF</dd>
+          <dt class="total">Solde disponible</dt><dd class="total" id="lgBal">0 XPF</dd>
         </dl>
       </div>
     </section>
@@ -385,6 +429,16 @@ button:disabled{opacity:.42;cursor:default}
 
     <!-- REGLAGES -->
     <section class="view" id="view-reglages" aria-label="Réglages" hidden>
+      <div class="card" id="backupCard" hidden>
+        <h2>Sauvegarde</h2>
+        <p class="meter-text">Crée un fichier chiffré avec tout ton profil : opérations, catégories, budgets et objectifs. Range-le en lieu sûr (Drive, e-mail…) pour le restaurer après une réinstallation ou sur un autre téléphone.</p>
+        <p class="backup-meta" id="backupMeta"></p>
+        <div class="pbtns">
+          <button class="btn-sm btn-accent-sm" id="backupBtn" type="button">Sauvegarder mon profil</button>
+          <button class="btn-sm btn-ghost" id="restoreBtn" type="button">Restaurer une sauvegarde</button>
+        </div>
+      </div>
+
       <div class="card" id="profCard" hidden>
         <div class="card-head"><h2>Profils</h2><span class="sub" id="profCount"></span></div>
         <p class="meter-text" id="profText"></p>
@@ -456,7 +510,9 @@ button:disabled{opacity:.42;cursor:default}
     capital: {label: 'Capital de départ', sign: 1, ico: '+'},
     add:     {label: 'Ajout',             sign: 1, ico: '+'},
     remove:  {label: 'Retrait',           sign: -1, ico: '−'},
-    expense: {label: 'Dépense',           sign: -1, ico: '−'}
+    expense: {label: 'Dépense',           sign: -1, ico: '−'},
+    save:    {label: 'Mis de côté',       sign: -1, ico: '↓'},
+    unsave:  {label: "Repris de l'épargne", sign: 1, ico: '↑'}
   };
 
   const DEFAULT_CATS = [
@@ -464,6 +520,8 @@ button:disabled{opacity:.42;cursor:default}
     {id: 'shopping', name: 'Shopping'}, {id: 'phone', name: 'Téléphone'}, {id: 'other', name: 'Autre'}
   ];
   const MAX_CATS = 20, MAX_CAT_LEN = 24;
+  const MAX_GOALS = 10;
+  const DATEF = new Intl.DateTimeFormat('fr-FR', {day: 'numeric', month: 'long', year: 'numeric'});
   let cats = DEFAULT_CATS.map(c => Object.assign({}, c));
   let selCat = null;       // catégorie choisie pour la prochaine dépense
   let histCat = '';        // '' toutes, '__none' sans catégorie, sinon id
@@ -471,6 +529,10 @@ button:disabled{opacity:.42;cursor:default}
   let catEdit = null;      // {id, mode: 'rename' | 'delete'}
   let renameDraft = '';
   let catQueue = Promise.resolve();
+  let plan = emptyPlan();  // budgets, objectifs d'épargne, date de la dernière sauvegarde
+  let planQueue = Promise.resolve();
+  let budEdit = false;     // formulaire des budgets ouvert
+  let goalUi = null;       // {mode: new|save|take|del, id}
   // Profils : seulement en mode local (APK, ou page ouverte sans compte claude.ai)
   const PKEY = 'poche-xpf-profiles-v1';
   const PCOLORS = ['#17607D', '#B5381F', '#1C7F52', '#7A4FB3', '#B86E0F', '#2E3A8C'];
@@ -504,7 +566,8 @@ button:disabled{opacity:.42;cursor:default}
     if (!Array.isArray(arr)) return [];
     return arr.filter(t => t && typeof t.id === 'string' && KINDS[t.kind] && Number.isFinite(t.amount) && t.amount > 0 && Number.isFinite(t.at))
       .map(t => ({id: t.id, kind: t.kind, amount: Math.round(t.amount), at: t.at,
-        cat: t.kind === 'expense' && typeof t.cat === 'string' && t.cat.length <= 40 ? t.cat : null}))
+        cat: t.kind === 'expense' && typeof t.cat === 'string' && t.cat.length <= 40 ? t.cat : null,
+        goal: (t.kind === 'save' || t.kind === 'unsave') && typeof t.goal === 'string' && t.goal.length <= 40 ? t.goal : null}))
       .sort((a, b) => b.at - a.at);
   }
 
@@ -524,14 +587,16 @@ button:disabled{opacity:.42;cursor:default}
   const catName = id => { const c = id && cats.find(x => x.id === id); return c ? c.name : null; };
 
   function totals(){
-    const r = {cap: 0, add: 0, rem: 0, exp: 0};
+    const r = {cap: 0, add: 0, rem: 0, exp: 0, saved: 0};
     for (const t of txs){
       if (t.kind === 'capital') r.cap += t.amount;
       else if (t.kind === 'add') r.add += t.amount;
       else if (t.kind === 'remove') r.rem += t.amount;
-      else r.exp += t.amount;
+      else if (t.kind === 'expense') r.exp += t.amount;
+      else if (t.kind === 'save') r.saved += t.amount;
+      else if (t.kind === 'unsave') r.saved -= t.amount;
     }
-    r.balance = r.cap + r.add - r.rem - r.exp;
+    r.balance = r.cap + r.add - r.rem - r.exp - r.saved;
     return r;
   }
 
@@ -560,7 +625,10 @@ button:disabled{opacity:.42;cursor:default}
     try { const raw = localStorage.getItem(CKEY); if (raw){ const l = sanitizeCats(JSON.parse(raw)); if (l) cats = l; } } catch (e) {}
     const save = () => { try { localStorage.setItem(KEY, JSON.stringify(txs)); } catch (e) {} };
     const saveCats = list => { try { localStorage.setItem(CKEY, JSON.stringify(list)); } catch (e) {} };
-    return {mode: 'local', put: async () => save(), del: async () => save(), putCats: async list => saveCats(list)};
+    const PLKEY = 'poche-xpf-plan-v1:' + pid;
+    try { const raw = localStorage.getItem(PLKEY); if (raw) plan = sanitizePlan(JSON.parse(raw)); } catch (e) {}
+    const savePlanLocal = p => { try { localStorage.setItem(PLKEY, JSON.stringify(p)); } catch (e) {} };
+    return {mode: 'local', put: async () => save(), del: async () => save(), putCats: async list => saveCats(list), putPlan: async p => savePlanLocal(p)};
   }
 
   function dbStore(col){
@@ -569,10 +637,12 @@ button:disabled{opacity:.42;cursor:default}
       put: tx => {
         const body = {kind: tx.kind, amount: tx.amount, at: tx.at};
         if (tx.kind === 'expense' && tx.cat) body.cat = tx.cat;
+        if ((tx.kind === 'save' || tx.kind === 'unsave') && tx.goal) body.goal = tx.goal;
         return col.doc(tx.id).set(body);
       },
       del: id => col.doc(id).delete(),
-      putCats: list => col.doc('categories').set({list})
+      putCats: list => col.doc('categories').set({list}),
+      putPlan: p => col.doc('plan').set(p)
     };
   }
 
@@ -610,6 +680,10 @@ button:disabled{opacity:.42;cursor:default}
     const col = db.collection('data/users/' + uid);
     store = dbStore(col);
     setAbout('db');
+    col.doc('plan').onSnapshot(snap => {
+      plan = sanitizePlan(snap.exists ? snap.data() : null);
+      renderAll();
+    }, () => {});
     col.doc('categories').onSnapshot(snap => {
       const l = snap.exists ? sanitizeCats((snap.data() || {}).list) : null;
       cats = l || DEFAULT_CATS.map(c => Object.assign({}, c));
@@ -713,6 +787,7 @@ button:disabled{opacity:.42;cursor:default}
     currentProfile = id; lastProfile = id;
     saveProfiles();
     txs = []; cats = DEFAULT_CATS.map(c => Object.assign({}, c));
+    plan = emptyPlan(); budEdit = false; goalUi = null;
     amountStr = ''; selCat = null; histCat = ''; histFilter = 'all'; openTx = null; catEdit = null;
     document.querySelectorAll('.chip').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.f === 'all')));
     store = localStore(id);
@@ -727,7 +802,7 @@ button:disabled{opacity:.42;cursor:default}
   function deleteProfile(id){
     const p = getProfile(id);
     if (!p) return;
-    try { localStorage.removeItem('poche-xpf-v1:' + id); localStorage.removeItem('poche-xpf-cats-v1:' + id); } catch (e) {}
+    try { ['poche-xpf-v1:', 'poche-xpf-cats-v1:', 'poche-xpf-plan-v1:'].forEach(k => localStorage.removeItem(k + id)); } catch (e) {}
     profiles = profiles.filter(x => x.id !== id);
     if (lastProfile === id) lastProfile = null;
     saveProfiles();
@@ -767,6 +842,7 @@ button:disabled{opacity:.42;cursor:default}
         + '</div>'
         + '<div class="plist">'
         + `<button class="btn btn-ghost" type="button" data-p-manage>${v.manage ? 'Terminé' : 'Gérer les profils'}</button>`
+        + (NATIVE ? '<button class="btn btn-ghost" type="button" data-p-restore>Restaurer une sauvegarde</button>' : '')
         + (cur ? '<button class="btn btn-ghost" type="button" data-p-back>Retour à mon profil</button>' : '')
         + '</div>';
     } else if (v.mode === 'create' || v.mode === 'edit'){
@@ -789,7 +865,8 @@ button:disabled{opacity:.42;cursor:default}
         + '<p class="form-err" id="pErr" role="alert" hidden></p>'
         + `<div class="pbtns"><button class="btn btn-accent" type="submit">${p ? 'Enregistrer' : 'Créer le profil'}</button>`
         + (profiles.length ? '<button class="btn btn-ghost" type="button" data-p-cancel>Annuler</button>' : '')
-        + '</div></form>';
+        + '</div></form>'
+        + (!p && NATIVE ? '<button class="link" type="button" data-p-restore>Restaurer une sauvegarde</button>' : '');
     } else if (v.mode === 'pin'){
       const p = getProfile(v.id);
       if (!p){ showProfiles({mode: 'choose'}); return; }
@@ -805,6 +882,29 @@ button:disabled{opacity:.42;cursor:default}
         + (v.forgot ? `<div class="confirm"><p>Sans le code, ce profil ne peut pas s'ouvrir. Tu peux le supprimer avec ses ${n} opération(s). C'est définitif.</p>`
           + `<div class="row"><button class="btn-sm btn-solid-danger" type="button" data-p-del="${esc(p.id)}">Supprimer ce profil</button><button class="btn-sm btn-ghost" type="button" data-p-forgot-no>Annuler</button></div></div>` : '')
         + '</div>';
+    } else if (v.mode === 'backup'){
+      if (!cur){ showProfiles({mode: 'choose'}); return; }
+      body.innerHTML = '<h1>Sauvegarder mon profil</h1>'
+        + `<p class="plead">Le fichier contiendra tout le profil de ${esc(cur.name)}. Il sera chiffré avec le mot de passe ci-dessous : sans lui, personne ne peut le lire ni le restaurer, pas même toi.</p>`
+        + '<form class="pform" id="bkForm" novalidate>'
+        + '<label for="bkPw">Mot de passe (6 caractères minimum)<input class="field" id="bkPw" type="password" autocomplete="new-password" maxlength="64"></label>'
+        + '<label for="bkPw2">Confirme le mot de passe<input class="field" id="bkPw2" type="password" autocomplete="new-password" maxlength="64"></label>'
+        + '<p class="form-err" id="pErr" role="alert" hidden></p>'
+        + '<div class="pbtns"><button class="btn btn-accent" type="submit" id="bkGo">Créer le fichier</button><button class="btn btn-ghost" type="button" data-p-close>Annuler</button></div></form>';
+    } else if (v.mode === 'restore'){
+      const f = v.file;
+      body.innerHTML = '<h1>Restaurer une sauvegarde</h1>'
+        + `<p class="plead">Sauvegarde du profil ${esc(String(f.name || '?').slice(0, 20))}${Number.isFinite(f.createdAt) ? ' du ' + esc(DATEF.format(f.createdAt)) : ''}. Entre le mot de passe choisi au moment de la sauvegarde.</p>`
+        + '<form class="pform" id="rsForm" novalidate>'
+        + '<label for="rsPw">Mot de passe<input class="field" id="rsPw" type="password" autocomplete="current-password" maxlength="64"></label>'
+        + '<p class="form-err" id="pErr" role="alert" hidden></p>'
+        + '<div class="pbtns"><button class="btn btn-accent" type="submit" id="rsGo">Restaurer</button><button class="btn btn-ghost" type="button" data-p-close>Annuler</button></div></form>';
+    } else if (v.mode === 'restoreConfirm'){
+      const d = v.data, ex = getProfile(d.profile.id);
+      const nOld = d.profile.id === currentProfile ? txs.length : txCountFor(d.profile.id);
+      body.innerHTML = '<h1>Remplacer ce profil ?</h1>'
+        + `<p class="plead">Le profil ${esc(ex ? ex.name : d.profile.name)} existe déjà sur ce téléphone avec ${nOld} opération(s). La sauvegarde${d.createdAt ? ' du ' + esc(DATEF.format(d.createdAt)) : ''} en contient ${d.txs.length}. Les données actuelles de ce profil seront remplacées.</p>`
+        + '<div class="pbtns"><button class="btn btn-accent" type="button" data-p-rsyes>Remplacer</button><button class="btn btn-ghost" type="button" data-p-close>Annuler</button></div>';
     } else if (v.mode === 'menu'){
       if (!cur){ showProfiles({mode: 'choose'}); return; }
       body.innerHTML = `<div class="phead">${avatar(cur, 'lg')}<h1>${esc(cur.name)}</h1><p class="plead">${cur.pin ? 'Profil protégé par un code.' : 'Profil sans code.'}</p></div>`
@@ -892,7 +992,7 @@ button:disabled{opacity:.42;cursor:default}
     selCat = null;
     if (kind !== 'expense') mode = 'expense';
     renderAll();
-    showToast(CONFIRM[kind](amount, totals().balance, catName(tx.cat)), tx.id);
+    showToast(CONFIRM[kind](amount, totals().balance, catName(tx.cat)) + (kind === 'expense' ? budgetAlert(tx.cat) : ''), tx.id);
     try { await withRetry(() => store.put(tx)); }
     catch (e){
       txs = txs.filter(t => t.id !== tx.id);
@@ -997,6 +1097,369 @@ button:disabled{opacity:.42;cursor:default}
     }
   }
 
+  /* ---------- Budgets et objectifs d'épargne ---------- */
+  function emptyPlan(){ return {budget: {total: null, cats: {}}, goals: [], lastBackup: null}; }
+  const clonePlan = p => JSON.parse(JSON.stringify(p));
+  const ID_RE = /^[A-Za-z0-9_-]{1,40}$/;
+  function sanitizePlan(o){
+    const p = emptyPlan();
+    if (!o || typeof o !== 'object') return p;
+    const b = o.budget && typeof o.budget === 'object' ? o.budget : {};
+    if (Number.isFinite(b.total) && b.total > 0) p.budget.total = Math.round(b.total);
+    if (b.cats && typeof b.cats === 'object'){
+      for (const [k, v] of Object.entries(b.cats)) if (ID_RE.test(k) && Number.isFinite(v) && v > 0) p.budget.cats[k] = Math.round(v);
+    }
+    if (Array.isArray(o.goals)){
+      p.goals = o.goals.filter(g => g && typeof g.id === 'string' && ID_RE.test(g.id) && typeof g.name === 'string' && g.name.trim() && Number.isFinite(g.target) && g.target > 0)
+        .slice(0, MAX_GOALS).map(g => ({id: g.id, name: g.name.trim().slice(0, 30), target: Math.round(g.target)}));
+    }
+    if (Number.isFinite(o.lastBackup)) p.lastBackup = o.lastBackup;
+    return p;
+  }
+  function savePlan(prev, okMsg){
+    const snap = clonePlan(plan), st = store;
+    renderAll();
+    if (!st) return;
+    planQueue = planQueue
+      .then(() => withRetry(() => st.putPlan(snap)))
+      .then(() => { if (okMsg) showToast(okMsg); }, e => { if (store === st){ plan = prev; renderAll(); } showToast(errMsg(e)); });
+  }
+  // '' -> null (pas de limite), chiffres -> nombre, autre chose -> NaN
+  const parseAmt = v => {
+    const s = String(v || '').replace(/[\s.  ]/g, '');
+    if (!s) return null;
+    return /^\d{1,9}$/.test(s) && +s > 0 ? +s : NaN;
+  };
+  function monthStart(){ const d = new Date(startOfDay(Date.now())); d.setDate(1); return d.getTime(); }
+  function monthSpent(cat){
+    const m0 = monthStart();
+    let s = 0;
+    for (const t of txs) if (t.kind === 'expense' && t.at >= m0 && (cat === undefined || t.cat === cat)) s += t.amount;
+    return s;
+  }
+  function goalSaved(id){
+    let s = 0;
+    for (const t of txs){
+      if (t.goal !== id) continue;
+      if (t.kind === 'save') s += t.amount; else if (t.kind === 'unsave') s -= t.amount;
+    }
+    return s;
+  }
+  const goalName = id => { const g = plan.goals.find(x => x.id === id); return g ? g.name : 'Épargne'; };
+  const budgetClass = (spent, limit) => spent > limit ? 'over' : spent >= limit * 0.8 ? 'warn' : '';
+  function budgetTarget(cat){
+    if (cat && catName(cat) && plan.budget.cats[cat]) return {label: 'Budget ' + catName(cat), limit: plan.budget.cats[cat], spent: monthSpent(cat)};
+    if (plan.budget.total) return {label: 'Budget du mois', limit: plan.budget.total, spent: monthSpent()};
+    return null;
+  }
+  function renderBudgetHint(a){
+    const el = $('#budgetHint');
+    const t = loaded && txs.length && mode === 'expense' && a > 0 ? budgetTarget(selCat) : null;
+    if (!t){ el.hidden = true; return; }
+    const left = t.limit - t.spent - a;
+    el.className = 'budget-hint ' + budgetClass(t.spent + a, t.limit);
+    el.textContent = left < 0 ? `${t.label} : dépassé de ${money(-left)}.` : `${t.label} : il restera ${money(left)}.`;
+    el.hidden = false;
+  }
+  function budgetAlert(cat){
+    const t = budgetTarget(cat);
+    return t && t.spent > t.limit ? ` ${t.label} dépassé de ${money(t.spent - t.limit)}.` : '';
+  }
+
+  function renderBudget(force){
+    $('#budgetMonth').textContent = MONTHF.format(Date.now()).replace(/^./, c => c.toUpperCase());
+    const body = $('#budgetBody');
+    const b = plan.budget;
+    if (budEdit){
+      if (!force && $('#budForm')) return;
+      body.innerHTML = '<form class="pform" id="budForm" novalidate><p class="meter-text">Montants en XPF pour le mois. Laisse vide pour ne pas mettre de limite.</p><div class="edit-grid">'
+        + `<label for="bud-total">Toutes les dépenses</label><input class="field" id="bud-total" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="9" placeholder="Aucune" value="${b.total || ''}">`
+        + cats.map(c => `<label for="bud-${esc(c.id)}">${esc(c.name)}</label><input class="field" id="bud-${esc(c.id)}" data-bud-cat="${esc(c.id)}" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="9" placeholder="Aucune" value="${b.cats[c.id] || ''}">`).join('')
+        + '</div><p class="form-err" id="budErr" role="alert" hidden></p>'
+        + '<div class="pbtns"><button class="btn-sm btn-accent-sm" type="submit">Enregistrer</button><button class="btn-sm btn-ghost" type="button" data-bud-cancel>Annuler</button></div></form>';
+      return;
+    }
+    const catRows = cats.filter(c => b.cats[c.id]);
+    if (!b.total && !catRows.length){
+      body.innerHTML = "<div class=\"pfield\"><p class=\"meter-text\">Fixe une limite pour tes dépenses du mois, au total ou par catégorie. L'app te prévient quand tu t'en approches.</p>"
+        + '<div><button class="btn-sm btn-accent-sm" type="button" data-bud-edit>Définir mon budget</button></div></div>';
+      return;
+    }
+    const now = new Date();
+    const daysLeft = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate() + 1;
+    const row = (name, spent, limit, perDay) => {
+      const cls = budgetClass(spent, limit), left = limit - spent;
+      let note = left < 0 ? `Dépassé de ${money(-left)}` : `Reste ${money(left)}`;
+      if (left > 0 && perDay) note += ` · ${money(Math.floor(left / daysLeft))} par jour pendant ${daysLeft} jour${daysLeft > 1 ? 's' : ''}`;
+      if (cls === 'warn') note = 'Attention : ' + note.charAt(0).toLowerCase() + note.slice(1);
+      return `<div class="bud"><div class="bud-head"><b>${esc(name)}</b><span>${esc(fmt(spent))} / ${esc(fmt(limit))} XPF</span></div>`
+        + `<div class="bar ${cls}"><i style="width:${Math.min(100, spent / limit * 100).toFixed(1)}%"></i></div>`
+        + `<div class="bud-note ${cls}">${esc(note)}</div></div>`;
+    };
+    body.innerHTML = '<div class="bud-list">'
+      + (b.total ? row('Toutes les dépenses', monthSpent(), b.total, true) : '')
+      + (b.total && catRows.length ? '<div class="bud-sep"></div>' : '')
+      + catRows.map(c => row(c.name, monthSpent(c.id), b.cats[c.id], false)).join('')
+      + '<div><button class="btn-sm btn-ghost" type="button" data-bud-edit>Modifier les budgets</button></div></div>';
+  }
+
+  function submitBudget(e){
+    e.preventDefault();
+    const err = m => { const el = $('#budErr'); el.textContent = m; el.hidden = false; };
+    const total = parseAmt($('#bud-total').value);
+    if (Number.isNaN(total)) return err('Écris les montants en chiffres, ou laisse vide.');
+    const catsB = {};
+    for (const inp of document.querySelectorAll('#budForm [data-bud-cat]')){
+      const v = parseAmt(inp.value);
+      if (Number.isNaN(v)) return err('Écris les montants en chiffres, ou laisse vide.');
+      if (v) catsB[inp.dataset.budCat] = v;
+    }
+    const prev = clonePlan(plan);
+    plan.budget = {total, cats: catsB};
+    budEdit = false;
+    savePlan(prev, total || Object.keys(catsB).length ? 'Budgets enregistrés.' : 'Budgets retirés.');
+  }
+
+  function renderGoals(force){
+    const body = $('#goalBody');
+    if (!force && goalUi && goalUi.mode !== 'del' && body.querySelector('form')) return;
+    const T = totals();
+    $('#goalTotal').textContent = T.saved > 0 ? 'Mis de côté : ' + money(T.saved) : '';
+    let h = '';
+    if (!plan.goals.length && !(goalUi && goalUi.mode === 'new')){
+      h += "<p class=\"meter-text\">Mets de l'argent de côté pour un projet : il quitte ton solde disponible et s'accumule dans l'objectif. Tu peux le reprendre quand tu veux.</p>";
+    }
+    h += plan.goals.map(g => {
+      const saved = goalSaved(g.id), done = saved >= g.target;
+      const ui = goalUi && goalUi.id === g.id ? goalUi.mode : null;
+      let x = `<div class="goal"><div class="bud-head"><b>${esc(g.name)}</b><span>${esc(fmt(saved))} / ${esc(fmt(g.target))} XPF</span></div>`
+        + `<div class="bar${done ? ' done' : ''}"><i style="width:${Math.min(100, saved / g.target * 100).toFixed(1)}%"></i></div>`
+        + `<div class="bud-note">${done ? 'Objectif atteint !' : esc(`Encore ${money(g.target - saved)} · ${Math.floor(saved / g.target * 100)} %`)}</div>`;
+      if (ui === 'save' || ui === 'take'){
+        x += `<form class="inline-form" data-goal-form="${esc(g.id)}" novalidate>`
+          + `<input class="field" id="goalAmt" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="9" placeholder="Montant en XPF" aria-label="${ui === 'save' ? 'Montant à mettre de côté' : 'Montant à reprendre'}">`
+          + `<button class="btn-sm btn-accent-sm" type="submit">${ui === 'save' ? 'Mettre de côté' : 'Reprendre'}</button>`
+          + '<button class="btn-sm btn-ghost" type="button" data-goal-cancel>Annuler</button></form><p class="form-err" id="goalErr" role="alert" hidden></p>';
+      } else if (ui === 'del'){
+        x += `<div class="confirm"><p>Supprimer l'objectif « ${esc(g.name)} » ?${saved > 0 ? ` Les ${esc(money(saved))} mis de côté reviendront dans ton solde.` : ''}</p>`
+          + `<div class="row"><button class="btn-sm btn-solid-danger" type="button" data-goal-del-yes="${esc(g.id)}">Supprimer</button><button class="btn-sm btn-ghost" type="button" data-goal-cancel>Annuler</button></div></div>`;
+      } else {
+        x += `<div class="goal-actions"><button class="mini solid" type="button" data-goal-save="${esc(g.id)}">+ Mettre de côté</button>`
+          + (saved > 0 ? `<button class="mini" type="button" data-goal-take="${esc(g.id)}">Reprendre</button>` : '')
+          + `<button class="mini danger" type="button" data-goal-del="${esc(g.id)}">Supprimer</button></div>`;
+      }
+      return x + '</div>';
+    }).join('');
+    if (goalUi && goalUi.mode === 'new'){
+      h += '<form class="pform goal" id="goalNewForm" novalidate>'
+        + "<label for=\"goalName\">Nom de l'objectif<input class=\"field\" id=\"goalName\" type=\"text\" maxlength=\"30\" placeholder=\"Ex. Nouveau téléphone\" autocomplete=\"off\"></label>"
+        + '<label for="goalTarget">Montant visé (XPF)<input class="field" id="goalTarget" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="9" placeholder="Ex. 60000"></label>'
+        + '<p class="form-err" id="goalErr" role="alert" hidden></p>'
+        + "<div class=\"pbtns\"><button class=\"btn-sm btn-accent-sm\" type=\"submit\">Créer l'objectif</button><button class=\"btn-sm btn-ghost\" type=\"button\" data-goal-cancel>Annuler</button></div></form>";
+    } else if (plan.goals.length < MAX_GOALS){
+      h += '<div><button class="btn-sm btn-ghost" type="button" data-goal-new>+ Nouvel objectif</button></div>';
+    }
+    body.innerHTML = h;
+  }
+  const goalErr = m => { const el = $('#goalErr'); if (el){ el.textContent = m; el.hidden = false; } };
+
+  async function addTx(tx, msg){
+    if (!loaded || !store) return;
+    tx.id = newId(); tx.at = Date.now();
+    txs = [tx].concat(txs);
+    renderAll();
+    showToast(msg(), tx.id);
+    try { await withRetry(() => store.put(tx)); }
+    catch (e){ txs = txs.filter(t => t.id !== tx.id); renderAll(); showToast(errMsg(e)); }
+  }
+
+  function createGoal(){
+    const name = $('#goalName').value.trim();
+    const target = parseAmt($('#goalTarget').value);
+    if (!name) return goalErr('Donne un nom à ton objectif.');
+    if (!target) return goalErr('Écris le montant visé en chiffres.');
+    if (plan.goals.some(g => g.name.toLowerCase() === name.toLowerCase())) return goalErr('Cet objectif existe déjà.');
+    const prev = clonePlan(plan);
+    plan.goals.push({id: 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name, target});
+    goalUi = null;
+    savePlan(prev, `Objectif « ${name} » créé.`);
+  }
+
+  function moveGoal(id, how){
+    const g = plan.goals.find(x => x.id === id);
+    if (!g || (how !== 'save' && how !== 'take')) return;
+    const a = parseAmt($('#goalAmt').value);
+    if (!a) return goalErr('Écris un montant en chiffres.');
+    const bal = totals().balance, saved = goalSaved(id);
+    if (how === 'save' && a > bal) return goalErr(`Tu n'as que ${money(Math.max(0, bal))} disponibles.`);
+    if (how === 'take' && a > saved) return goalErr(`Il n'y a que ${money(saved)} dans cet objectif.`);
+    goalUi = null;
+    if (how === 'save') addTx({kind: 'save', amount: a, goal: id}, () => `${money(a)} mis de côté pour ${g.name}. Il te reste ${money(totals().balance)}.`);
+    else addTx({kind: 'unsave', amount: a, goal: id}, () => `${money(a)} repris de ${g.name}. Solde : ${money(totals().balance)}.`);
+  }
+
+  function deleteGoal(id){
+    const g = plan.goals.find(x => x.id === id);
+    if (!g) return;
+    const saved = goalSaved(id);
+    const prev = clonePlan(plan);
+    plan.goals = plan.goals.filter(x => x.id !== id);
+    goalUi = null;
+    if (saved > 0) addTx({kind: 'unsave', amount: saved, goal: id}, () => `${money(saved)} remis dans ton solde.`);
+    savePlan(prev, `Objectif « ${g.name} » supprimé.`);
+  }
+
+  /* ---------- Sauvegarde chiffrée (AES-GCM, clé dérivée du mot de passe par PBKDF2) ---------- */
+  const NATIVE = window.PocheAndroid || null;   // pont fourni par l'APK
+  const cancelErr = () => Object.assign(new Error('Annulé.'), {cancel: true});
+  let nativeWait = null;
+  function nativeCall(start){
+    return new Promise((res, rej) => {
+      if (nativeWait) nativeWait.rej(cancelErr());
+      nativeWait = {res, rej};
+      try { start(); } catch (e) { nativeWait = null; rej(e); }
+    });
+  }
+  window.pocheNative = (type, payload) => {
+    const w = nativeWait;
+    nativeWait = null;
+    if (!w) return;
+    if (type === 'cancel') w.rej(cancelErr());
+    else if (type === 'error') w.rej(new Error(String(payload || 'erreur inconnue')));
+    else w.res(payload);
+  };
+  function saveText(name, text){
+    if (NATIVE && typeof NATIVE.saveFile === 'function') return nativeCall(() => NATIVE.saveFile(name, text));
+    return Promise.reject(new Error("disponible seulement dans l'app Android"));
+  }
+  function openText(){
+    if (NATIVE && typeof NATIVE.openFile === 'function') return nativeCall(() => NATIVE.openFile());
+    return Promise.reject(new Error("disponible seulement dans l'app Android"));
+  }
+  const hasCrypto = () => !!(window.crypto && crypto.subtle && window.TextEncoder && window.TextDecoder);
+  const b64 = buf => { const a = new Uint8Array(buf); let s = ''; for (let i = 0; i < a.length; i += 0x8000) s += String.fromCharCode.apply(null, a.subarray(i, i + 0x8000)); return btoa(s); };
+  const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+  async function deriveKey(pw, salt, iter){
+    const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey({name: 'PBKDF2', hash: 'SHA-256', salt, iterations: iter}, base, {name: 'AES-GCM', length: 256}, false, ['encrypt', 'decrypt']);
+  }
+  async function encryptBackup(obj, pw){
+    const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12)), iter = 210000;
+    const key = await deriveKey(pw, salt, iter);
+    const data = await crypto.subtle.encrypt({name: 'AES-GCM', iv}, key, new TextEncoder().encode(JSON.stringify(obj)));
+    return JSON.stringify({format: 'poche-xpf-backup', v: 1, name: obj.profile.name, createdAt: obj.createdAt,
+      kdf: {name: 'PBKDF2', hash: 'SHA-256', iter, salt: b64(salt)}, cipher: 'AES-GCM', iv: b64(iv), data: b64(data)});
+  }
+  async function decryptBackup(f, pw){
+    const key = await deriveKey(pw, unb64(f.kdf.salt), f.kdf.iter);
+    const plain = await crypto.subtle.decrypt({name: 'AES-GCM', iv: unb64(f.iv)}, key, unb64(f.data));
+    return JSON.parse(new TextDecoder().decode(plain));
+  }
+  const slug = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'profil';
+  const isoDay = t => { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+
+  function renderBackupCard(){
+    const p = getProfile(currentProfile);
+    $('#backupCard').hidden = !p || !NATIVE;
+    if (!p || !NATIVE) return;
+    const lb = plan.lastBackup;
+    const old = !lb || Date.now() - lb > 30 * 86400000;
+    const m = $('#backupMeta');
+    m.textContent = lb ? `Dernière sauvegarde : ${DATEF.format(lb)}.${old ? ' Pense à en refaire une.' : ''}` : "Aucune sauvegarde pour l'instant.";
+    m.className = 'backup-meta' + (old && txs.length ? ' warn' : '');
+  }
+
+  async function doBackup(e){
+    e.preventDefault();
+    const err = m => { const el = $('#pErr'); el.textContent = m; el.hidden = false; };
+    const pw = $('#bkPw').value, pw2 = $('#bkPw2').value;
+    if (pw.length < 6) return err('Choisis un mot de passe de 6 caractères minimum.');
+    if (pw !== pw2) return err('Les deux mots de passe ne sont pas identiques.');
+    if (!hasCrypto()) return err("Le chiffrement n'est pas disponible sur cet appareil.");
+    const p = getProfile(currentProfile);
+    if (!p) return;
+    const btn = $('#bkGo');
+    btn.disabled = true; btn.textContent = 'Chiffrement…';
+    try {
+      const obj = {app: 'poche-xpf', v: 1, createdAt: Date.now(),
+        profile: {id: p.id, name: p.name, color: p.color, pin: p.pin, pinLen: p.pinLen},
+        txs: txs.slice(), cats: cats.map(c => ({id: c.id, name: c.name})), plan: clonePlan(plan)};
+      const text = await encryptBackup(obj, pw);
+      await saveText(`poche-xpf-${slug(p.name)}-${isoDay(obj.createdAt)}.json`, text);
+      const prev = clonePlan(plan);
+      plan.lastBackup = obj.createdAt;
+      hideProfiles();
+      savePlan(prev, null);
+      showToast('Sauvegarde enregistrée. Garde ton mot de passe : sans lui, impossible de la restaurer.');
+    } catch (x) {
+      btn.disabled = false; btn.textContent = 'Créer le fichier';
+      err(x && x.cancel ? "Sauvegarde annulée : aucun fichier n'a été créé." : 'La sauvegarde a échoué (' + (x && x.message || 'erreur inconnue') + ').');
+    }
+  }
+
+  async function startRestore(){
+    let text;
+    try { text = await openText(); }
+    catch (x) { if (!(x && x.cancel)) showToast("Le fichier n'a pas pu être lu."); return; }
+    let f = null;
+    try { f = JSON.parse(text); } catch (x) {}
+    const ok = f && f.format === 'poche-xpf-backup' && f.v === 1 && f.kdf && typeof f.kdf.salt === 'string'
+      && Number.isInteger(f.kdf.iter) && f.kdf.iter >= 100000 && f.kdf.iter <= 2000000 && typeof f.iv === 'string' && typeof f.data === 'string';
+    if (!ok){ showToast("Ce fichier n'est pas une sauvegarde Poche XPF."); return; }
+    showProfiles({mode: 'restore', file: f});
+  }
+
+  function readBackup(o){
+    if (!o || o.app !== 'poche-xpf' || !o.profile) return null;
+    const p = o.profile;
+    if (typeof p.id !== 'string' || !ID_RE.test(p.id) || typeof p.name !== 'string' || !p.name.trim()) return null;
+    return {
+      createdAt: Number.isFinite(o.createdAt) ? o.createdAt : null,
+      profile: {id: p.id, name: p.name.trim().slice(0, 20), color: PCOLORS.includes(p.color) ? p.color : PCOLORS[0],
+        pin: typeof p.pin === 'string' && /^[0-9a-f]{1,16}$/.test(p.pin) ? p.pin : null,
+        pinLen: Number.isInteger(p.pinLen) && p.pinLen >= 4 && p.pinLen <= 8 ? p.pinLen : 4},
+      txs: sanitize(o.txs),
+      cats: sanitizeCats(o.cats) || DEFAULT_CATS.map(c => Object.assign({}, c)),
+      plan: sanitizePlan(o.plan)
+    };
+  }
+
+  async function doRestore(e){
+    e.preventDefault();
+    const v = pView;
+    const err = m => { const el = $('#pErr'); el.textContent = m; el.hidden = false; };
+    const pw = $('#rsPw').value;
+    if (!pw) return err('Entre le mot de passe de la sauvegarde.');
+    if (!hasCrypto()) return err("Le chiffrement n'est pas disponible sur cet appareil.");
+    const btn = $('#rsGo');
+    btn.disabled = true; btn.textContent = 'Déchiffrement…';
+    let data = null;
+    try { data = readBackup(await decryptBackup(v.file, pw)); }
+    catch (x) { btn.disabled = false; btn.textContent = 'Restaurer'; return err('Mot de passe incorrect, ou fichier abîmé.'); }
+    if (!data){ btn.disabled = false; btn.textContent = 'Restaurer'; return err("Le contenu de la sauvegarde n'est pas valide."); }
+    if (getProfile(data.profile.id)){ showProfiles({mode: 'restoreConfirm', data}); return; }
+    if (profiles.length >= MAX_PROFILES){ btn.disabled = false; btn.textContent = 'Restaurer'; return err(MAX_PROFILES + ' profils maximum : supprimes-en un avant de restaurer.'); }
+    applyRestore(data);
+  }
+
+  function applyRestore(data){
+    const pr = data.profile;
+    let name = pr.name;
+    const taken = n => profiles.some(x => x.id !== pr.id && x.name.toLowerCase() === n.toLowerCase());
+    for (let i = 2; taken(name) && i < 100; i++) name = pr.name.slice(0, 15) + ' (' + i + ')';
+    try {
+      localStorage.setItem('poche-xpf-v1:' + pr.id, JSON.stringify(data.txs));
+      localStorage.setItem('poche-xpf-cats-v1:' + pr.id, JSON.stringify(data.cats));
+      localStorage.setItem('poche-xpf-plan-v1:' + pr.id, JSON.stringify(data.plan));
+    } catch (x) { showToast("Pas assez de place sur l'appareil pour restaurer."); return; }
+    const entry = Object.assign({}, pr, {name});
+    const i = profiles.findIndex(x => x.id === pr.id);
+    if (i >= 0) profiles[i] = entry; else profiles.push(entry);
+    saveProfiles();
+    openProfile(pr.id);
+    showToast(`Profil de ${name} restauré : ${data.txs.length} opération(s).`);
+  }
+
   function nudge(){
     const el = $('#amount');
     el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
@@ -1032,8 +1495,11 @@ button:disabled{opacity:.42;cursor:default}
     renderEntry();
     renderCatRow();
     renderDashboard();
+    renderBudget();
     renderBreakdown();
+    renderGoals();
     renderCatManager();
+    renderBackupCard();
     renderHistory();
   }
 
@@ -1158,6 +1624,7 @@ button:disabled{opacity:.42;cursor:default}
       b.textContent = n ? `− Dépense · ${n}` : a ? `− Dépense de ${money(a)}` : '− Enregistrer la dépense';
     }
     b.disabled = !loaded || !a;
+    renderBudgetHint(a);
   }
 
   function renderDashboard(){
@@ -1183,6 +1650,7 @@ button:disabled{opacity:.42;cursor:default}
     $('#lgRem').textContent = T.rem ? money(-T.rem) : money(0);
     $('#lgExp').textContent = T.exp ? money(-T.exp) : money(0);
     $('#lgBal').textContent = money(T.balance);
+    $('#lgSave').textContent = T.saved ? money(-T.saved) : money(0);
     const pct = inMoney ? Math.round(T.exp / inMoney * 100) : 0;
     $('#meterFill').style.width = Math.min(100, pct) + '%';
     $('#meterText').textContent = inMoney
@@ -1320,13 +1788,14 @@ button:disabled{opacity:.42;cursor:default}
         const isOpen = openTx === t.id;
         const signed = K.sign * t.amount;
         const cn = t.kind === 'expense' ? catName(t.cat) : null;
-        const title = cn || K.label;
+        const isSav = t.kind === 'save' || t.kind === 'unsave';
+        const title = isSav ? (t.kind === 'save' ? 'Mis de côté' : 'Repris') + ' · ' + goalName(t.goal) : (cn || K.label);
         const meta = (cn ? 'Dépense · ' : '') + TIMEF.format(t.at) + ' · solde ' + money(after.get(t.id));
         h += `<li class="tx${j === g.items.length - 1 ? ' last' : ''}">`
           + `<button class="tx-main" type="button" data-open="${esc(t.id)}" aria-expanded="${isOpen}">`
           + `<span class="ico k-${t.kind}" aria-hidden="true">${K.ico}</span>`
           + `<span class="tx-text"><span class="tx-kind">${esc(title)}</span><span class="tx-meta">${esc(meta)}</span></span>`
-          + `<span class="tx-amt ${signed < 0 ? 'neg' : 'pos'}">${esc(money(signed, true))}</span>`
+          + `<span class="tx-amt ${isSav ? 'sav' : signed < 0 ? 'neg' : 'pos'}">${esc(money(signed, true))}</span>`
           + `</button>`
           + `<div class="tx-actions"${isOpen ? '' : ' hidden'}>`
           + (t.kind === 'expense'
@@ -1458,7 +1927,36 @@ button:disabled{opacity:.42;cursor:default}
   $('#profileBtn').addEventListener('click', () => showProfiles({mode: 'menu'}));
   $('#profAdd').addEventListener('click', () => showProfiles({mode: 'create'}));
   $('#profManage').addEventListener('click', () => showProfiles({mode: 'choose', manage: true}));
-  $('#profileScreen').addEventListener('submit', e => { if (e.target.id === 'pForm') submitProfile(e); });
+  $('#profileScreen').addEventListener('submit', e => {
+    if (e.target.id === 'pForm') submitProfile(e);
+    else if (e.target.id === 'bkForm') doBackup(e);
+    else if (e.target.id === 'rsForm') doRestore(e);
+  });
+  $('#backupBtn').addEventListener('click', () => showProfiles({mode: 'backup'}));
+  $('#restoreBtn').addEventListener('click', startRestore);
+  $('#budgetBody').addEventListener('click', e => {
+    const t = e.target.closest('button');
+    if (!t) return;
+    if ('budEdit' in t.dataset){ budEdit = true; renderBudget(true); const i = $('#bud-total'); if (i) i.focus(); }
+    else if ('budCancel' in t.dataset){ budEdit = false; renderBudget(true); }
+  });
+  $('#budgetBody').addEventListener('submit', e => { if (e.target.id === 'budForm') submitBudget(e); });
+  $('#goalBody').addEventListener('click', e => {
+    const t = e.target.closest('button');
+    if (!t) return;
+    const d = t.dataset;
+    if ('goalNew' in d){ goalUi = {mode: 'new'}; renderGoals(true); $('#goalName').focus(); }
+    else if (d.goalSave){ goalUi = {mode: 'save', id: d.goalSave}; renderGoals(true); $('#goalAmt').focus(); }
+    else if (d.goalTake){ goalUi = {mode: 'take', id: d.goalTake}; renderGoals(true); $('#goalAmt').focus(); }
+    else if (d.goalDel){ goalUi = {mode: 'del', id: d.goalDel}; renderGoals(true); }
+    else if (d.goalDelYes) deleteGoal(d.goalDelYes);
+    else if ('goalCancel' in d){ goalUi = null; renderGoals(true); }
+  });
+  $('#goalBody').addEventListener('submit', e => {
+    e.preventDefault();
+    if (e.target.id === 'goalNewForm') createGoal();
+    else if (e.target.dataset.goalForm) moveGoal(e.target.dataset.goalForm, goalUi && goalUi.mode);
+  });
   $('#profileScreen').addEventListener('click', e => {
     const t = e.target.closest('button');
     if (!t || !pView) return;
@@ -1473,6 +1971,9 @@ button:disabled{opacity:.42;cursor:default}
     else if ('pDelcancel' in d){ pView.delId = null; renderProfiles(); }
     else if ('pNew' in d) showProfiles({mode: 'create'});
     else if ('pBack' in d){ if (currentProfile) hideProfiles(); }
+    else if ('pClose' in d){ if (currentProfile) hideProfiles(); else showProfiles(profiles.length ? {mode: 'choose'} : {mode: 'create'}); }
+    else if ('pRestore' in d) startRestore();
+    else if ('pRsyes' in d) applyRestore(pView.data);
     else if ('pCancel' in d) showProfiles({mode: pView.mode === 'edit' ? 'menu' : 'choose'});
     else if (d.sw){
       pView.color = d.sw;
